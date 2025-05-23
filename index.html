@@ -603,7 +603,7 @@
 	   <div class="grid-item" id="zombieCommand">
 		<!-- 尸群指揮系統：操作控制區域 -->
 		<div class="operations-panel">
-		  <h2 class="section-title">🧟 屍群指揮系統</h2>
+		  <h2 class="section-title">🧟 尸群指揮系統</h2>
 		  <div class="production-grid">
 			<div class="department-card" id="exploration">
 			  <div class="dept-header">
@@ -660,7 +660,7 @@
 		 <button id="favoritesBtn">收藏</button>
 		</h3>
 		<div class="log-header">
-          <span class="zombie-status">待分配殭尸: <span id="pendingZombies">0</span></span>
+          <span class="zombie-status">待分配僵尸: <span id="pendingZombies">0</span></span>
           <span class="total-zombies">總數: <span id="totalZombies">10</span></span>
         </div>
 		<div class="log" id="explorationLog">
@@ -821,28 +821,59 @@
 	  }
 	};
 
-	let LOCATIONS = ["废弃超市", "核电站废墟", "地铁隧道", "军事基地", "医院地下室", "科研所遗址", "加油站", "农场谷仓", "廢棄購物中心", "核反應爐冷卻池", "地鐵維修通道", "退役導彈發射井", "精神病院停屍間", "化工實驗室廢墟", "漏油加油站", "穀物黴變倉庫", "銹蝕輸油管道", "坍塌礦山隧道", "廢棄冷凍食品廠", "放射性廢料坑", "城市防空洞群", "軍用雷達站遺址", "焚化爐處理車間", "水庫控制塔", "報廢火車調度場", "抗生素生產線", "鋼鐵廠高爐區", "海底隧道滲水段", "航空燃料儲罐區", "生物製劑實驗室", "晶圓廠無塵室", "纜車中轉機房", "造紙廠汙水池", "地下鈾礦豎井", "跨海大橋橋墩", "電弧爐煉鋼車間", "穀物升降機筒倉", "石化管線加壓站", "報廢船舶拆解場", "放射性汙水井", "山區纜車塔架", "混凝土預拌工廠", "地下配電總站", "戰備糧食儲藏庫", "鐵路信號控制塔", "製藥廠發酵車間", "廢棄紡織印染廠", "山體滑坡掩埋村", "冷戰時期觀察哨", "地下種子基因庫", "港口貨櫃吊裝區", "鋁電解車間廢墟", "河川疏浚設備場", "火力發電煤倉", "廢棄汽車壓縮廠", "深層地質鑽探井", "戰時地下印刷所", "放射性醫療器械庫"];
+	let LOCATIONS = ["废弃超市", "核电站废墟", "地铁隧道", "军事基地", "医院地下室", "科研所遗址", "加油站", "农场谷仓", "廢棄購物中心", "核反應爐冷卻池", "地鐵維修通道", "退役導彈發射井", "精神病院停尸間", "化工實驗室廢墟", "漏油加油站", "穀物黴變倉庫", "銹蝕輸油管道", "坍塌礦山隧道", "廢棄冷凍食品廠", "放射性廢料坑", "城市防空洞群", "軍用雷達站遺址", "焚化爐處理車間", "水庫控制塔", "報廢火車調度場", "抗生素生產線", "鋼鐵廠高爐區", "海底隧道滲水段", "航空燃料儲罐區", "生物製劑實驗室", "晶圓廠無塵室", "纜車中轉機房", "造紙廠汙水池", "地下鈾礦豎井", "跨海大橋橋墩", "電弧爐煉鋼車間", "穀物升降機筒倉", "石化管線加壓站", "報廢船舶拆解場", "放射性汙水井", "山區纜車塔架", "混凝土預拌工廠", "地下配電總站", "戰備糧食儲藏庫", "鐵路信號控制塔", "製藥廠發酵車間", "廢棄紡織印染廠", "山體滑坡掩埋村", "冷戰時期觀察哨", "地下種子基因庫", "港口貨櫃吊裝區", "鋁電解車間廢墟", "河川疏浚設備場", "火力發電煤倉", "廢棄汽車壓縮廠", "深層地質鑽探井", "戰時地下印刷所", "放射性醫療器械庫"];
 	let currentUpgradeIndex;
     
 	let productionCollection = {};
 	
 	// 新定義池：增加事件時，僵尸遇到的對象
 	const ZOMBIE_ENCOUNTER_POOL = [
-	  "流浪的僵尸",
-	  "孤獨的旅行者",
-	  "天真的倖存者",
-	  "迷途的行者"  // 可擴充更多選項
+	  "流浪的僵尸","孤獨的旅行者","天真的倖存者","迷途的行者","受傷的退伍軍人","帶著染血筆記的科學家","狂熱的末日教徒","改造機車的暴徒","囤藥藥劑師","失語戰地記者","黑市地圖商人","叛逃研究員","免疫體流浪兒","焦慮直升機工程師", "瘋癲尸體畫家", "項圈實驗體", "樂器盒狙擊手", "訊號塔廣播員", "急診室焚尸醫","被感染的護林員", "變異流浪犬", "腐爛救護員", "寄生藤宿主", "嘶吼路燈吊尸"  // 可擴充更多選項
 	];
 
 	// 新定義池：減少事件時，僵尸遭遇的不利事件
 	const ZOMBIE_DISASTER_POOL = [
-	  "暴走的變異獸",
-	  "大規模的坍塌",
-	  "強雷雨天氣",
-	  "突如其來的颶風"  // 可擴充更多選項
+	  "暴走的變異獸","大規模的坍塌", "強雷雨天氣","突如其來的颶風","被感染的警犬群","巨型腐爛烏鴉王","寄生藤蔓僵尸樹","成群尸鼠遷徙","黏菌覆蓋的腐化熊","食尸禿鷲群襲擊","軍方燃燒彈地毯轟炸","自動哨戒機槍陣列啟動","地下瓦斯管線大爆炸","高壓電網意外過載","致命抗體空氣傳播","智能無人機群掃蕩","生化溶尸酸雨雲團","精神干擾波無差別攻擊","反僵尸真菌快速蔓延","異種捕食者集團狩獵" // 可擴充更多選項
 	];
 	
 	/***** 全局變量定義 *****/
+	function updateResourceCardsBorder() {
+	  // 定義稀有度列表，順序從低到高
+	  const rarityList = [
+		"junk", "old", "damaged", "common",
+		"decent", "sealed", "selected", "tested",
+		"rare", "epic", "legendary", "divine"
+	  ];
+	  
+	  // 根據 gameState.resetCounts，分別為各資源計算重置次數對應的索引
+	  const foodRarity = rarityList[ gameState.resetCounts.food % rarityList.length ];
+	  const materialsRarity = rarityList[ gameState.resetCounts.materials % rarityList.length ];
+	  const weaponsRarity = rarityList[ gameState.resetCounts.weapons % rarityList.length ];
+	  const techRarity = rarityList[ gameState.resetCounts.tech % rarityList.length ];
+	  
+	  // 根據您的 HTML 結構，此處假定資源卡的父元素為顯示區（例如 resource-header 的容器）
+	  const foodCard = document.getElementById("foodCount")?.parentElement;
+	  const materialsCard = document.getElementById("materialsCount")?.parentElement;
+	  const weaponsCard = document.getElementById("weaponsCount")?.parentElement;
+	  const techCard = document.getElementById("techCount")?.parentElement;
+	  
+	  if (foodCard) {
+		// 此處動態組合 CSS 變數名，形如 "var(--junk)"、"var(--old)" 等
+		foodCard.style.border = "2px solid var(--" + foodRarity + ")";
+	  }
+	  if (materialsCard) {
+		materialsCard.style.border = "2px solid var(--" + materialsRarity + ")";
+	  }
+	  if (weaponsCard) {
+		weaponsCard.style.border = "2px solid var(--" + weaponsRarity + ")";
+	  }
+	  if (techCard) {
+		techCard.style.border = "2px solid var(--" + techRarity + ")";
+	  }
+	}
+
+
+	
 	// 固定稀有度數組（共 12 個等級）
 	const RARITIES = [
 	  "junk", "old", "damaged", "common", "decent",
@@ -955,7 +986,7 @@
 	
 
 
-	const RESOURCE_CAP = 900000000000000000000;  // 所有資源達到此值即認為“達到上限”
+	const RESOURCE_CAP = 900000000000;  // 所有資源達到此值即認為“達到上限”
 	const RESET_VALUE = 100000;     // 重置後每項資源量
 	let collectedItems = {};
 	let gameState = {
@@ -963,7 +994,7 @@
 	  // 新增：重置次數記錄，初始值為 0
 	  resetCounts: { food: 0, materials: 0, weapons: 0, tech: 0 },
 	  totalZombies: 10,
-	  allocations: { exploration: 5, farming: 1, recycling: 1, research: 1 },
+	  allocations: { exploration: 4, farming: 4, recycling: 1, research: 1 },
 	  buildings: new Array(9).fill(null).map((_, i) =>
 		i === 4 ? { type: 'center', level: 1, upgradable: true } : null
 	  ),
@@ -1133,10 +1164,10 @@
 		}
 	  },
 
-	  // 新增：殭尸指揮中心，提高獲得殭尸的機率與數量，同時減少損失
+	  // 新增：僵尸指揮中心，提高獲得僵尸的機率與數量，同時減少損失
 	  // 並增加武器資源消耗：1級時每秒消耗0.5%，隨等級提升，消耗率按 effectMultiplier 增長
 	  zombieCommandCenter: {
-	    name: '殭尸指揮中心',
+	    name: '僵尸指揮中心',
 	    baseCost: { materials: 300, weapons: 50 },
 	    costMultiplier: 1.5,
 	    baseEffect: { 
@@ -1241,23 +1272,6 @@
 	  
 	};
 	
-	
-	//存檔//
-	function saveGame() {
-	  // 將 gameState 轉換為 JSON 字串並存入 localStorage
-	  localStorage.setItem('myGameSave', JSON.stringify(gameState));
-	  console.log("遊戲已存檔");
-	}
-
-	function loadGame() {
-	  const savedData = localStorage.getItem('myGameSave');
-	  if (savedData) {
-		// 將存檔數據讀回並解析為對象
-		gameState = JSON.parse(savedData);
-		console.log("讀取存檔成功", gameState);
-		updateAllDisplays(); // 更新界面數據
-	  }
-	}
 
 	/***** 探索隊及僵尸事件處理 *****/
 	function addEventLog(message, rarity, eventType = "exploration", applyZombieStyle = false) {
@@ -1522,11 +1536,14 @@
     function produceZombies() {
       const production = gameState.buildings.reduce((sum, b) => {
         if (b && b.type === 'barracks') {
-          return sum + (BUILDINGS.barracks.upgrades[b.level - 1]?.effect.production || 0);
-        }
-        return sum;
-      }, 0);
-      const newZombies = Math.floor(production);
+           const info = BUILDINGS.barracks.getUpgradeInfo(b.level);
+		  // 如果 info 存在，使用其 effect.production；否則視為 0
+		  const prod = info && info.effect && info.effect.production ? info.effect.production : 0;
+		  return sum + prod;
+		}
+		return sum;
+	  }, 0);
+	  const newZombies = Math.floor(production);
       if (newZombies > 0) {
         let gained = newZombies;
         let toExploration = Math.round(gained * 0.7);
@@ -1544,7 +1561,7 @@
         gameState.allocations.farming += toFarming;
         gameState.allocations.recycling += toRecycling;
         gameState.allocations.research += toResearch;
-        addEventLog(`兵營生產：新增 ${gained} 殭尸，探索保留 ${toExploration}, 種植+${toFarming}, 回收+${toRecycling}, 科研+${toResearch}`, 'uncommon');
+        addEventLog(`兵營生產：新增 ${gained} 僵尸，探索保留 ${toExploration}, 種植+${toFarming}, 回收+${toRecycling}, 科研+${toResearch}`, 'uncommon');
       }
       updateResourceDisplays();
     }
@@ -1573,9 +1590,9 @@
 		log: {
 		  text: `探索 ${location} 獲得 ${rarity} ${modifier.name} ${itemName} +${amount} ${resource}`,
 		  zombieText: zombieChange > 0 
-			? `⚡ 獲得 ${zombieChange} 殭尸` 
+			? `⚡ 獲得 ${zombieChange} 僵尸` 
 			: zombieChange < 0 
-			  ? `☠️ 損失 ${Math.abs(zombieChange)} 殭尸` 
+			  ? `☠️ 損失 ${Math.abs(zombieChange)} 僵尸` 
 			  : null,
 		  rarity
 		}
@@ -1672,11 +1689,11 @@
 		
 		let eventMsg = "";
 		if (dept === "farming") {
-		  eventMsg = `發生食物中毒：種植部門損失 ${lost} 殭尸 (${(lossPercentage * 100).toFixed(1)}%)`;
+		  eventMsg = `發生食物中毒：種植部門損失 ${lost} 僵尸 (${(lossPercentage * 100).toFixed(1)}%)`;
 		} else if (dept === "recycling") {
-		  eventMsg = `發生意外事故：回收部門損失 ${lost} 殭尸 (${(lossPercentage * 100).toFixed(1)}%)`;
+		  eventMsg = `發生意外事故：回收部門損失 ${lost} 僵尸 (${(lossPercentage * 100).toFixed(1)}%)`;
 		} else if (dept === "research") {
-		  eventMsg = `發生爆炸事故：科研部門損失 ${lost} 殭尸 (${(lossPercentage * 100).toFixed(1)}%)`;
+		  eventMsg = `發生爆炸事故：科研部門損失 ${lost} 僵尸 (${(lossPercentage * 100).toFixed(1)}%)`;
 		}
 		addEventLog(eventMsg, "warning", "production", true);
 	  }
@@ -1771,18 +1788,18 @@
           if (available >= removeNum) {
             gameState.allocations[dept] -= removeNum;
             gameState.totalZombies -= removeNum;
-            addEventLog(`食物耗盡，${dept}失去 ${removeNum} 殭尸`, 'epic');
+            addEventLog(`食物耗盡，${dept}失去 ${removeNum} 僵尸`, 'epic');
             removeNum = 0;
             break;
           } else {
             gameState.totalZombies -= available;
-            addEventLog(`食物耗盡，${dept}失去 ${available} 殭尸`, 'epic');
+            addEventLog(`食物耗盡，${dept}失去 ${available} 僵尸`, 'epic');
             removeNum -= available;
             gameState.allocations[dept] = 0;
           }
         }
         if (gameState.totalZombies <= 0) {
-          addEventLog("所有殭尸均已死亡，遊戲結束！", "epic");
+          addEventLog("所有僵尸均已死亡，遊戲結束！", "epic");
           clearInterval(gameLoopInterval);
         }
       }
@@ -2224,7 +2241,7 @@
                              gameState.allocations.recycling +
                              gameState.allocations.research;
       if (totalAllocated + amount > gameState.totalZombies) {
-        addEventLog("沒有足夠的殭尸分配", "warning");
+        addEventLog("沒有足夠的僵尸分配", "warning");
         return;
       }
       gameState.allocations[dept] = newVal;
@@ -2248,11 +2265,9 @@
   
     // 遊戲初始化與核心循環
     function initGame() {
-      loadSave();
       updateAllDisplays();
       initBuildingGrid();
       startGameLoops();
-      setInterval(autoSave, 30000);
     }
   
     function startGameLoops() {
@@ -2338,11 +2353,8 @@
 	}
 
 	
-	window.addEventListener("beforeunload", saveGame);
-	
 	// 當文件內容完全加載後啟動遊戲
 	document.addEventListener("DOMContentLoaded", function() {
-		loadGame();
 		initGame();
 		// 假設您的收藏按鈕 ID 為 favoritesBtn
 	     const favBtn = document.getElementById("favoritesBtn");
@@ -2386,7 +2398,6 @@
 			}
 		  });
 		});
-		setInterval(saveGame, 30000);
 	});
 	</script>
 </body>
