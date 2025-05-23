@@ -1278,6 +1278,10 @@
 	  let logContainerId = (eventType === "production") ? "productionLog" : "explorationLog";
 	  const logElem = document.getElementById(logContainerId);
 	  if (logElem) {
+		 const maxLogs = 100;
+		while (logElem.childElementCount >= maxLogs) {
+		  logElem.removeChild(logElem.firstChild);
+		}
 		// 定義稀有度映射對象
 		const rarityMapping = {
 		  junk: "[破爛的]",
