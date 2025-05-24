@@ -1555,29 +1555,7 @@
     }
 
     /***** 探索隊自動重分配事件 *****/
-    function checkExplorationMilestone() {
-      while (gameState.allocations.exploration >= gameState.explorationMilestone) {
-        let remove = Math.min(5, gameState.allocations.exploration);
-        let gained = remove;
-        let toExploration = Math.round(gained * 0.5);
-        let toFarming = Math.round(gained * 0.3);
-        let toRecycling = Math.round(gained * 0.1);
-        let toResearch = Math.round(gained * 0.1);
-        let sum = toExploration + toFarming + toRecycling + toResearch;
-        if(sum < gained) {
-          toExploration += (gained - sum);
-        } else if(sum > gained) {
-          toExploration -= (sum - gained);
-        }
-        gameState.allocations.exploration -= remove;
-        gameState.allocations.exploration += toExploration;
-        gameState.allocations.farming += toFarming;
-        gameState.allocations.recycling += toRecycling;
-        gameState.allocations.research += toResearch;
-        addEventLog(`探索隊達到 ${gameState.explorationMilestone} 隻，自動重分配：探索保留 ${toExploration}, 種植+${toFarming}, 回收+${toRecycling}, 科研+${toResearch}`, 'uncommon');
-        gameState.explorationMilestone += 10;
-      }
-    }
+    
   
     /***** 兵營產生僵尸 *****/
     function produceZombies() {
@@ -1635,22 +1613,36 @@
 	  
 	  // 處理僵尸變化描述（增加或減少）
 	  if (result.zombieChange !== 0) {
-		let desc = "";
-		if (result.zombieChange > 0) {
-		  desc = generateZombieEventDescription("increase", result.zombieChange);
-		  // 增加僵尸邏輯
-		  gameState.totalZombies += result.zombieChange;
-		  gameState.allocations.exploration += result.zombieChange; // 依實際邏輯分配
-		} else {
+	    let desc = "";
+	    if (result.zombieChange > 0) {
+		  const gain = result.zombieChange;
+		  // 分配僵尸數量按比例
+		  const toExploration = Math.round(gain * 0.5);
+		  const toFarming     = Math.round(gain * 0.3);
+		  const toRecycling   = Math.round(gain * 0.1);
+		  const toResearch    = gain - toExploration - toFarming - toRecycling;
+		
+		  // 更新全局總僵尸數和各部門分配
+		  gameState.totalZombies += gain;
+		  gameState.allocations.exploration += toExploration;
+		  gameState.allocations.farming     += toFarming;
+		  gameState.allocations.recycling   += toRecycling;
+		  gameState.allocations.research    += toResearch;
+		
+		  // 取得原本的遭遇記錄（例如：你派出的僵尸在某地遇到某情況獲得 gain 僵尸）
+		  const encounterMessage = generateZombieEventDescription("increase", gain);
+		  // 在原消息後面添加分配詳情
+		  const distributionMessage = `分配往探索部門 +${toExploration}，種植部門 +${toFarming}，回收部門 +${toRecycling}，科研部門 +${toResearch}`;
+		  desc = encounterMessage + distributionMessage;
+	    } else {
 		  const loss = Math.abs(result.zombieChange);
 		  desc = generateZombieEventDescription("decrease", loss);
-		  // 減少僵尸邏輯
-		  gameState.totalZombies -= loss;
+		  gameState.totalZombies = Math.max(0, gameState.totalZombies - loss);
 		  gameState.allocations.exploration = Math.max(0, gameState.allocations.exploration - loss);
-		}
-		// 加入日誌顯示新的描述內容
-		addEventLog(desc, "uncommon", "zombie");
+	    }
+	    addEventLog(desc, "uncommon", "zombie");
 	  }
+
 	  
 	  updateAllDisplays();
 	}
@@ -1859,7 +1851,7 @@
       document.getElementById("researchCount").textContent = gameState.allocations.research;
       updateEfficiencyDisplays();
       initBuildingGrid();
-      checkExplorationMilestone();
+    
     }
   
     /***** 建築管理系統 *****/
