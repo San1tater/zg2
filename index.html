@@ -742,6 +742,7 @@
   
   <!-- 建造彈窗 -->
   <div id="buildModal" class="modal-overlay">
+   <div class="modal-clickable"></div>
    <div class="modal-content-wrapper">
     <div class="modal-content">
       <h3>選擇建造項目</h3>
@@ -771,6 +772,8 @@
   <!-- 收藏彈窗 -->
    <div id="favoritesModal" class="modal-overlay">
     <div id="buildModal" class="modal-overlay">
+	 <div class="modal-clickable"></div>
+	 <div class="modal-content-wrapper">
 	 <div class="modal-content">
 	 <h3 style="display: flex; justify-content: space-between; align-items: center;">收藏記錄
 	 <!-- 新增收藏完成度 -->
@@ -782,13 +785,17 @@
 	 </div>
     </div>
    </div>
+   </div>
    <div id="productionCollectionModal" class="modal-overlay">
     <div id="buildModal" class="modal-overlay">
+	<div class="modal-clickable"></div>
+	<div class="modal-content-wrapper">
      <div class="modal-content">
 		 <h3>生產記錄</h3>
 		 <div id="productionCollectionContent"></div>
 	 </div>
 	</div>
+   </div>
    </div>
 
    
@@ -2369,17 +2376,56 @@
       updateAllDisplays();
     }
   
-    function showModal(modalId) {
+    function stopPropagationHandler(e) {
+	  // 如果僅有1個觸控點，阻止事件冒泡，從而僅操作彈窗內容
+	  if (e.touches && e.touches.length === 1) {
+		e.stopPropagation();
+	  }
+	  // 若有兩根或以上，則不阻止，讓縮放動作可冒泡至全頁（即全頁縮放依然有效）
+	}
+
+	function showModal(modalId) {
 	  const modal = document.getElementById(modalId);
 	  if (modal) {
 		modal.style.display = "flex";
-		// 不設置 document.body.style.overflow = "hidden";
+		// 為空白區添加點擊／觸摸退出事件
+		const clickable = modal.querySelector(".modal-clickable");
+		if (clickable) {
+		  clickable.addEventListener("click", modalCloseHandler);
+		  clickable.addEventListener("touchend", modalCloseHandler);
+		}
+		// 為彈窗內容添加觸摸事件監聽，根據觸控點數決定是否阻止事件冒泡
+		const content = modal.querySelector(".modal-content");
+		if (content) {
+		  content.addEventListener("touchstart", stopPropagationHandler, { passive: true });
+		  content.addEventListener("touchmove", stopPropagationHandler, { passive: true });
+		}
 	  }
 	}
 
 	function closeModal(modalId) {
 	  const modal = document.getElementById(modalId);
-	  if (modal) modal.style.display = "none";
+	  if (modal) {
+		modal.style.display = "none";
+		const clickable = modal.querySelector(".modal-clickable");
+		if (clickable) {
+		  clickable.removeEventListener("click", modalCloseHandler);
+		  clickable.removeEventListener("touchend", modalCloseHandler);
+		}
+		const content = modal.querySelector(".modal-content");
+		if (content) {
+		  content.removeEventListener("touchstart", stopPropagationHandler);
+		  content.removeEventListener("touchmove", stopPropagationHandler);
+		}
+	  }
+	}
+
+	function modalCloseHandler(e) {
+	  e.stopPropagation();
+	  const overlay = e.currentTarget.parentElement;
+	  if (overlay && overlay.id) {
+		closeModal(overlay.id);
+	  }
 	}
 
 
