@@ -16,8 +16,7 @@
       justify-content: center;
       align-items: center;
       z-index: 1000;
-	  overscroll-behavior: none;
-	  touch-action: none;
+	  overscroll-behavior: contain;
     }
 
     .modal-content {
@@ -28,6 +27,7 @@
       max-height: 80vh;
       overflow-y: auto;
       box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+	  -webkit-overflow-scrolling: touch;
 	  
     }
 	#upgradeModal .modal-content {
@@ -2362,15 +2362,47 @@
       updateAllDisplays();
     }
   
-    function showModal(modalId) {
-      const modal = document.getElementById(modalId);
-      if (modal) modal.style.display = "flex";
-    }
-  
-    function closeModal(modalId) {
-      const modal = document.getElementById(modalId);
-      if (modal) modal.style.display = "none";
-    }
+    function onModalWheel(e) {
+	  // 如果事件發生在 modal-content 內，阻止預設滾動（使之僅影響彈窗內容）
+	  if (e.target.closest(".modal-content")) {
+		e.preventDefault();
+	  }
+	  // 如果事件在 modal-content 外，則不阻止（允許背景滾動）
+	}
+
+	function showModal(modalId) {
+	  const modal = document.getElementById(modalId);
+	  if (modal) {
+		modal.style.display = "flex";
+		// 這裡不設置 document.body.overflow（讓背景能正常滾動）
+		// 為 modal-overlay 添加 wheel 監聽器，設定 passive: false 以便調用 preventDefault()
+		modal.addEventListener("wheel", onModalWheel, { passive: false });
+	  }
+	}
+
+	function closeModal(modalId) {
+	  const modal = document.getElementById(modalId);
+	  if (modal) {
+		modal.style.display = "none";
+		modal.removeEventListener("wheel", onModalWheel);
+	  }
+	}
+
+
+	// 修改後的阻止函式：只在觸摸點在 .modal-content 內時阻止滾動
+	function preventBackgroundScroll(e) {
+	  // 若多點觸控（通常為縮放）則允許
+	  if (e.touches && e.touches.length > 1) return;
+	  
+	  // 如果觸摸事件的目標是在彈窗內容內，則阻止滾動
+	  if (e.target.closest(".modal-content")) {
+		e.preventDefault();
+	  }
+	  // 此外，當觸摸事件發生在 modal-overlay 但不在 .modal-content 內時，讓事件正常傳遞，
+	  // 這樣用戶可以滑動背景頁面（如果不被其他代碼禁用背景滾動）。
+	}
+
+
   
 
     /***** 輔助函數 結束 *****/
