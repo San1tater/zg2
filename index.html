@@ -27,6 +27,19 @@
       overflow-y: auto;
       box-shadow: 0 8px 32px rgba(0,0,0,0.3);
     }
+	#upgradeModal .modal-content {
+	  position: absolute;
+	  top: calc(100vh - 700px); /* 根據頁面高度下移 */
+	  left: 50%;
+	  transform: translate(-50%, 0); /* 使其居中 */
+	}
+	#resultModal .modal-content {
+	  position: absolute;
+	  top: calc(100vh - 750px); /* 調整高度，使其比升級彈窗略低 */
+	  left: 50%;
+	  transform: translate(-50%, 0);
+	}
+
 	/* 收藏彈窗繼承現有 modal 的樣式，若需要與行動日誌區重合，可加入如下設定 */
 	#favoritesModal .modal-content,
 	#productionCollectionModal .modal-content {
@@ -176,6 +189,23 @@
       background: linear-gradient(to right, #2d2d2d 50%, #373737);
       border-top: 1px solid var(--border-color);
     }
+	
+	.reset-cycle-container {
+	  display: flex;
+	  justify-content: space-between; /* 左右分散 */
+	  align-items: center;            /* 垂直居中 */
+	  font-size: 1em;                 /* 與食物、武器卡一致的字體大小 */
+	  padding: 10px;                  /* 可依需要調整內間距 */
+	}
+
+	.reset-cycle-card {
+	  margin-top: 15px;               /* 與其他dashboard保持一致的間距 */
+	  background: #262626;            /* 根據全局背景色，可調整 */
+	  border-radius: 12px;
+	  border: 1px solid var(--border-color);
+	}
+
+	
     /* 部門管理界面 */
     .operations-panel {
       display: flex;
@@ -188,8 +218,10 @@
 	  flex: 1;
       background: #262626;
       padding: 0.5rem;
+	  border: 1px solid #4a4a4a !important;
       border-radius: 5px;
-	  height:80px
+	  height:80px;
+	  margin-bottom: 0.3rem;
     }
 	.dept-header h3 {
 	  font-size: 1em;        /* 調小標題字體 */
@@ -598,6 +630,14 @@
           <div class="resource-details" id="techDetails"></div>
         </div>
       </div>
+	  
+	  <div class="dashboard reset-cycle-card" id="resetCycleCard">
+		<div class="reset-cycle-container">
+			<span class="reset-cycle-label" style="font-weight: bold;">資源爆破</span>
+			<span class="reset-cycle-count" id="resetCycleDisplay">循環次數：0</span>
+		  </div>
+		</div>
+
 	</div>
    </div>	
 	   <div class="grid-item" id="zombieCommand">
@@ -746,7 +786,6 @@
 	<div id="resultModal" class="modal-overlay">
 	  <div class="modal-content">
 		<p id="resultMessage"></p>
-		<button class="modal-btn" onclick="closeResultModal()">確定</button>
 	  </div>
 	</div>
 
@@ -837,6 +876,19 @@
 	];
 	
 	/***** 全局變量定義 *****/
+	
+	function getTotalRarityLevels() {
+	  return RARITIES.length;
+	}
+	// 更新重置循環記錄的顯示
+	function updateResetCycleDisplay() {
+	  const totalRarityLevels = getTotalRarityLevels();  // 動態獲取總數
+	  const cycleCount = Math.floor(gameState.resetCounter / totalRarityLevels);
+	  const displayElem = document.getElementById("resetCycleDisplay");
+	  if (displayElem) {
+		displayElem.innerHTML = `循環次數：${cycleCount}`;
+	  }
+	}
 	function updateResourceCardsBorder() {
 	  // 定義稀有度列表，順序從低到高
 	  const rarityList = [
@@ -993,6 +1045,8 @@
 	  resources: { food: 100, materials: 100, weapons: 50, tech: 20 },
 	  // 新增：重置次數記錄，初始值為 0
 	  resetCounts: { food: 0, materials: 0, weapons: 0, tech: 0 },
+	  // 新增統一的資源重置循環記數器
+	  resetCounter: 0,
 	  totalZombies: 10,
 	  allocations: { exploration: 4, farming: 4, recycling: 1, research: 1 },
 	  buildings: new Array(9).fill(null).map((_, i) =>
@@ -1771,6 +1825,8 @@
 		gameState.resetCounts.materials++;
 		gameState.resetCounts.weapons++;
 		gameState.resetCounts.tech++;
+		
+		gameState.resetCounter++; // 增加一次重置計數
 
 		// 更新資源卡的邊框樣式
 		updateResourceCardsBorder();
@@ -1887,13 +1943,27 @@
 	}
 
   
+	// 全局變量用於記錄建造選單的更新計時器
+	let buildMenuUpdateTimer = null;
+
 	function showBuildMenu(index) {
-	  // 過濾具有 baseCost 的建築，排除中心基地（center）
+	  // 首次生成彈窗內容
+	  updateBuildMenuContent(index);
+	  // 顯示建造彈窗
+	  showModal("buildModal");
+	  // 啟動定時器，每秒更新一次建造選單內容，以實時反映當前可建造狀態
+	  buildMenuUpdateTimer = setInterval(function() {
+		updateBuildMenuContent(index);
+	  }, 5000);
+	}
+
+	function updateBuildMenuContent(index) {
+	  // 過濾出所有有 baseCost 的建築（排除中心基地）
 	  const available = Object.entries(BUILDINGS)
 		.filter(([key, cfg]) => cfg.baseCost && key.toLowerCase() !== "center");
 
 	  const modalContent = available.map(([key, cfg]) => {
-		// 取得1級加成信息（如果存在）
+		// 取得 1 級時的加成情報（可選，用於顯示右側描述）
 		let bonusInfo = "";
 		if (typeof cfg.getUpgradeInfo === "function") {
 		  const info = cfg.getUpgradeInfo(1);
@@ -1903,35 +1973,62 @@
 			  .join("<br>");
 		  }
 		}
+
+		// 生成所需資源部分的 HTML 內容
+		let costHtml = Object.entries(cfg.baseCost)
+		  .map(([res, val]) => `<span class="cost-item" style="margin-right: 8px;">${res}: ${val}</span>`)
+		  .join(' ');
+
+		// 檢查當前資源是否足夠支付該建築的基礎成本，決定是否附加「（未滿足）」字樣
+		let unmet = "";
+		if (!canAfford(cfg.baseCost)) {
+		  unmet = " （未滿足）";
+		}
 		return `
 		  <div class="build-box" onclick="startBuilding('${key}', ${index})">
 			<div class="build-top-container">
 			  <div class="build-row">
-				<!-- 左側 50%：建築圖示與名稱 -->
+				<!-- 左側顯示建築圖示及名稱 -->
 				<div class="build-left">
 				  <span class="build-icon">${getBuildingIcon(key)}</span>
 				  <span class="build-name" style="margin-left:5px; font-weight:bold;">${cfg.name}</span>
 				</div>
-				<!-- 右側 50%：1級加成描述 -->
+				<!-- 右側顯示 1 級加成描述，僅作參考 -->
 				<div class="build-right">
 				  ${bonusInfo}
 				</div>
 			  </div>
 			</div>
-			<!-- 下方顯示建造所需物資 -->
+			<!-- 下方顯示所需資源及是否可建造 -->
 			<div class="build-resources">
-			  ${Object.entries(cfg.baseCost)
-				.map(([res, val]) => `<span class="cost-item" style="margin-right: 8px;">${res}: ${val}</span>`)
-				.join(' ')}
+			  ${costHtml}${unmet}
 			</div>
 		  </div>
 		`;
 	  }).join('');
-		
+
+	  // 將組合的彈窗內容更新到 DOM 中
 	  document.getElementById('buildOptions').innerHTML = modalContent;
-	  showModal("buildModal");
 	}
 
+	function closeBuildModal() {
+	  closeModal("buildModal");
+	  // 清除更新計時器
+	  if(buildMenuUpdateTimer) {
+		clearInterval(buildMenuUpdateTimer);
+		buildMenuUpdateTimer = null;
+	  }
+	}
+
+
+	// 在關閉建造彈窗時記得清除計時器
+	function closeBuildModal() {
+	  closeModal("buildModal");
+	  if(buildMenuUpdateTimer) {
+		clearInterval(buildMenuUpdateTimer);
+		buildMenuUpdateTimer = null;
+	  }
+	}
 
 
 
@@ -2074,6 +2171,9 @@
 	  updateEfficiencies();
 	  updateAllDisplays();
 	  
+	  // **更新升級彈窗內容**
+      showUpgradeMenu(index);
+	  
 	  showTempMessage("升級成功");
 	  // 注意：此處不自動關閉升級彈窗，便於連續升級
 	}
@@ -2150,11 +2250,11 @@
 	  closeModal("upgradeModal");
 	}
 
-		function startBuilding(type, index) {
+	function startBuilding(type, index) {
 	  const config = BUILDINGS[type];
 	  if (!canAfford(config.baseCost)) {
 		addEventLog(`❌ 資源不足，無法建造 ${config.name}`, 'epic');
-		showResultModal(`建造失敗：資源不足以建造 ${config.name}`);
+		showTempMessage(`建造失敗 ${config.name}`);
 		return;
 	  }
 	  payCost(config.baseCost);
