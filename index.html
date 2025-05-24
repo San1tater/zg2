@@ -910,24 +910,33 @@
 	  const weaponsRarity = rarityList[ gameState.resetCounts.weapons % rarityList.length ];
 	  const techRarity = rarityList[ gameState.resetCounts.tech % rarityList.length ];
 	  
-	  // 根據您的 HTML 結構，此處假定資源卡的父元素為顯示區（例如 resource-header 的容器）
+	   // 取得資源卡的 DOM 元素（假設資源數字元素的父元素為選項卡容器）
 	  const foodCard = document.getElementById("foodCount")?.parentElement;
 	  const materialsCard = document.getElementById("materialsCount")?.parentElement;
 	  const weaponsCard = document.getElementById("weaponsCount")?.parentElement;
 	  const techCard = document.getElementById("techCount")?.parentElement;
 	  
+	  // 更新為只修改 box-shadow 顏色，並確保圓角完整顯示
 	  if (foodCard) {
-		// 此處動態組合 CSS 變數名，形如 "var(--junk)"、"var(--old)" 等
-		foodCard.style.border = "2px solid var(--" + foodRarity + ")";
+		const colorVal = "var(--" + foodRarity + ")";
+		foodCard.style.border = "1px solid " + colorVal;
+		// 確保圓角、內邊距等設定不受干擾
+		foodCard.style.borderRadius = "8px";
 	  }
 	  if (materialsCard) {
-		materialsCard.style.border = "2px solid var(--" + materialsRarity + ")";
+		const colorVal = "var(--" + materialsRarity + ")";
+		materialsCard.style.border = "1px solid " + colorVal;
+		materialsCard.style.borderRadius = "8px";
 	  }
 	  if (weaponsCard) {
-		weaponsCard.style.border = "2px solid var(--" + weaponsRarity + ")";
+		const colorVal = "var(--" + weaponsRarity + ")";
+		weaponsCard.style.border = "1px solid " + colorVal;
+		weaponsCard.style.borderRadius = "8px";
 	  }
 	  if (techCard) {
-		techCard.style.border = "2px solid var(--" + techRarity + ")";
+		const colorVal = "var(--" + techRarity + ")";
+		techCard.style.border = "1px solid " + colorVal;
+		techCard.style.borderRadius = "8px";
 	  }
 	}
 
@@ -1116,7 +1125,7 @@
 
 	  greenhouse: {
 		name: '溫室大棚',
-		baseCost: { materials: 150, tech: 50 },
+		baseCost: { materials: 100, tech: 50 },
 		costMultiplier: 1.5,
 		baseEffect: { food: 0.1 },
 		effectMultiplier: 1.02,
@@ -1162,7 +1171,7 @@
 
 	  armory: {
 		name: '軍械工坊',
-		baseCost: { materials: 200, weapons: 50 },
+		baseCost: { materials: 100, weapons: 150 },
 		costMultiplier: 1.5,
 		baseEffect: { weapons: 0.15 },
 		effectMultiplier: 1.02,
@@ -1184,7 +1193,7 @@
 
 	  laboratory: {
 		name: '科研實驗室',
-		baseCost: { materials: 300, tech: 100 },
+		baseCost: { materials: 200, tech: 100 },
 		costMultiplier: 1.5,
 		baseEffect: { tech: 0.2 },
 		effectMultiplier: 1.02,
@@ -1207,7 +1216,7 @@
 	  // 新增：資源增幅站，增加所有資源的產量加成
 	  resourceAmplifier: {
 		name: '資源增幅站',
-		baseCost: { materials: 250, tech: 75 },
+		baseCost: { materials: 250, tech: 75, weapons: 250 },
 		costMultiplier: 1.6,
 		baseEffect: { resourceBonus: 0.05 },  // 初始 +5%
 		effectMultiplier: 1.02,
@@ -1229,7 +1238,7 @@
 	  // 並增加武器資源消耗：1級時每秒消耗0.5%，隨等級提升，消耗率按 effectMultiplier 增長
 	  zombieCommandCenter: {
 	    name: '僵尸指揮中心',
-	    baseCost: { materials: 300, weapons: 50 },
+	    baseCost: { materials: 150, weapons: 250, tech: 100 },
 	    costMultiplier: 1.5,
 	    baseEffect: { 
 	      zombieBoost: 0.05, 
@@ -1261,7 +1270,7 @@
 	  // 新增：珍稀庫，提高高稀有度物品獲得率
 	  rareVault: {
 		name: '珍稀庫',
-		baseCost: { tech: 200, materials: 150 },
+		baseCost: { tech: 500, materials: 150 },
 		costMultiplier: 1.55,
 		baseEffect: { rareChanceBoost: 0.05 },  // 初始 +5%
 		effectMultiplier: 1.02,
@@ -1284,7 +1293,7 @@
 	  // 新增：武器影響中樞，給予強力生產加成，但持續消耗武器資源
 	  weaponConsumptionFacility: {
 		name: '武器影響中樞',
-		baseCost: { weapons: 100, materials: 300 },
+		baseCost: { weapons: 350, materials: 150 },
 		costMultiplier: 1.7,
 		baseEffect: { productionBonus: 0.1, weaponConsumptionRate: 0.02 },
 		effectMultiplier: 1.02,
@@ -1307,7 +1316,7 @@
 	  safetyCenter: {
 		  name: '安全中心',
 		  // 可根據需求自訂成本，這裡僅提供一個示例
-		  baseCost: { materials: 400, tech: 150, weapons: 200 },
+		  baseCost: { materials: 400, tech: 150, weapons: 500 },
 		  costMultiplier: 1.6,
 		  baseEffect: {
 			accidentReduction: 0.05,        // 1級時降低5%
