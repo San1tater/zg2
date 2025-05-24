@@ -1432,32 +1432,66 @@
 
 	// 根據隊伍規模產生僵尸變化（增加或損失）
 	function generateZombieChange(teamSize) {
-	  // 若總僵尸數為 0，則直接返回 0
+	  // 當總僵尸數為 0 時，直接返回 0
 	  if (gameState.totalZombies <= 0) return 0;
 	  
-	  // 先決定事件方向：正數代表增加，負數代表損失
-	  // 這裡可以保留原有 0.4 機率觸發事件的邏輯
+	  // 以 40% 機率觸發僵尸事件
 	  if (Math.random() < 0.4) {
-		// 用於判斷增加或損失的概率
-		if (Math.random() < 0.6) {
-		  // 僵尸增加事件：使用原始計算方式（不受偵查軍團比例影響）
-		  return Math.floor(teamSize * (0.001 + Math.random() * 1.9));
+		// 計算偵查軍團占比
+		let ratio = teamSize / gameState.totalZombies;
+		
+		// 決定事件類型：正向（增加僵尸）或負向（損失僵尸）
+		// 此處我們用一個基礎正向概率 0.6，然後對比率進行調整：
+		let positiveThreshold = 0.6;
+		if (ratio < 0.3) {
+		  // 當 ratio 趨近 0：bonus 漸進至 1；當 ratio = 0.3 時，bonus 為 0
+		  let bonus = (0.3 - ratio) / 0.3;  
+		  // 正向事件概率內插：從 0.6 到 0.9
+		  positiveThreshold = 0.6 + bonus * 0.3;
+		}
+		
+		if (Math.random() < positiveThreshold) {
+		  // 正向事件：增加僵尸
+		  let baseIncrease = teamSize * (0.001 + Math.random() * 1.9);
+		  if (ratio < 0.3) {
+			// 如果偵查軍團占比低於 30%，獲取加成：倍率 = (1 + bonus)
+			let bonus = (0.3 - ratio) / 0.3;
+			return Math.floor(baseIncrease * (1 + bonus));
+		  } else {
+			return Math.floor(baseIncrease);
+		  }
+		  
 		} else {
-		  // 僵尸損失事件：基本損失量按原規則計算
+		  // 負向事件：減少僵尸
 		  let baseLoss = teamSize * (0.001 + Math.random() * 0.7);
-		  
-		  // 如果偵查軍團數量較多，我們增加減損量
-		  let ratio = teamSize / gameState.totalZombies;
-		  // 當偵查軍團占比超過 50% 時，產生額外放大因子，範圍 0～0.9
-		  let extraFactor = ratio > 0.5 ? Math.min(((ratio - 0.5) / 0.5) * 0.9, 0.9) : 0;
-		  
-		  // 將損失量放大：最高增加90%
-		  let effectiveLoss = baseLoss * (1 + extraFactor);
-		  return -Math.floor(effectiveLoss);
+		  if (ratio > 0.5) {
+			// 當偵查軍團占比超過 50%時，計算額外放大因子：
+			// 用線性內插：當 ratio = 0.5, extraFactor = 0；當 ratio = 1, extraFactor = 1，但限制在 0.9
+			let extraFactor = Math.min((ratio - 0.5) / 0.5, 1);
+			extraFactor = Math.min(extraFactor, 0.9);
+			// 使用額外因子放大基礎損失量
+			let computedLoss = baseLoss * (1 + extraFactor);
+			// 限制最終損失量：不超過偵查軍團總數的 90%
+			computedLoss = Math.min(Math.floor(computedLoss), Math.floor(teamSize * 0.9));
+			
+			// 使用額外放大後的概率內插：原基礎負向概率設為 0.4
+			const baseProbability = 0.4;
+			let effectiveProbability = baseProbability * (1 - extraFactor) + 0.9 * extraFactor;
+			if (Math.random() < effectiveProbability) {
+			  return -computedLoss;
+			} else {
+			  return 0;
+			}
+		  } else {
+			// 當占比介於 30%至50%或其他情況下，不放大，直接返回基本損失量（只保留整數部分）
+			return -Math.floor(baseLoss);
+		  }
 		}
 	  }
 	  return 0;
 	}
+
+
 
 	
 	/**
@@ -1717,9 +1751,9 @@
 		const lossPercentage = 0.01 + Math.random() * 0.8;
 		// 根據該部門僵尸數計算損失量（lossMultiplier 可在未來用於進一步調整損失量）
 		let lost = Math.floor(gameState.allocations[dept] * lossPercentage * lossMultiplier);
-		// 若計算後的損失為 0，但部門中仍有僵尸，最低可以考慮損失 1（或保持 0 視具體需求而定）
+		// 若計算後的損失為 0，但部門中仍有僵尸，最低可以考慮損失 0（或保持 0 視具體需求而定）
 		if (lost < 1 && gameState.allocations[dept] > 0) {
-		  lost = 1;
+		  lost = 0;
 		}
 		gameState.allocations[dept] -= lost;
 		gameState.totalZombies -= lost;
