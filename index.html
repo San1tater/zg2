@@ -1434,28 +1434,31 @@
 	function generateZombieChange(teamSize) {
 	  // 若總僵尸數為 0，則直接返回 0
 	  if (gameState.totalZombies <= 0) return 0;
-
-	  // 計算偵查軍團所佔比例
-	  let ratio = teamSize / gameState.totalZombies;
-	  // 當比例超過 50%（即 0.5）時，額外增加的因子：
-	  // ((ratio - 0.5) / 0.5) 取值範圍0～1，乘以0.9後，最大值為0.9
-	  let extraFactor = ratio > 0.5 ? Math.min(((ratio - 0.5) / 0.5) * 0.9, 0.9) : 0;
 	  
-	  // 基礎僵尸損失事件觸發概率設為 0.4
-	  let baseProbability = 0.4;
-	  // 使用額外加成修正後的有效概率（最大值不超過1）
-	  let effectiveProbability = Math.min(baseProbability + extraFactor, 1);
-
-	  // 用有效概率決定是否發生僵尸損失事件
-	  if (Math.random() < effectiveProbability) {
-		// 基礎損失量：以偵查軍團數量和隨機因素計算（原來 0.001～0.701 倍之間）
-		let baseLoss = teamSize * (0.001 + Math.random() * 0.7);
-		// 將損失放大，最多增加90%
-		let effectiveLoss = baseLoss * (1 + extraFactor);
-		return -Math.floor(effectiveLoss);
+	  // 先決定事件方向：正數代表增加，負數代表損失
+	  // 這裡可以保留原有 0.4 機率觸發事件的邏輯
+	  if (Math.random() < 0.4) {
+		// 用於判斷增加或損失的概率
+		if (Math.random() < 0.6) {
+		  // 僵尸增加事件：使用原始計算方式（不受偵查軍團比例影響）
+		  return Math.floor(teamSize * (0.001 + Math.random() * 1.9));
+		} else {
+		  // 僵尸損失事件：基本損失量按原規則計算
+		  let baseLoss = teamSize * (0.001 + Math.random() * 0.7);
+		  
+		  // 如果偵查軍團數量較多，我們增加減損量
+		  let ratio = teamSize / gameState.totalZombies;
+		  // 當偵查軍團占比超過 50% 時，產生額外放大因子，範圍 0～0.9
+		  let extraFactor = ratio > 0.5 ? Math.min(((ratio - 0.5) / 0.5) * 0.9, 0.9) : 0;
+		  
+		  // 將損失量放大：最高增加90%
+		  let effectiveLoss = baseLoss * (1 + extraFactor);
+		  return -Math.floor(effectiveLoss);
+		}
 	  }
 	  return 0;
 	}
+
 	
 	/**
 	 * 根據類型和數量生成探索事件中的僵尸變化描述
