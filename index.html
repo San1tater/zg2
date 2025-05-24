@@ -16,7 +16,7 @@
       justify-content: center;
       align-items: center;
       z-index: 1000;
-	  overscroll-behavior: contain;
+	  overscroll-behavior: none;
 	  touch-action: none;
     }
 
@@ -28,9 +28,7 @@
       max-height: 80vh;
       overflow-y: auto;
       box-shadow: 0 8px 32px rgba(0,0,0,0.3);
-	  -webkit-overflow-scrolling: touch;
-	  /* 允許僅垂直方向滾動，這裡重置 touch-action 使內容可滑動 */
-	  touch-action: pan-y;
+	  
     }
 	#upgradeModal .modal-content {
 	  position: absolute;
