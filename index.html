@@ -1518,36 +1518,6 @@
 	  }
 	}
 
-	// 生成探索結果，包括獲得資源、數量與可能的僵尸變化
-	function generateExplorationResult(teamSize) {
-	  const location = LOCATIONS[Math.floor(Math.random() * LOCATIONS.length)];
-	  const resourceTypes = ['food', 'materials', 'weapons', 'tech'];
-	  const resource = resourceTypes[Math.floor(Math.random() * resourceTypes.length)];
-	  const rarity = weightedRandomRarity();
-	  const baseAmount = Math.floor(Math.random() * 5) + 5;
-	  const multiplier = Math.pow(1.005, teamSize);
-	  const computed = applyRarityMultiplier(baseAmount, rarity) * multiplier;
-	  const amount = convertProduction(computed);
-	  const itemName = getRandomItemName(resource);
-	  const modifier = getRandomModifier(resource);
-	  const zombieChange = generateZombieChange(teamSize);
-	  
-	  return {
-		resource,
-		amount,
-		rarity,
-		zombieChange,
-		log: {
-		  text: `探索 ${location} 獲得 ${modifier.name} ${itemName} +${amount} ${resource}`,
-		  zombieText: zombieChange > 0 
-					? `⚡ 獲得 ${zombieChange} 僵尸`
-					: zombieChange < 0 
-					  ? `☠️ 損失 ${Math.abs(zombieChange)} 僵尸`
-					  : null,
-		  rarity
-		}
-	  };
-	}
 
     /***** 輔助函數 *****/
     function convertProduction(val) {
