@@ -1515,7 +1515,7 @@
     }
     function formatNumber(num) {
 	  if (num < 10000) {
-		return num.toFixed(2); // 小於 1 萬時保留 2 位小數
+		return num.toFixed(0); // 小於 1 萬時保留 2 位小數
 	  } else if (num < 1e8) {  // 1e8 約等於 1 億
 		return (num / 1e4).toFixed(2) + "萬";
 	  } else if (num < 1e12) {
