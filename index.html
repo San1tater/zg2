@@ -742,10 +742,12 @@
   
   <!-- 建造彈窗 -->
   <div id="buildModal" class="modal-overlay">
+   <div class="modal-content-wrapper">
     <div class="modal-content">
       <h3>選擇建造項目</h3>
       <div class="build-options" id="buildOptions"></div>
     </div>
+   </div>
   </div>
   
  
@@ -768,6 +770,7 @@
 
   <!-- 收藏彈窗 -->
    <div id="favoritesModal" class="modal-overlay">
+    <div id="buildModal" class="modal-overlay">
 	 <div class="modal-content">
 	 <h3 style="display: flex; justify-content: space-between; align-items: center;">收藏記錄
 	 <!-- 新增收藏完成度 -->
@@ -776,14 +779,17 @@
 	 <div class="collection-content" id="collectionContent">
 		  <!-- 收藏內容將在此填充 -->
 	 </div>
-	</div>
+	 </div>
+    </div>
    </div>
    <div id="productionCollectionModal" class="modal-overlay">
-    <div class="modal-content">
-		<h3>生產記錄</h3>
-		<div id="productionCollectionContent"></div>
-	  </div>
+    <div id="buildModal" class="modal-overlay">
+     <div class="modal-content">
+		 <h3>生產記錄</h3>
+		 <div id="productionCollectionContent"></div>
+	 </div>
 	</div>
+   </div>
 
    
   <!-- 建築互動彈窗（管理建築資訊／拆除） -->
