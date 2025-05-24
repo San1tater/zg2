@@ -1432,10 +1432,27 @@
 
 	// 根據隊伍規模產生僵尸變化（增加或損失）
 	function generateZombieChange(teamSize) {
-	  if (Math.random() < 0.4) {
-		return Math.random() < 0.6
-		  ? Math.floor(teamSize * (0.001 + Math.random() * 1.9))
-		  : -Math.floor(teamSize * (0.001 + Math.random() * 0.7));
+	  // 若總僵尸數為 0，則直接返回 0
+	  if (gameState.totalZombies <= 0) return 0;
+
+	  // 計算偵查軍團所佔比例
+	  let ratio = teamSize / gameState.totalZombies;
+	  // 當比例超過 50%（即 0.5）時，額外增加的因子：
+	  // ((ratio - 0.5) / 0.5) 取值範圍0～1，乘以0.9後，最大值為0.9
+	  let extraFactor = ratio > 0.5 ? Math.min(((ratio - 0.5) / 0.5) * 0.9, 0.9) : 0;
+	  
+	  // 基礎僵尸損失事件觸發概率設為 0.4
+	  let baseProbability = 0.4;
+	  // 使用額外加成修正後的有效概率（最大值不超過1）
+	  let effectiveProbability = Math.min(baseProbability + extraFactor, 1);
+
+	  // 用有效概率決定是否發生僵尸損失事件
+	  if (Math.random() < effectiveProbability) {
+		// 基礎損失量：以偵查軍團數量和隨機因素計算（原來 0.001～0.701 倍之間）
+		let baseLoss = teamSize * (0.001 + Math.random() * 0.7);
+		// 將損失放大，最多增加90%
+		let effectiveLoss = baseLoss * (1 + extraFactor);
+		return -Math.floor(effectiveLoss);
 	  }
 	  return 0;
 	}
@@ -1498,57 +1515,16 @@
     }
     function formatNumber(num) {
 	  if (num < 10000) {
-		return parseFloat(num.toFixed(3));
-	  } else if (num < 100000000) {
-		// 萬 ~ 億
-		if (num < 1000000) {
-		  let wan = num / 10000;
-		  return wan.toFixed(Math.max(3 - Math.floor(wan).toString().length, 0)) + "萬";
-		} else if (num < 10000000) {
-		  let baiwan = num / 1000000;
-		  return baiwan.toFixed(Math.max(3 - Math.floor(baiwan).toString().length, 0)) + "百萬";
-		} else {
-		  let qianwan = num / 10000000;
-		  return qianwan.toFixed(Math.max(3 - Math.floor(qianwan).toString().length, 0)) + "千萬";
-		}
-	  } else if (num < 1000000000000) {
-		// 億 ~ 兆
-		if (num < 10000000000) {
-		  let yi = num / 100000000;
-		  return yi.toFixed(Math.max(3 - Math.floor(yi).toString().length, 0)) + "億";
-		} else if (num < 100000000000) {
-		  let shiyi = num / 1000000000;
-		  return shiyi.toFixed(Math.max(3 - Math.floor(shiyi).toString().length, 0)) + "十億";
-		} else {
-		  let baiyi = num / 10000000000;
-		  return baiyi.toFixed(Math.max(3 - Math.floor(baiyi).toString().length, 0)) + "百億";
-		}
-	  } else if (num < 10000000000000000) {
-		// 兆 ~ 京
-		if (num < 100000000000000) {
-		  let zhao = num / 1000000000000;
-		  return zhao.toFixed(Math.max(3 - Math.floor(zhao).toString().length, 0)) + "兆";
-		} else if (num < 1000000000000000) {
-		  let shizhao = num / 10000000000000;
-		  return shizhao.toFixed(Math.max(3 - Math.floor(shizhao).toString().length, 0)) + "十兆";
-		} else {
-		  let baizhao = num / 100000000000000;
-		  return baizhao.toFixed(Math.max(3 - Math.floor(baizhao).toString().length, 0)) + "百兆";
-		}
+		return num.toFixed(2); // 小於 1 萬時保留 2 位小數
+	  } else if (num < 1e8) {  // 1e8 約等於 1 億
+		return (num / 1e4).toFixed(2) + "萬";
+	  } else if (num < 1e12) {
+		return (num / 1e8).toFixed(2) + "億";
 	  } else {
-		// 京及以上
-		if (num < 1000000000000000000) {
-		  let jing = num / 10000000000000000;
-		  return jing.toFixed(Math.max(3 - Math.floor(jing).toString().length, 0)) + "京";
-		} else if (num < 10000000000000000000) {
-		  let shijing = num / 100000000000000000;
-		  return shijing.toFixed(Math.max(3 - Math.floor(shijing).toString().length, 0)) + "十京";
-		} else {
-		  // 超出JavaScript安全整數範圍時改用科學計數法
-		  return num.toExponential(3).replace('e+', '×10^');
-		}
+		return num.toExponential(2); // 超大數則用科學記數法（一個簡化版）
 	  }
 	}
+
     function canAfford(cost) {
       return Object.entries(cost).every(([res, val]) => gameState.resources[res] >= val);
     }
@@ -1942,9 +1918,6 @@
 	  showUpgradeMenu(index);
 	}
 
-  
-	// 全局變量用於記錄建造選單的更新計時器
-	let buildMenuUpdateTimer = null;
 
 	function showBuildMenu(index) {
 	  // 首次生成彈窗內容
@@ -2020,15 +1993,6 @@
 	  }
 	}
 
-
-	// 在關閉建造彈窗時記得清除計時器
-	function closeBuildModal() {
-	  closeModal("buildModal");
-	  if(buildMenuUpdateTimer) {
-		clearInterval(buildMenuUpdateTimer);
-		buildMenuUpdateTimer = null;
-	  }
-	}
 
 
 
@@ -2362,35 +2326,14 @@
       if (modal) modal.style.display = "none";
     }
   
-    function closeBuildModal() {
-      closeModal("buildModal");
-    }
+
     /***** 輔助函數 結束 *****/
   
     // 遊戲初始化與核心循環
     function initGame() {
       updateAllDisplays();
       initBuildingGrid();
-      startGameLoops();
-    }
-  
-    function startGameLoops() {
-      gameLoopInterval = setInterval(() => {
-        produceResources('farming', 'food', 1.5*5);
-        produceResources('recycling', 'materials', 0.5*5);
-        produceResources('research', 'tech', 0.2*5);
-        produceZombies();
-        updateFoodConsumption();
-      }, 5000);
-      setInterval(() => {
-        if (gameState.allocations.exploration > 0) {
-          handleExploration();
-        }
-      }, 5000);
-	  setInterval(updateSafetyCenterConsumption, 5000);
-	  // 每秒更新僵尸兵營的武器消耗
-	  setInterval(updateBarracksWeaponConsumption, 5000);
-
+    
     }
 	
 	
@@ -2491,6 +2434,28 @@
 
 		// 每秒更新一次
 		setInterval(updateTimer, 1000);
+		
+		function gameLoop() {
+		  // 資源生產、僵尸生產、食物消耗、探索等操作集中執行
+		  produceResources('farming', 'food', 1.5 * 5);
+		  produceResources('recycling', 'materials', 0.5 * 5);
+		  produceResources('research', 'tech', 0.2 * 5);
+		  produceZombies();
+		  updateFoodConsumption();
+		  updateSafetyCenterConsumption();
+		  updateBarracksWeaponConsumption();
+		  // 探索事件也可以放在同一循環內，或再開一個較低頻率的循環
+		  if (gameState.allocations.exploration > 0) {
+			handleExploration();
+		  }
+
+		  // 統一更新所有顯示（若加上前面提到的 dirty flag 更新，就不會每次都更新）
+		  updateAllDisplays();
+		}
+
+		// 用單一定時器啟動主循環，例如每 5 秒執行一次
+		setInterval(gameLoop, 5000);
+
 		
 		
 		// 為所有 modal-overlay 添加事件監聽器
