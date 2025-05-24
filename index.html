@@ -965,9 +965,9 @@
 		  const countNameRarity = namesCount * rarityCount;
 		  const countNameModifierRarity = namesCount * modifiersCount * rarityCount;
 
-		  const resourceTotal = countNameRarity + countNameModifierRarity;
+		  const resourceTotal = countNameModifierRarity;
 		  
-		  console.log(`${res}：物品名稱數量 = ${namesCount}, 詞綴數量 = ${modifiersCount}, 組合數 = ${resourceTotal}`);
+		  console.log(`${res}：物品名稱數量 = ${namesCount}, 詞綴數量 = ${modifiersCount}, 稀有度數量 = ${rarityCount}, 組合數 = ${resourceTotal}`);
 		  total += resourceTotal;
 		}
 	  }
@@ -1380,7 +1380,11 @@
 		if(applyZombieStyle) {
 		  div.className += " zombie-event";
 		}
-		div.textContent = formattedMessage;
+		if (eventType === "production") {
+		  div.innerHTML = message;
+		} else {
+		  div.textContent = message;
+		}
 		
 		logElem.appendChild(div);
 		logElem.scrollTop = logElem.scrollHeight;
@@ -1673,10 +1677,12 @@
       if (Math.random() < 0.05) {
         const modifier = getRandomModifier(resource);
         const modAmount = convertProduction(amount * modifier.effect);
-        logResource(resource, `${modifier.name} ${getRandomItemName(resource)}`, modAmount, "production");
-      } else {
-        logResource(resource, getRandomItemName(resource), amount, "production");
-      }
+		const modColor = (modifier.effect < 1) ? "var(--damaged)" : "var(--sealed)";
+		const styledItemName = `<span style="color: ${modColor}; font-weight: bold; display: inline-block; white-space: nowrap;">${modifier.name} ${getRandomItemName(resource)}</span>`;
+        logResource(resource, styledItemName, modAmount, "production");
+		} else {
+		  logResource(resource, getRandomItemName(resource), amount, "production");
+		}
       gameState.resources[resource] += amount;
 	  
 	  // 新增隨機事件：僵尸損失（僅對種植、回收、科研部門）
