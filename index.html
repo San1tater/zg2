@@ -1,32 +1,37 @@
 <!DOCTYPE html>
 <html lang="zh">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8" name="viewport" content="width=device-width, initial-scale=0.45"/>
   <title>末日控制中心 - 關鍵版本擴展調整版</title>
   <style>
     /* 彈窗系統 */
-       .modal-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(0,0,0,0.7);
-      display: none;
-      justify-content: center;
-      align-items: center;
-      z-index: 1000;
-    }
+    .modal-overlay {
+	  position: fixed;
+	  top: 0;
+	  left: 0;
+	  right: 0;
+	  bottom: 0;
+	  background: rgba(0,0,0,0.7);
+	  display: none;
+	  z-index: 1000;
+	  pointer-events: auto;
+	}
 
-    .modal-content {
-      background: #2d2d2d;
-      padding: 2rem;
-      border-radius: 12px;
-      width: min(90vw, 500px);
-      max-height: 80vh;
-      overflow-y: auto;
-      box-shadow: 0 8px 32px rgba(0,0,0,0.3);
-    }
+	.modal-content {
+	  background: #2d2d2d;
+	  padding: 2rem;
+	  border-radius: 12px;
+	  width: min(90vw, 500px);
+	  max-height: 80vh;
+	  overflow-y: auto;
+	  overscroll-behavior: contain; /* 阻止滚动传播 */
+	  -webkit-overflow-scrolling: touch; /* 启用弹性滚动 */
+	  position: fixed !important; /* 改用fixed定位 */
+	  left: 50% !important;
+	  top: 20vh !important;
+	  touch-action: pan-y pinch-zoom; /* 允许垂直滚动和缩放 */
+	}
+
 	#upgradeModal .modal-content {
 	  position: absolute;
 	  top: calc(100vh - 700px); /* 根據頁面高度下移 */
@@ -109,6 +114,7 @@
       padding: 20px;
       line-height: 1.6;
       min-height: 100vh;
+	  overscroll-behavior-y: contain;
     }
     .container {
       display: grid;
@@ -585,6 +591,10 @@
       .construction-grid { grid-template-columns: repeat(3, 1fr); }
       .tile { width: 100%; height: 100px; }
       .zombie-control { flex-wrap: wrap; }
+	  .modal-content {
+		width: min(41vw, 400px);
+		margin: 0 auto;
+  }
 	}
     @media (max-width: 480px) {
       .building-system { padding: 1rem; }
@@ -1931,34 +1941,37 @@
 
 	let currentBuildIndex = null;
 	function showBuildMenu(index) {
-	  // 記錄當前選中的建造格子索引
 	  currentBuildIndex = index;
-	  
-	  // 直接更新建造選單內容（不再啟動獨立定時器）
 	  updateBuildMenuContent(index);
 	  showModal("buildModal");
 
-	  // 調整彈窗位置：使其頂端與基地建設標題下緣對齊，水平則以中心基地所在格子的中心點為中心
 	  const modalContent = document.querySelector('#buildModal .modal-content');
 	  const baseTitleElem = document.querySelector('.building-system h2.section-title');
-	  const centerTile = document.querySelector('[data-index="4"]'); // 中心基地，請確保這對應正確
+	  const centerTile = document.querySelector('[data-index="4"]'); // 中心基地
+
 	  if (modalContent && baseTitleElem && centerTile) {
-		// 獲取基地建設標題的底邊位置（相對於 viewport）
 		const titleRect = baseTitleElem.getBoundingClientRect();
-		// 獲取中心基地 tile 的矩形
 		const centerRect = centerTile.getBoundingClientRect();
 		
-		// 設置 modal-content 的定位方式為 fixed
-		modalContent.style.position = "fixed";
-		// 將 modal-content 的頂部設置到基地建設標題的下邊緣
-		modalContent.style.top = titleRect.top + "px";
-		
-		// 計算 modal-content 本身的寬度（如果尚未渲染，可能需要讀取 offsetWidth）
-		const modalWidth = modalContent.offsetWidth;
-		// 將左邊位置設置為中心基地 tile 的水平中點減去 modal-content 寬度的一半
-		modalContent.style.left = (centerRect.left + centerRect.width / 2 - modalWidth / 2) + "px";
+		// 如果是桌面：
+		if (window.innerWidth >= 768) {
+		  modalContent.style.position = "fixed";
+		  // 將 top 設在基地建設標題的下邊緣：
+		  modalContent.style.top = titleRect.bottom + "px";
+		  // 左側根據中心基地卡片水平居中
+		  const modalWidth = modalContent.offsetWidth;
+		  modalContent.style.left = (centerRect.left + centerRect.width / 2 - modalWidth / 2) + "px";
+		} else {
+		  // 如果是移動端，則用較合理的設置，這裡我們讓彈窗寬度由上面的 CSS 控制，
+		  // 只需要調整 top 為基地建設標題下方一定距離（比如20px）
+		  modalContent.style.position = "absolute";
+		  modalContent.style.top = (titleRect.bottom + 20) + "px";
+		  modalContent.style.left = "50%";
+		  modalContent.style.transform = "translateX(-50%)";
+		}
 	  }
 	}
+
 
 	function updateBuildMenuContent(index) {
 	  // 過濾出所有有 baseCost 的建築（排除中心基地）
@@ -2376,16 +2389,188 @@
       updateAllDisplays();
     }
   
-    function showModal(modalId) {
-      const modal = document.getElementById(modalId);
-      if (modal) modal.style.display = "flex";
-    }
-  
-    function closeModal(modalId) {
-      const modal = document.getElementById(modalId);
-      if (modal) modal.style.display = "none";
-    }
-  
+   const scrollManager = (() => {
+	  let isModalOpen = false;
+	  let startY = 0;
+	  let currentContent = null;
+
+	  // 触摸开始处理
+	  const handleTouchStart = (e) => {
+		if (!isModalOpen || e.touches.length > 1) return;
+		
+		// 寻找最近的滚动容器
+		currentContent = e.target.closest('.modal-content');
+		if (!currentContent) return;
+
+		startY = e.touches[0].clientY;
+	  };
+
+	  // 触摸移动处理
+	  const handleTouchMove = (e) => {
+		 if (!currentContent || e.touches.length > 1) return;
+
+		const deltaY = e.touches[0].clientY - startY;
+		const { scrollTop, scrollHeight, clientHeight } = currentContent;
+		
+		// 计算滚动边界
+		const canScrollDown = deltaY > 0 && scrollTop > 0;
+		const canScrollUp = deltaY < 0 && scrollTop < scrollHeight - clientHeight;
+
+		// 需要阻止默认行为的条件
+		if (canScrollDown || canScrollUp) {
+		  e.preventDefault();
+		  currentContent.scrollTop -= deltaY;
+		  startY = e.touches[0].clientY;
+		}
+	  };
+
+	  // 触摸结束清理
+	  const handleTouchEnd = () => {
+		currentContent = null;
+	  };
+
+	  // 弹窗状态同步
+	  return {
+		init() {
+		  document.addEventListener('touchstart', handleTouchStart, { passive: false });
+		  document.addEventListener('touchmove', handleTouchMove, { passive: false });
+		  document.addEventListener('touchend', handleTouchEnd);
+		},
+		setModalState(state) {
+		  isModalOpen = state;
+		}
+	  };
+	})();
+
+	// 弹窗控制函数
+	// 在 showModal() 中設置定位
+	function showModal(modalId) {
+	  const modal = document.getElementById(modalId);
+	  modal.style.display = 'flex';
+	  // 為了防止後續重排覆蓋，給自訂定位彈窗一個標識
+	  const content = modal.querySelector('.modal-content');
+	  content.setAttribute("data-custom-pos", "true");
+	  
+	  // 參考基準：用基地建設所在的大格子作為上邊緣參考
+	  const buildingSystemCell = document.querySelector('#buildingSystem');
+	  // 水平參考仍然使用中心基地卡片
+	  const centerTile = document.querySelector('[data-index="4"]');
+	  
+	  if (buildingSystemCell && centerTile && content) {
+		// 取得大格子和中心基地的界面矩形
+		const cellRect = buildingSystemCell.getBoundingClientRect();
+		const centerRect = centerTile.getBoundingClientRect();
+		
+		// 這裡讀取當前縮放值
+		const currentScale = window.visualViewport ? window.visualViewport.scale : 1;
+		// 若需要補償縮放影響，則除以 currentScale（或者根據實測結果調整補償公式）
+		const newTop = cellRect.top / currentScale;
+		
+		content.style.position = "fixed";
+		content.style.top = newTop + "px";  
+		// 水平位置依然按照中心基地元素計算
+		content.style.left = (centerRect.left + centerRect.width / 2) + "px";
+		// 僅在水平方向居中
+		content.style.transform = "translateX(-50%)";
+		
+		console.log("調整後彈窗定位：", {
+		  top: newTop,
+		  left: centerRect.left + centerRect.width / 2
+		});
+	  }
+	}
+
+
+
+
+
+	function updateModalPosition() {
+	  // 只針對加上自定義定位標記的彈窗進行調整
+	  const modals = document.querySelectorAll('.modal-overlay .modal-content[data-custom-pos="true"]');
+	  if (!modals.length) return;
+
+	  const baseTitleElem = document.querySelector('.building-system h2.section-title');
+	  console.log("基地建設標題：", baseTitleElem, baseTitleElem && baseTitleElem.getBoundingClientRect());
+	  const centerTile = document.querySelector('[data-index="4"]');
+	  if (baseTitleElem && centerTile) {
+		const titleRect = baseTitleElem.getBoundingClientRect();
+		const centerRect = centerTile.getBoundingClientRect();
+		modals.forEach(content => {
+		  content.style.position = "fixed";
+		  content.style.top = `${titleRect.top}px`;
+		  content.style.left = `${centerRect.left + centerRect.width / 2}px`;
+		  content.style.transform = "translateX(-50%)";
+		});
+	  }
+	}
+
+
+	function closeModal(modalId) {
+	  document.getElementById(modalId).style.display = 'none';
+	  scrollManager.setModalState(false);
+	}
+
+	// 初始化
+	scrollManager.init();
+	// 视觉视口监听器
+	let currentScale = 1;
+	const viewportHandler = () => {
+	  currentScale = window.visualViewport.scale;
+	  // 如果在移動端，仍然要依據基地建設重新計算定位
+	  if (window.innerWidth < 768) {
+		updateModalPosition();
+	  }
+	  const visualViewport = window.visualViewport;
+	  const modalContent = document.querySelector('.modal-content');
+	  
+	};
+
+	// 弹窗控制增强
+	const modalController = {
+	  init() {
+		window.visualViewport.addEventListener('scroll', viewportHandler);
+		window.visualViewport.addEventListener('resize', viewportHandler);
+	  },
+	  
+	  show(modalId) {
+		const modal = document.getElementById(modalId);
+		currentScale = window.visualViewport.scale;
+		
+		// 初始化弹窗位置
+		modal.style.display = 'flex';
+		modal.querySelector('.modal-content').style.transform = `
+		  translateX(-50%) 
+		  scale(${1/currentScale})
+		`;
+		
+		// 添加双指手势监听
+		modal.addEventListener('gesturestart', e => e.preventDefault());
+		modal.addEventListener('gesturechange', this.handleZoom);
+	  },
+
+	  handleZoom(e) {
+		const modalContent = e.target.closest('.modal-content');
+		if(!modalContent) return;
+		
+		// 限制缩放范围
+		const newScale = Math.min(Math.max(e.scale, 0.8), 2);
+		modalContent.style.setProperty('--zoom-factor', newScale);
+		
+		// 阻止页面级缩放
+		e.preventDefault();
+	  },
+	  
+	  close(modalId) {
+		window.visualViewport.removeEventListener('scroll', viewportHandler);
+		window.visualViewport.removeEventListener('resize', viewportHandler);
+		document.getElementById(modalId).style.display = 'none';
+	  }
+	};
+
+	// 初始化
+	modalController.init();
+
+	  
 
     /***** 輔助函數 結束 *****/
   
