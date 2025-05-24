@@ -1467,7 +1467,10 @@
 	  const resource = resourceTypes[Math.floor(Math.random() * resourceTypes.length)];
 	  const rarity = weightedRandomRarity();
 	  const baseAmount = Math.floor(Math.random() * 5) + 5;
-	  const multiplier = Math.pow(1.005, teamSize);
+	  
+	  const randFactor = 0.95 + Math.random() * 0.1;
+	  const multiplier = 1 + 0.1 * Math.log(teamSize + 1);
+	  
 	  const computed = applyRarityMultiplier(baseAmount, rarity) * multiplier;
 	  const amount = convertProduction(computed);
 	  const itemName = getRandomItemName(resource);
