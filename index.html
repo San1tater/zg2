@@ -1897,7 +1897,11 @@
 
 
 	function showBuildMenu(index) {
-	  // 首次生成彈窗內容
+	  if (buildMenuUpdateTimer) {
+		clearInterval(buildMenuUpdateTimer);
+		buildMenuUpdateTimer = null;
+	  }
+	 // 首次生成彈窗內容
 	  updateBuildMenuContent(index);
 	  // 顯示建造彈窗
 	  showModal("buildModal");
