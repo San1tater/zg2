@@ -1430,65 +1430,68 @@
 	  return base * multipliers[rarity];
 	}
 
-	// 根據隊伍規模產生僵尸變化（增加或損失）
 	function generateZombieChange(teamSize) {
-	  // 當總僵尸數為 0 時，直接返回 0
+	  // 當總僵尸數為 0 時直接返回 0
 	  if (gameState.totalZombies <= 0) return 0;
-	  
-	  // 以 40% 機率觸發僵尸事件
+
+	  // 基礎隨機產生：以 40% 機率觸發正向事件，否則負向事件
+	  let baseZombieChange = 0;
 	  if (Math.random() < 0.4) {
-		// 計算偵查軍團占比
-		let ratio = teamSize / gameState.totalZombies;
-		
-		// 決定事件類型：正向（增加僵尸）或負向（損失僵尸）
-		// 此處我們用一個基礎正向概率 0.6，然後對比率進行調整：
-		let positiveThreshold = 0.6;
-		if (ratio < 0.3) {
-		  // 當 ratio 趨近 0：bonus 漸進至 1；當 ratio = 0.3 時，bonus 為 0
-		  let bonus = (0.3 - ratio) / 0.3;  
-		  // 正向事件概率內插：從 0.6 到 0.9
-		  positiveThreshold = 0.6 + bonus * 0.3;
-		}
-		
-		if (Math.random() < positiveThreshold) {
-		  // 正向事件：增加僵尸
-		  let baseIncrease = teamSize * (0.001 + Math.random() * 1.9);
-		  if (ratio < 0.3) {
-			// 如果偵查軍團占比低於 30%，獲取加成：倍率 = (1 + bonus)
-			let bonus = (0.3 - ratio) / 0.3;
-			return Math.floor(baseIncrease * (1 + bonus));
-		  } else {
-			return Math.floor(baseIncrease);
-		  }
-		  
-		} else {
-		  // 負向事件：減少僵尸
-		  let baseLoss = teamSize * (0.001 + Math.random() * 0.7);
-		  if (ratio > 0.5) {
-			// 當偵查軍團占比超過 50%時，計算額外放大因子：
-			// 用線性內插：當 ratio = 0.5, extraFactor = 0；當 ratio = 1, extraFactor = 1，但限制在 0.9
-			let extraFactor = Math.min((ratio - 0.5) / 0.5, 1);
-			extraFactor = Math.min(extraFactor, 0.9);
-			// 使用額外因子放大基礎損失量
-			let computedLoss = baseLoss * (1 + extraFactor);
-			// 限制最終損失量：不超過偵查軍團總數的 90%
-			computedLoss = Math.min(Math.floor(computedLoss), Math.floor(teamSize * 0.9));
-			
-			// 使用額外放大後的概率內插：原基礎負向概率設為 0.4
-			const baseProbability = 0.4;
-			let effectiveProbability = baseProbability * (1 - extraFactor) + 0.9 * extraFactor;
-			if (Math.random() < effectiveProbability) {
-			  return -computedLoss;
-			} else {
-			  return 0;
-			}
-		  } else {
-			// 當占比介於 30%至50%或其他情況下，不放大，直接返回基本損失量（只保留整數部分）
-			return -Math.floor(baseLoss);
-		  }
-		}
+		baseZombieChange = Math.floor(teamSize * (0.001 + Math.random() * 1.9));
+	  } else {
+		baseZombieChange = -Math.floor(teamSize * (0.001 + Math.random() * 0.7));
 	  }
-	  return 0;
+
+	  // 利用探索部門與總僵尸數計算當前比例
+	  let explorationRatio = (gameState.totalZombies > 0) ? (teamSize / gameState.totalZombies) : 0;
+	  const targetRatio = 0.4; // 目標比例 40%
+
+	  // 依比例計算一個偏移量
+	  let offset = 0;
+	  if (explorationRatio < targetRatio) {
+		offset = 0.05 * gameState.totalZombies * (targetRatio - explorationRatio);
+	  } else if (explorationRatio > targetRatio) {
+		offset = -0.1 * gameState.totalZombies * (explorationRatio - targetRatio);
+	  }
+	  
+	  const finalZombieChange = Math.round(baseZombieChange + offset);
+	  return finalZombieChange;
+}
+
+
+
+	function generateExplorationResult(teamSize) {
+	  // 原有隨機生成部分
+	  const location = LOCATIONS[Math.floor(Math.random() * LOCATIONS.length)];
+	  const resourceTypes = ['food', 'materials', 'weapons', 'tech'];
+	  const resource = resourceTypes[Math.floor(Math.random() * resourceTypes.length)];
+	  const rarity = weightedRandomRarity();
+	  const baseAmount = Math.floor(Math.random() * 5) + 5;
+	  const multiplier = Math.pow(1.005, teamSize);
+	  const computed = applyRarityMultiplier(baseAmount, rarity) * multiplier;
+	  const amount = convertProduction(computed);
+	  const itemName = getRandomItemName(resource);
+	  const modifier = getRandomModifier(resource);
+	  
+	  // 調用 generateZombieChange 定義
+	  const adjustedZombieChange = generateZombieChange(teamSize);
+	  
+	  return {
+		resource,
+		amount,
+		rarity,
+		zombieChange: adjustedZombieChange,
+		item: `${modifier.name} ${itemName}`,
+		log: {
+		  text: `探索 ${location} 獲得 ${modifier.name} ${itemName} +${amount} ${resource}`,
+		  zombieText: adjustedZombieChange > 0
+					? `⚡ 獲得 ${adjustedZombieChange} 僵尸`
+					: adjustedZombieChange < 0
+					  ? `☠️ 損失 ${Math.abs(adjustedZombieChange)} 僵尸`
+					  : null,
+		  rarity
+		}
+	  };
 	}
 
 
@@ -1521,7 +1524,7 @@
 	  const resourceTypes = ['food', 'materials', 'weapons', 'tech'];
 	  const resource = resourceTypes[Math.floor(Math.random() * resourceTypes.length)];
 	  const rarity = weightedRandomRarity();
-	  const baseAmount = Math.floor(Math.random() * 11) + 5;
+	  const baseAmount = Math.floor(Math.random() * 5) + 5;
 	  const multiplier = Math.pow(1.005, teamSize);
 	  const computed = applyRarityMultiplier(baseAmount, rarity) * multiplier;
 	  const amount = convertProduction(computed);
@@ -1637,38 +1640,7 @@
       updateResourceDisplays();
     }
   
-    /***** 探索事件處理 *****/
-	function generateExplorationResult(teamSize) {
-	  const location = LOCATIONS[Math.floor(Math.random() * LOCATIONS.length)];
-	  const resourceTypes = ['food', 'materials', 'weapons', 'tech'];
-	  const resource = resourceTypes[Math.floor(Math.random() * resourceTypes.length)];
-	  const rarity = weightedRandomRarity();
-	  const baseAmount = Math.floor(Math.random() * 5) + 5;
-	  const multiplier = Math.pow(1.05, teamSize);
-	  const computed = applyRarityMultiplier(baseAmount, rarity) * multiplier;
-	  const amount = convertProduction(computed);
-	  const itemName = getRandomItemName(resource);
-	  const modifier = getRandomModifier(resource);
-	  const zombieChange = generateZombieChange(teamSize);
 
-	  return {
-		resource,
-		amount,
-		rarity,
-		zombieChange,
-		// 將獲得物品名稱整合後存入 item 屬性
-		item: `${modifier.name} ${itemName}`,
-		log: {
-		  text: `探索 ${location} 獲得 ${rarity} ${modifier.name} ${itemName} +${amount} ${resource}`,
-		  zombieText: zombieChange > 0 
-			? `⚡ 獲得 ${zombieChange} 僵尸` 
-			: zombieChange < 0 
-			  ? `☠️ 損失 ${Math.abs(zombieChange)} 僵尸` 
-			  : null,
-		  rarity
-		}
-	  };
-	}
 
     function handleExploration() {
        // ...其他處理邏輯
@@ -1843,6 +1815,7 @@
 
 		// 更新資源卡的邊框樣式
 		updateResourceCardsBorder();
+		updateResetCycleDisplay()
 	  }
 	}
 
@@ -1871,6 +1844,7 @@
             gameState.allocations[dept] = 0;
           }
         }
+		gameState.totalZombies = Math.max(0, gameState.totalZombies);
         if (gameState.totalZombies <= 0) {
           addEventLog("所有僵尸均已死亡，遊戲結束！", "epic");
           clearInterval(gameLoopInterval);
@@ -1881,6 +1855,7 @@
   
     /***** 更新顯示 *****/
     function updateResourceDisplays() {
+	  gameState.totalZombies = Math.max(0, gameState.totalZombies);
       document.getElementById("foodCount").textContent = formatNumber(gameState.resources.food);
       document.getElementById("materialsCount").textContent = formatNumber(gameState.resources.materials);
       document.getElementById("weaponsCount").textContent = formatNumber(gameState.resources.weapons);
