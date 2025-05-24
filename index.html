@@ -39,6 +39,10 @@
 	  left: 50%;
 	  transform: translate(-50%, 0);
 	}
+	#buildModal .modal-content {
+	  max-height: 300px; /* 或根據需要調整 */
+	}
+
 
 	/* 收藏彈窗繼承現有 modal 的樣式，若需要與行動日誌區重合，可加入如下設定 */
 	#favoritesModal .modal-content,
@@ -53,7 +57,10 @@
 	  overscroll-behavior: none;
 	}
 	
-
+	.log {
+	  overflow-y: auto;
+	  overflow-anchor: none;
+	}
 
     :root {
       --bg-color: #1a1a1a;
@@ -1895,20 +1902,35 @@
 	  showUpgradeMenu(index);
 	}
 
-	let buildMenuUpdateTimer = null;
+	let currentBuildIndex = null;
 	function showBuildMenu(index) {
-	  if (buildMenuUpdateTimer) {
-		clearInterval(buildMenuUpdateTimer);
-		buildMenuUpdateTimer = null;
-	  }
-	 // 首次生成彈窗內容
+	  // 記錄當前選中的建造格子索引
+	  currentBuildIndex = index;
+	  
+	  // 直接更新建造選單內容（不再啟動獨立定時器）
 	  updateBuildMenuContent(index);
-	  // 顯示建造彈窗
 	  showModal("buildModal");
-	  // 啟動定時器，每秒更新一次建造選單內容，以實時反映當前可建造狀態
-	  buildMenuUpdateTimer = setInterval(function() {
-		updateBuildMenuContent(index);
-	  }, 5000);
+
+	  // 調整彈窗位置：使其頂端與基地建設標題下緣對齊，水平則以中心基地所在格子的中心點為中心
+	  const modalContent = document.querySelector('#buildModal .modal-content');
+	  const baseTitleElem = document.querySelector('.building-system h2.section-title');
+	  const centerTile = document.querySelector('[data-index="4"]'); // 中心基地，請確保這對應正確
+	  if (modalContent && baseTitleElem && centerTile) {
+		// 獲取基地建設標題的底邊位置（相對於 viewport）
+		const titleRect = baseTitleElem.getBoundingClientRect();
+		// 獲取中心基地 tile 的矩形
+		const centerRect = centerTile.getBoundingClientRect();
+		
+		// 設置 modal-content 的定位方式為 fixed
+		modalContent.style.position = "fixed";
+		// 將 modal-content 的頂部設置到基地建設標題的下邊緣
+		modalContent.style.top = titleRect.top + "px";
+		
+		// 計算 modal-content 本身的寬度（如果尚未渲染，可能需要讀取 offsetWidth）
+		const modalWidth = modalContent.offsetWidth;
+		// 將左邊位置設置為中心基地 tile 的水平中點減去 modal-content 寬度的一半
+		modalContent.style.left = (centerRect.left + centerRect.width / 2 - modalWidth / 2) + "px";
+	  }
 	}
 
 	function updateBuildMenuContent(index) {
@@ -2138,13 +2160,12 @@
 	}
 
 	// 原有的升級菜單函數（修改後使用動態升級資訊）
-	function showUpgradeMenu(index) {
-	  currentUpgradeIndex = index;
+	function updateUpgradeMenuContent(index) {
 	  const building = gameState.buildings[index];
 	  if (!building) return;
 	  const config = BUILDINGS[building.type];
 	  
-	  // 取得當前加成信息（使用當前等級）
+	  // 取得當前加成信息
 	  let currentInfo = "";
 	  if (typeof config.getUpgradeInfo === "function") {
 		const currentUpgrade = config.getUpgradeInfo(building.level);
@@ -2155,7 +2176,7 @@
 		}
 	  }
 	  
-	  // 取得下一級升級信息（無論是否滿足都顯示）
+	  // 取得下一級升級信息
 	  let nextInfo = "";
 	  const nextUpgrade = (typeof config.getUpgradeInfo === "function")
 							? config.getUpgradeInfo(building.level + 1)
@@ -2165,7 +2186,6 @@
 		for (let [res, val] of Object.entries(nextUpgrade.cost)) {
 		  nextInfo += ` ${res}: ${val}`;
 		}
-		// 判斷資源是否滿足，如果不滿足則添加提示
 		if (!canAfford(nextUpgrade.cost)) {
 		  nextInfo += " (未滿足)";
 		}
@@ -2173,22 +2193,49 @@
 		nextInfo = "已達最高級";
 	  }
 	  
-	  // 組合上半部分內容
 	  const upperContent = `當前加成: ${currentInfo}\n升級所需: ${nextInfo}`;
-	  
 	  document.getElementById("upgradeTitle").textContent = config.name;
 	  document.getElementById("upgradeInfo").textContent = upperContent;
 	  
-	  // 按鈕部分：確認升級按鈕始終顯示；拆除按鈕對中心基地隱藏
 	  document.getElementById("confirmUpgradeBtn").style.display = "inline-block";
 	  if (building.type.toLowerCase() === "center") {
 		document.getElementById("demolishBtn").style.display = "none";
 	  } else {
 		document.getElementById("demolishBtn").style.display = "inline-block";
 	  }
-	  
-	  showModal("upgradeModal");
 	}
+
+	function showUpgradeMenu(index) {
+	  currentUpgradeIndex = index;
+	  const building = gameState.buildings[index];
+	  if (!building) return;
+	  // 初次更新升級彈窗內容
+	  updateUpgradeMenuContent(index);
+	  
+	  // 顯示升級彈窗
+	  showModal("upgradeModal");
+	  // 此處不再啟動獨立定時器
+	  const modalContent = document.querySelector('#upgradeModal .modal-content');
+	  const baseTitleElem = document.querySelector('.building-system h2.section-title');
+	  const centerTile = document.querySelector('[data-index="4"]'); // 假設中心基地所在格子索引為 4
+	  
+	  if (modalContent && baseTitleElem && centerTile) {
+		// 取得基地建設標題區域的矩形信息
+		const titleRect = baseTitleElem.getBoundingClientRect();
+		// 取得中心基地 tile 的矩形信息
+		const centerRect = centerTile.getBoundingClientRect();
+		
+		// 固定定位（必須設定為 fixed 或 absolute）
+		modalContent.style.position = "fixed";
+		// 將升級彈窗頂部設置到基地建設標題的上邊緣（與建造彈窗保持一致）
+		modalContent.style.top = titleRect.top + "px";
+		
+		// 計算 modal-content 寬度並使其水平居中於中心基地
+		const modalWidth = modalContent.offsetWidth;
+		modalContent.style.left = (centerRect.left + centerRect.width / 2) + "px";
+	  }
+	}
+
 
 
 	function closeUpgradeModal() {
@@ -2432,6 +2479,15 @@
 
 		  // 統一更新所有顯示（若加上前面提到的 dirty flag 更新，就不會每次都更新）
 		  updateAllDisplays();
+		  const upgradeModal = document.getElementById("upgradeModal");
+		  if (upgradeModal && upgradeModal.style.display === "flex" && typeof currentUpgradeIndex !== "undefined") {
+			updateUpgradeMenuContent(currentUpgradeIndex);
+		  }
+		  // --- 新增建造彈窗自動更新 ---
+		  const buildModal = document.getElementById("buildModal");
+		  if (buildModal && buildModal.style.display === "flex" && currentBuildIndex !== null) {
+			updateBuildMenuContent(currentBuildIndex);
+		  }
 		}
 
 		// 用單一定時器啟動主循環，例如每 5 秒執行一次
