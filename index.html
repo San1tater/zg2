@@ -5,7 +5,7 @@
   <title>末日控制中心 - 關鍵版本擴展調整版</title>
   <style>
     /* 彈窗系統 */
-       .modal-overlay {
+    .modal-overlay {
       position: fixed;
       top: 0;
       left: 0;
@@ -28,6 +28,7 @@
       overflow-y: auto;
       box-shadow: 0 8px 32px rgba(0,0,0,0.3);
 	  -webkit-overflow-scrolling: touch;
+	
 	  
     }
 	#upgradeModal .modal-content {
@@ -2362,31 +2363,19 @@
       updateAllDisplays();
     }
   
-    function onModalWheel(e) {
-	  // 如果事件發生在 modal-content 內，阻止預設滾動（使之僅影響彈窗內容）
-	  if (e.target.closest(".modal-content")) {
-		e.preventDefault();
-	  }
-	  // 如果事件在 modal-content 外，則不阻止（允許背景滾動）
-	}
-
-	function showModal(modalId) {
+    function showModal(modalId) {
 	  const modal = document.getElementById(modalId);
 	  if (modal) {
 		modal.style.display = "flex";
-		// 這裡不設置 document.body.overflow（讓背景能正常滾動）
-		// 為 modal-overlay 添加 wheel 監聽器，設定 passive: false 以便調用 preventDefault()
-		modal.addEventListener("wheel", onModalWheel, { passive: false });
+		// 不設置 document.body.style.overflow = "hidden";
 	  }
 	}
 
 	function closeModal(modalId) {
 	  const modal = document.getElementById(modalId);
-	  if (modal) {
-		modal.style.display = "none";
-		modal.removeEventListener("wheel", onModalWheel);
-	  }
+	  if (modal) modal.style.display = "none";
 	}
+
 
 
 	// 修改後的阻止函式：只在觸摸點在 .modal-content 內時阻止滾動
