@@ -2079,7 +2079,7 @@
 		  .join(' ');
 		let unmet = "";
 		if (!canAfford(cfg.baseCost)) {
-		  unmet = " （未滿足）";
+		  unmet = " （❌）";
 		}
 		return `
 		  <div class="build-box" onclick="startBuilding('${key}', ${index})">
@@ -2333,7 +2333,7 @@
 		  nextInfo += ` ${res}: ${parseInt(val)}`;
 		}
 		if (!canAfford(nextUpgrade.cost)) {
-		  nextInfo += " (未滿足)";
+		  nextInfo += " (❌)";
 		}
 	  } else {
 		nextInfo = "已達最高級";
