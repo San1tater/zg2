@@ -6,7 +6,7 @@
   <style>
     /* 彈窗系統 */
     .modal-overlay {
-	  position: absolute;
+	  position: fixed;
 	  top: 0;
 	  left: 0;
 	  right: 0;
@@ -26,67 +26,27 @@
 	  overflow-y: auto;
 	  overscroll-behavior: contain; /* 阻止滚动传播 */
 	  -webkit-overflow-scrolling: touch; /* 启用弹性滚动 */
-	  position: absolute; /* 改用fixed定位 */
-	  left: 50%;
-	  top: 20vh;
+	  position: fixed !important; /* 改用fixed定位 */
+	  left: 50% !important;
+	  top: 20vh !important;
 	  touch-action: pan-y pinch-zoom; /* 允许垂直滚动和缩放 */
 	}
-	
-	/* 父容器需相對定位 */
-	.building-system-container {
-	  position: relative !important;
-	  height: 600px;
-	  overflow: auto; 
+
+	#upgradeModal .modal-content {
+	  position: absolute;
+	  top: calc(100vh - 700px); /* 根據頁面高度下移 */
+	  left: 50%;
+	  transform: translate(-50%, 0); /* 使其居中 */
 	}
-	
-
-
-	/* 嵌套彈窗: 嵌於基地建設容器內 */
-	.modal-overlay.nested {
-	  position: absolute !important;
-	  top: 0!important;
-	  left: 0;
-	  width: 100%;
-	  height: 100%;
-	  background: rgba(0, 0, 0, 0.7); /* 遮罩背景 */
-	  display: none;  /* 默認隱藏 */
-	  z-index: 1000;  /* 層級，可根據需要調整 */
+	#resultModal .modal-content {
+	  position: absolute;
+	  top: calc(100vh - 750px); /* 調整高度，使其比升級彈窗略低 */
+	  left: 50%;
+	  transform: translate(-50%, 0);
 	}
-
-	/* 嵌套彈窗內部內容 */
-	.modal-overlay.nested .modal-content {
-	  position: absolute !important;
-	  top: 0!important;          /* 垂直靠上 */
-	  left: 50%!important;       /* 水平居中 */
-	  transform: translateX(-50%)!important;
-	  background: #2d2d2d !important;
-	  padding: 2rem;
-	  border-radius: 12px;
-	  width: min(90vw, 500px);
-	  max-height: 80vh;
-	  box-sizing: border-box;
-	}
-
-	
 	#buildModal .modal-content {
 	  max-height: 600px; /* 或根據需要調整 */
-	  
 	}
-	#resultModal {
-	  position: absolute !important;
-	  top: 0 !important;
-	  left: 0 !important;
-	  width: 100% !important;
-	  height: auto !important;
-	}
-
-	#resultModal .modal-content {
-	  position: absolute !important;
-	  top: 0 !important;  /* 🔹 確保對齊基地建設容器頂部 */
-	  left: 50% !important;
-	  transform: translateX(-50%) !important;
-	}
-
 
 
 	/* 收藏彈窗繼承現有 modal 的樣式，若需要與行動日誌區重合，可加入如下設定 */
@@ -197,11 +157,11 @@
 	}
 	/* 基地建設容器，跨兩列 */
 	.building-system-container {
-	  position: relative!important;
+	  position: relative;
 	  grid-column: 1 / span 2; /* 跨越第1-2列 */
 	  /* 固定高度，例如 300px，可根據需要調整 */
 	  height: 600px;
-	  overflow: hidden;
+	  overflow: auto;
 	}
     .dashboard {
       background: #262626;
@@ -795,44 +755,35 @@
           <!-- 動態生成的建築格子 -->
         </div>
       </div>
-	  <!-- 結果提示彈窗 -->
-	  <div id="resultModal" class="modal-overlay nested">
-		  <div class="modal-content">
-			<p id="resultMessage"></p>
-		  </div>
-	  </div>
-	   <!-- 建造彈窗 -->
-	  <div id="buildModal" class="modal-overlay nested">
-		<div class="modal-content">
-		  <h3>選擇建造項目</h3>
-		  <div class="build-options" id="buildOptions"></div>
-		</div>
-	  </div>
-	  	  
-	  <!-- 升級彈窗 -->
-		<div id="upgradeModal" class="modal-overlay nested">
-		  <div class="modal-content">
-			<h3 id="upgradeTitle"></h3>
-			<!-- 上半部分：顯示當前加成信息與升級所需資源 -->
-			<div id="upgradeInfo" style="white-space: pre-wrap; margin-bottom: 1em;"></div>
-			<!-- 下半部分：使用 Flex 對齊兩個按鍵 -->
-			<div class="button-row" style="display: flex; justify-content: space-between;">
-			  <button id="confirmUpgradeBtn" class="modal-btn large-btn" onclick="confirmUpgrade()" style="flex: 1; margin-right: 5px;">升級</button>
-			  <button id="demolishBtn" class="modal-btn large-btn" onclick="confirmBuildingRemoval(currentUpgradeIndex)" style="flex: 1; margin-left: 5px;">拆除</button>
-			</div>
-		  </div>
-		</div>
-		
-		<!-- 建築互動彈窗（管理建築資訊／拆除） -->
-		<div id="interactionModal" class="modal-overlay nested">
-		  <div class="modal-content">
-			<h3 id="interactionTitle">建築管理</h3>
-			<div id="interactionContent"></div>
-		  </div>
-		</div>
-	</div>
+    </div>
   </div>
   
+  <!-- 建造彈窗 -->
+  <div id="buildModal" class="modal-overlay">
+    <div class="modal-content">
+      <h3>選擇建造項目</h3>
+      <div class="build-options" id="buildOptions"></div>
+    </div>
+  </div>
+  
+ 
+  <!-- 升級彈窗 -->
+	<div id="upgradeModal" class="modal-overlay">
+	  <div class="modal-content">
+		<h3 id="upgradeTitle"></h3>
+		<!-- 上半部分：顯示當前加成信息與升級所需資源 -->
+		<div id="upgradeInfo" style="white-space: pre-wrap; margin-bottom: 1em;"></div>
+		<!-- 下半部分：使用 Flex 對齊兩個按鍵 -->
+		<div class="button-row" style="display: flex; justify-content: space-between;">
+		  <button id="confirmUpgradeBtn" class="modal-btn large-btn" onclick="confirmUpgrade()" style="flex: 1; margin-right: 5px;">升級</button>
+		  <button id="demolishBtn" class="modal-btn large-btn" onclick="confirmBuildingRemoval(currentUpgradeIndex)" style="flex: 1; margin-left: 5px;">拆除</button>
+		</div>
+	  </div>
+	</div>
+
+
+
+
   <!-- 收藏彈窗 -->
    <div id="favoritesModal" class="modal-overlay">
 	 <div class="modal-content">
@@ -852,7 +803,20 @@
 	  </div>
 	</div>
 
-
+   
+  <!-- 建築互動彈窗（管理建築資訊／拆除） -->
+	<div id="interactionModal" class="modal-overlay">
+	  <div class="modal-content">
+		<h3 id="interactionTitle">建築管理</h3>
+		<div id="interactionContent"></div>
+	  </div>
+	</div>
+  <!-- 結果提示彈窗 -->
+	<div id="resultModal" class="modal-overlay">
+	  <div class="modal-content">
+		<p id="resultMessage"></p>
+	  </div>
+	</div>
 
 
 
@@ -1979,7 +1943,33 @@
 	function showBuildMenu(index) {
 	  currentBuildIndex = index;
 	  updateBuildMenuContent(index);
-	  showNestedModal("buildModal");
+	  showModal("buildModal");
+
+	  const modalContent = document.querySelector('#buildModal .modal-content');
+	  const baseTitleElem = document.querySelector('.building-system h2.section-title');
+	  const centerTile = document.querySelector('[data-index="4"]'); // 中心基地
+
+	  if (modalContent && baseTitleElem && centerTile) {
+		const titleRect = baseTitleElem.getBoundingClientRect();
+		const centerRect = centerTile.getBoundingClientRect();
+		
+		// 如果是桌面：
+		if (window.innerWidth >= 768) {
+		  modalContent.style.position = "fixed";
+		  // 將 top 設在基地建設標題的下邊緣：
+		  modalContent.style.top = titleRect.bottom + "px";
+		  // 左側根據中心基地卡片水平居中
+		  const modalWidth = modalContent.offsetWidth;
+		  modalContent.style.left = (centerRect.left + centerRect.width / 2 - modalWidth / 2) + "px";
+		} else {
+		  // 如果是移動端，則用較合理的設置，這裡我們讓彈窗寬度由上面的 CSS 控制，
+		  // 只需要調整 top 為基地建設標題下方一定距離（比如20px）
+		  modalContent.style.position = "absolute";
+		  modalContent.style.top = (titleRect.bottom + 20) + "px";
+		  modalContent.style.left = "50%";
+		  modalContent.style.transform = "translateX(-50%)";
+		}
+	  }
 	}
 
 
@@ -2205,26 +2195,11 @@
 
 
 	// 新增：結果提示彈窗函數
-	function showResultModal(msg) {
-	  const modal = document.getElementById("resultModal");
-	  const msgElem = document.getElementById("resultMessage");
-	  
-	  // 直接显示，无需复杂计算
-	  if (msgElem) msgElem.textContent = msg;
-	  modal.style.display = "block";
+	function showResultModal(message) {
+	  document.getElementById("resultMessage").textContent = message;
+	  showModal("resultModal");
 	}
 
-	function closeNestedModal(modalId) {
-	  document.getElementById(modalId).style.display = "none";
-	}
-
-	// 修改关闭函数
-	function closeNestedModal(modalId) {
-	  const modal = document.getElementById(modalId);
-	  if (modal && modal._closeHandler) {
-		modal._closeHandler();
-	  }
-	}
 	function closeResultModal() {
 	  closeModal("resultModal");
 	}
@@ -2279,12 +2254,35 @@
 	  currentUpgradeIndex = index;
 	  const building = gameState.buildings[index];
 	  if (!building) return;
-	  
-	  // 更新升級彈窗內容
+	  // 初次更新升級彈窗內容
 	  updateUpgradeMenuContent(index);
-	  // 【修改】呼叫嵌套彈窗專用函數，而非全局的 showModal
-	    showNestedModal("upgradeModal");
+	  
+	  // 顯示升級彈窗
+	  showModal("upgradeModal");
+	  // 此處不再啟動獨立定時器
+	  const modalContent = document.querySelector('#upgradeModal .modal-content');
+	  const baseTitleElem = document.querySelector('.building-system h2.section-title');
+	  const centerTile = document.querySelector('[data-index="4"]'); // 假設中心基地所在格子索引為 4
+	  
+	  if (modalContent && baseTitleElem && centerTile) {
+		// 取得基地建設標題區域的矩形信息
+		const titleRect = baseTitleElem.getBoundingClientRect();
+		// 取得中心基地 tile 的矩形信息
+		const centerRect = centerTile.getBoundingClientRect();
+		
+		// 固定定位（必須設定為 fixed 或 absolute）
+		modalContent.style.position = "fixed";
+		// 將升級彈窗頂部設置到基地建設標題的上邊緣（與建造彈窗保持一致）
+		modalContent.style.top = titleRect.top + "px";
+		
+		// 計算 modal-content 寬度並使其水平居中於中心基地
+		const modalWidth = modalContent.offsetWidth;
+		modalContent.style.left = (centerRect.left + centerRect.width / 2) + "px";
+	  }
 	}
+
+
+
 	function closeUpgradeModal() {
 	  closeModal("upgradeModal");
 	}
@@ -2338,7 +2336,7 @@
 
 	  document.getElementById("interactionContent").innerHTML = interactionContent;
 	  document.getElementById("interactionTitle").textContent = config.name;
-	  showNestedModal("interactionModal");
+	  showModal("interactionModal");
 	}
 
 
@@ -2450,13 +2448,48 @@
 	  modal.style.display = 'flex';
 	  // 停用自動調整邏輯（若有其他重排代碼就給它一個標識以免覆蓋）
 	  const content = modal.querySelector('.modal-content');
-	  content.removeAttribute("style");
+	  content.setAttribute("data-custom-pos", "true");
+	  
+	  // 以固定的 viewport 高度比例設定 top：2/3 屏幕高度（66.66vh）
+	  content.style.position = "fixed";
+	  content.style.top = "70.00vh";
+	  
 	  // 水平位移的部分可以依舊根據中心基地計算，也可以固定在屏幕水平中心
 	  // 如果需要屏幕水平居中，可以直接用 left:50% + translateX(-50%)
 	  content.style.left = "50%";
 	  content.style.transform = "translateX(-50%)";
-
+	  
+	  console.log("彈窗定位設定：", {
+		top: "70.00vh",
+		left: "50%"
+	  });
 	}
+
+
+
+
+
+
+	function updateModalPosition() {
+	  // 只針對加上自定義定位標記的彈窗進行調整
+	  const modals = document.querySelectorAll('.modal-overlay .modal-content[data-custom-pos="true"]');
+	  if (!modals.length) return;
+
+	  const baseTitleElem = document.querySelector('.building-system h2.section-title');
+	  console.log("基地建設標題：", baseTitleElem, baseTitleElem && baseTitleElem.getBoundingClientRect());
+	  const centerTile = document.querySelector('[data-index="4"]');
+	  if (baseTitleElem && centerTile) {
+		const titleRect = baseTitleElem.getBoundingClientRect();
+		const centerRect = centerTile.getBoundingClientRect();
+		modals.forEach(content => {
+		  content.style.position = "fixed";
+		  content.style.top = `${titleRect.top}px`;
+		  content.style.left = `${centerRect.left + centerRect.width / 2}px`;
+		  content.style.transform = "translateX(-50%)";
+		});
+	  }
+	}
+
 
 	function closeModal(modalId) {
 	  document.getElementById(modalId).style.display = 'none';
@@ -2469,6 +2502,12 @@
 	let currentScale = 1;
 	const viewportHandler = () => {
 	  currentScale = window.visualViewport.scale;
+	  // 如果在移動端，仍然要依據基地建設重新計算定位
+	  if (window.innerWidth < 768) {
+		updateModalPosition();
+	  }
+	  const visualViewport = window.visualViewport;
+	  const modalContent = document.querySelector('.modal-content');
 	  
 	};
 
@@ -2497,7 +2536,12 @@
 
 	  handleZoom(e) {
 		const modalContent = e.target.closest('.modal-content');
-		if(!modalContent) return;		
+		if(!modalContent) return;
+		
+		// 限制缩放范围
+		const newScale = Math.min(Math.max(e.scale, 0.8), 2);
+		modalContent.style.setProperty('--zoom-factor', newScale);
+		
 		// 阻止页面级缩放
 		e.preventDefault();
 	  },
@@ -2664,78 +2708,6 @@
 		  });
 		});
 	});
-</script>
-	 
-	<script>
-	  // 顯示嵌套彈窗（用於嵌入基地建設容器的彈窗）
-	  function showNestedModal(modalId) {
-		var modal = document.getElementById(modalId);
-		if (!modal) return;
-		// NOTE: 請確保嵌套彈窗在 HTML 中已設 class="modal-overlay nested"
-		modal.style.display = "block"; // 利用 block 顯示，因為其定位是 absolute，相對於父容器
-	  }
-	  
-	  // 關閉嵌套彈窗函數
-	  function closeNestedModal(modalId) {
-		var modal = document.getElementById(modalId);
-		if(modal) {
-		  modal.style.display = "none";
-		}
-	  }
-	  
-	  // 遮罩點擊關閉嵌套彈窗
-	  document.addEventListener("DOMContentLoaded", function() {
-		var nestedOverlays = document.querySelectorAll('.modal-overlay.nested');
-		nestedOverlays.forEach(function(overlay) {
-		  overlay.addEventListener("click", function(event) {
-			// 如果點擊目標直接是遮罩層，而非內容
-			if (event.target === overlay) {
-			  closeNestedModal(overlay.id);
-			}
-		  });
-		});
-		
-		// 綁定觸發按鈕事件：請確認按鈕 ID 與 HTML 一致
-		var buildBtn = document.getElementById("buildButton");
-		if(buildBtn) {
-		  buildBtn.addEventListener("click", function() {
-			showNestedModal("buildModal");
-		  });
-		}
-		
-		var upgradeBtn = document.getElementById("upgradeButton");
-		if(upgradeBtn) {
-		  upgradeBtn.addEventListener("click", function() {
-			showNestedModal("upgradeModal");
-		  });
-		}
-		
-		var interactionBtn = document.getElementById("interactionButton");
-		if(interactionBtn) {
-		  interactionBtn.addEventListener("click", function() {
-			showNestedModal("interactionModal");
-		  });
-		}
-		
-		var resultBtn = document.getElementById("resultButton");
-		if(resultBtn) {
-		  resultBtn.addEventListener("click", function() {
-			showNestedModal("resultModal");
-			// 更新結果提示內容
-			var msgElem = document.getElementById("resultMessage");
-			if(msgElem) {
-			  msgElem.textContent = "這是結果提示信息";
-			}
-		  });
-		}
-	  });
-	  
-	  // 將方法暴露到全局，必要時可調用
-	  window.showNestedModal = showNestedModal;
-	  window.closeNestedModal = closeNestedModal;
 	</script>
-	<!-- ===== 嵌套彈窗專用 JS 控制腳本 End ===== -->
-
-	 
 </body>
 </html>
