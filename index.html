@@ -2,7 +2,7 @@
 <html lang="zh">
 <head>
   <meta charset="UTF-8" name="viewport" content="width=device-width, initial-scale=0.45"/>
-  <title>末日控制中心 - 正式版v.1.01資源更新修正</title>
+  <title>末日控制中心 - 正式版v.1.011資源更新修正</title>
   <style>
     /* 彈窗系統 */
     .modal-overlay {
@@ -2489,58 +2489,56 @@
       updateAllDisplays();
     }
   
-   const scrollManager = (() => {
-	  let isModalOpen = false;
+  // 當觸摸開始時，如果目標位於我們關注的區域內（.modal-content 或 .log），則保存該容器與初始位置。
+	const scrollManager = (() => {
 	  let startY = 0;
-	  let currentContent = null;
+	  let currentContainer = null;
 
-	  // 触摸开始处理
-	  const handleTouchStart = (e) => {
-		if (!isModalOpen || e.touches.length > 1) return;
-		
-		// 寻找最近的滚动容器
-		currentContent = e.target.closest('.modal-content');
-		if (!currentContent) return;
-
-		startY = e.touches[0].clientY;
-	  };
-
-	  // 触摸移动处理
-	  const handleTouchMove = (e) => {
-		 if (!currentContent || e.touches.length > 1) return;
-
-		const deltaY = e.touches[0].clientY - startY;
-		const { scrollTop, scrollHeight, clientHeight } = currentContent;
-		
-		// 计算滚动边界
-		const canScrollDown = deltaY > 0 && scrollTop > 0;
-		const canScrollUp = deltaY < 0 && scrollTop < scrollHeight - clientHeight;
-
-		// 需要阻止默认行为的条件
-		if (canScrollDown || canScrollUp) {
-		  e.preventDefault();
-		  currentContent.scrollTop -= deltaY;
+	  // 當觸摸開始時，如果目標位於我們關注的區域內（.modal-content 或 .log），則保存該容器與初始位置。
+	  function handleTouchStart(e) {
+	    if (e.touches.length > 1) return;
+		// 使用 closest 判斷是否在指定區域內
+		const container = e.target.closest('.modal-content, .log');
+		if (container) {
+		  currentContainer = container;
 		  startY = e.touches[0].clientY;
+		} else {
+		  currentContainer = null;
 		}
-	  };
+	  }
 
-	  // 触摸结束清理
-	  const handleTouchEnd = () => {
-		currentContent = null;
-	  };
+	  // 當觸摸移動時，若已在指定區域內，則阻止事件默認並根據移動距離更新該容器的 scrollTop。
+	  function handleTouchMove(e) {
+		if (e.touches.length > 1) return;
+		if (currentContainer) {
+		  // 無論容器是否實際可滾動，只要是在指定區域就阻止瀏覽器默認滾動
+		  e.preventDefault();
+		  const currentY = e.touches[0].clientY;
+		  const deltaY = currentY - startY;
+		  // 更新容器的滾動值（注意，這是在區域內自定義滾動）
+		  currentContainer.scrollTop -= deltaY;
+		  startY = currentY;
+		}
+	  }
 
-	  // 弹窗状态同步
+	  // 觸摸結束後清空當前容器
+	  function handleTouchEnd(e) {
+		currentContainer = null;
+	  }
+
 	  return {
 		init() {
 		  document.addEventListener('touchstart', handleTouchStart, { passive: false });
 		  document.addEventListener('touchmove', handleTouchMove, { passive: false });
 		  document.addEventListener('touchend', handleTouchEnd);
-		},
-		setModalState(state) {
-		  isModalOpen = state;
 		}
 	  };
 	})();
+
+
+
+
+
 
 	// 弹窗控制函数
 	function showNestedModal(modalId) {
@@ -2554,9 +2552,6 @@
 		modal.style.display = "none";
 	  }
 	}
-
-
-
 
 
 	function updateModalPosition() {
@@ -2804,6 +2799,8 @@
 		  });
 		});
 	});
+	
+	
 	</script>
 </body>
 </html>
