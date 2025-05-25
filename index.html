@@ -2,7 +2,7 @@
 <html lang="zh">
 <head>
   <meta charset="UTF-8" name="viewport" content="width=device-width, initial-scale=0.45"/>
-  <title>末日控制中心 - 正式版v.1.0</title>
+  <title>末日控制中心 - 正式版v.1.01資源更新修正</title>
   <style>
     /* 彈窗系統 */
     .modal-overlay {
@@ -102,7 +102,7 @@
       --border-color: #4a4a4a;
       --hover-bg: #333333;
        /* 基础级别 - 提升亮度和饱和度 */
-	  --junk: #A1887F;     /* 亮棕色 (原色亮度↑35%) */
+	  --junk: #ab4826;     /* 亮棕色 (原色亮度↑35%) */
 	  --old: #BCAAA4;      /* 浅灰棕 (原色亮度↑30%) */
 	  --damaged: #D7CCC8;  /* 浅米灰 (原色亮度↑25%) */
 	  
@@ -127,24 +127,56 @@
       --efficiency-green: #66BB6A;
       --production-blue: #42A5F5;
     }
-	.log-entry.zombie-event {
-	  background-color: rgba(255, 69, 0, 0.2); /* 半透明橙紅色背景 */
-	  color: #DAA520; /* Goldenrod，較柔和的金色 */
-	  font-weight: bold;
-	  border-left: 4px solid #ff4500; /* 用一條醒目的邊框做強調 */
+	.log-entry.junk {
+	  color: var(--junk) !important;
 	}
+	.log-entry.zombie-event {
+	  background-color: rgba(16, 102, 21, 0.2); /* 半透明橙紅色背景 */
+	  color: #2f9936; /* 綠色 */
+	  border-left: 4px solid #106615; /* 用一條醒目的邊框做強調 */
+	  font-weight: bold;
+	  white-space: normal;
+	}
+	/* 收藏頁簽中，針對以 junk 標記的物品，強制顯示正確顏色 */
+	#collectionContent tr.junk,
+	#collectionContent tr.junk td {
+		color: var(--junk) !important;
+	}
+	#collectionContent,
+	#collectionContent td,
+	#collectionContent th {
+		font-weight: bold;
+	}
+	/* 使生產收藏頁面的所有文字加粗 */
+	#productionCollectionContent,
+	#productionCollectionContent td,
+	#productionCollectionContent th {
+		font-weight: bold;
+	}
+
+
 
     /* 基礎布局 */
     body {
       background-color: var(--bg-color);
       color: var(--text-color);
-      font-family: 'Segoe UI', system-ui, sans-serif;
+      font-family: 'Microsoft YaHei', system-ui, sans-serif;
       margin: 0;
       padding: 20px;
       line-height: 1.6;
       min-height: 100vh;
 	  overscroll-behavior-y: contain;
+	  -webkit-font-smoothing: antialiased;
+	  -moz-osx-font-smoothing: grayscale;
+	  text-rendering: optimizeLegibility;
     }
+	@media (max-width: 480px) {
+	  body {
+		font-size: 16px;
+		line-height: 1.5;
+	  }
+	}
+	
     .container {
       display: grid;
       grid-template-columns: 300px 1fr;
@@ -507,6 +539,7 @@
       align-items: baseline;
       gap: 8px;
       font-size: 0.9em;
+	  font-weight: bold;
     }
     .log-entry::before {
       content: "•";
@@ -529,7 +562,7 @@
 	}
     /* 稀有度顏色 */
     /* 基础级别 */
-	.junk { color: var(--junk); }
+	.junk { color: var(--junk) !important; }
 	.old { color: var(--old); }
 	.damaged { color: var(--damaged); }
 
@@ -858,6 +891,22 @@
 
   
   <script>
+	// 【新增】在全局範圍定義稀有度映射，確保所有函數均可訪問
+	var rarityMapping = {
+	  junk: "[破爛的]",
+	  old: "[陳舊的]",
+	  damaged: "[破損的]",
+	  common: "[正常的]",
+	  decent: "[看起來不錯的]",
+	  sealed: "[未開封的]",
+	  selected: "[精挑細選的]",
+	  tested: "[歷經考驗的]",
+	  rare: "[稀有的]",
+	  epic: "[史詩的]",
+	  legendary: "[傳奇的]",
+	  divine: "[神聖的]"
+	};
+
     let ITEM_DATA = {
 	  food: {
 		names: ['罐頭食品', '壓縮餅乾', '軍用口糧', '脫水蔬菜', '肉類罐頭', '水果乾', '能量棒', '即食麥片', '奶粉', '速食湯包', '真空包裝米', '乾燥豆類', '堅果混合物', '巧克力塊', '蜂蜜', '果醬', '魚罐頭', '醃製肉類', '乾燥麵條', '速食馬鈴薯泥', '即食粥', '咖啡粉', '茶包', '糖', '鹽', '食用油', '花生醬', '乾酪', '餅乾', '泡麵', '乾燥蘑菇', '風乾肉條', '穀物棒', '乾燥湯塊', '燕麥片', '玉米罐頭', '番茄罐頭', '燉煮豆罐頭', '壓縮乾糧', '黑糖', '葡萄乾', '椰子粉', '芝麻糊', '速食蛋花湯', '乾燥海帶', '凍乾水果', '牛肉乾', '豬肉鬆', '即食布丁', '乾燥馬鈴薯', '速食咖哩', '罐裝煉乳', '乾燥香腸', '速食味噌湯', '罐裝玉米濃湯', '乾燥南瓜', '速食燉飯', '罐裝燉肉', '乾燥洋蔥', '速食馬鈴薯餅', '罐裝蔬菜湯', '乾燥胡蘿蔔', '速食義大利麵', '罐裝鮪魚', '乾燥高麗菜', '速食濃湯', '罐裝紅豆', '乾燥青豆', '速食炒飯', '罐裝沙丁魚', '乾燥菠菜', '速食玉米粥', '罐裝奶油蘑菇湯', '乾燥甜椒', '速食燉蔬菜', '罐裝雞肉', '乾燥蘋果', '速食南瓜湯', '罐裝牛肉醬', '乾燥香蕉片', '速食馬鈴薯沙拉', '罐裝羊肉', '乾燥鳳梨', '速食蔬菜泥', '罐裝海鮮濃湯', '乾燥藍莓', '速食燉牛肉', '罐裝火腿', '乾燥芒果', '速食燉豆', '罐裝奶油玉米', '乾燥草莓', '速食燉雞', '罐裝番茄醬', '乾燥奇異果', '速食燉魚', '罐裝奶油南瓜湯', '乾燥覆盆子', '速食燉馬鈴薯'],
@@ -878,7 +927,7 @@
 		names: ['廢金屬', '電子元件', '聚合物', '鈦合金', '鋁材', '銅線', '鋼板', '橡膠', '玻璃', '陶瓷', '混凝土', '木材', '塑料', '纖維布', '石墨', '矽膠', '鎂合金', '鉛塊', '鋅板', '鎳片', '錫箔', '碳纖維', '不鏽鋼', '彈簧', '軸承', '齒輪', '螺絲', '螺母', '螺栓', '鐵絲', '鋼纜', '鋁箔', '銅管', '鋼管', 'PVC管', '電線', '絕緣膠帶', '焊錫', '潤滑油', '砂紙', '磨刀石', '砂輪', '鑽頭', '鋸片', '鉗子', '扳手', '錘頭', '螺絲刀', '鐵釘', '鉚釘', '鐵鍊', '掛鉤', '滑輪', '皮帶', '彈簧鋼', '鋁合金', '黃銅', '青銅', '鑄鐵', '鍍鋅鋼', '鎢絲', '鉬片', '鈷粉', '稀土磁鐵', '鋰電池', '太陽能板', '電路板', '電容器', '電阻器', '二極管', '晶體管', '集成電路', '馬達', '發電機', '變壓器', '電磁鐵', '絕緣漆', '防火棉', '隔熱板', '防水布', '防彈玻璃', '碳化矽', '氧化鋁', '氮化硼', '石棉', '玻璃纖維', '環氧樹脂', '聚氨酯', '尼龍繩', '凱夫拉纖維', '聚乙烯', '聚丙烯', '聚碳酸酯', '聚酯薄膜', '矽鋼片', '磁性材料', '超導材料', '陶瓷纖維', '耐火磚', '水泥', '石膏板', '瀝青', '砂石', '黏土', '石灰', '磚塊', '大理石', '花崗岩', '石英砂', '矽藻土'],
 		modifiers: [
 		  { name: '俺拾的', effect: 2.0 },
-		  { name: '廢棄的', effect: 1.8 },
+		  { name: '長期廢棄的', effect: 1.8 },
 		  { name: '高溫鍛壓的', effect: 1.9 },  // 加工工藝
 		  { name: '鏽蝕脆化的', effect: 0.7 },  // 劣化狀態
 		  { name: '電鍍強化的', effect: 2.0 },  // 表面處理
@@ -886,7 +935,7 @@
 		  { name: '輻射硬化的', effect: 1.8 },  // 環境適應
 		  { name: '精密鑄造的', effect: 2.2 },  // 製造精度
 		  { name: '應力斷裂的', effect: 0.5 },  // 結構缺陷
-		  { name: '碳纖維複合', effect: 2.3 },  // 材料類型
+		  { name: '碳纖維複合的', effect: 2.3 },  // 材料類型
 		  { name: '戰前庫存的', effect: 1.7 },  // 時代背景
 		  { name: '液壓成型的', effect: 2.1 }   // 成型技術
 		]
@@ -895,15 +944,15 @@
 		names: ['長劍', '短劍', '彎刀', '戰斧', '雙手斧', '匕首', '長矛', '短矛', '戰錘', '釘頭錘', '鏈枷', '鐮刀', '鉤鐮', '戟', '長柄斧', '武士刀', '太刀', '肋差', '西洋刺劍', '闊劍', '手半劍', '羅馬短劍', '維京斧', '飛斧', '投矛', '飛刀', '狼牙棒', '流星錘', '戰鐮', '雙截棍', '三節棍', '鐵鞭', '鐵尺', '峨眉刺', '鉤爪', '袖箭', '弩箭', '複合弓', '反曲弓', '長弓', 'AK-74M', 'AK-105', 'AK-12', 'AK-101', 'AK-103', 'AKS-74U', 'RPK-16', 'SKS', 'VPO-136', 'VPO-209', 'ADAR 2-15', 'TX-15 DML', 'M4A1', 'HK416', 'SCAR-L', 'FN FAL', 'SR-25', 'M1A', 'RSASS', 'SV-98', 'Mosin Nagant', 'VSS Vintorez', 'AS VAL', 'SR-3M', '9A-91', 'VSK-94', 'MP5', 'MP7', 'P90', 'UMP45', 'Vector', 'PP-19-01 Vityaz', 'PP-91 Kedr', 'MPX', 'MP9', 'MP-155', 'Saiga-12', 'TOZ-106', 'Remington 870', 'Mossberg 590', 'Glock 17', 'Glock 18C', 'M9A3', 'P226', 'TT-33', 'APS', 'Five-seveN', 'Desert Eagle', 'RSh-12', 'SVD', 'DVL-10', 'T-5000', 'M700', 'MK18', 'HK G36', 'AUG A3', 'DT MDR', 'MCX', 'SA-58', 'RPD', 'PKM'],
 		modifiers: [
 		  { name: '生鏽的', effect: 0.9 },
-		  { name: '雷射校準的', effect: 1.6 },  // 調試狀態
-		  { name: '卡彈改裝的', effect: 0.6 },  // 故障類型
+		  { name: '精密校準的', effect: 1.6 },  // 調試狀態
+		  { name: '經常卡殼的', effect: 0.6 },  // 故障類型
 		  { name: '戰術消音的', effect: 1.4 },  // 功能改裝
 		  { name: '鏽蝕黏連的', effect: 0.5 },  // 損壞程度
 		  { name: '複合材料的', effect: 1.7 },  // 材質特性
 		  { name: '強化射速的', effect: 1.8 },  // 射擊模式
 		  { name: '防反光處理的', effect: 1.3 },  // 表面處理
 		  { name: '雙彈匣系統', effect: 1.5 },  // 結構設計
-		  { name: '熱能瞄具的', effect: 1.9 },  // 配件升級
+		  { name: '熱成像瞄具', effect: 1.9 },  // 配件升級
 		  { name: '平衡配重的', effect: 1.2 }   // 人體工學
 		]
 	  },
@@ -911,10 +960,10 @@
 		names: ['電路板', '加密芯片', 'AI核心', '量子處理器', '傳感器模組', '伺服馬達', '固態硬盤', '內存條', 'GPU芯片', 'CPU散熱器', '電源模塊', '藍牙模組', 'WiFi天線', '射頻芯片', '光纖收發器', '觸控面板', '液晶屏幕', 'OLED顯示器', '攝像頭模組', '指紋識別器', '聲波馬達', '微型麥克風', '揚聲器單元', '振動電機', '陀螺儀傳感器', '加速度計', '氣壓傳感器', '溫度傳感器', '濕度傳感器', '紅外線發射器', '激光雷達', '毫米波雷達', 'NFC芯片', 'RFID標籤', '生物識別模組', '語音識別芯片', '神經網絡處理器', '邊緣計算單元', '5G基帶芯片', '衛星通信模塊', '無人機飛控', '機械臂控制器', '工業PLC', '機器視覺鏡頭', '3D打印噴頭', 'CNC控制板', '激光切割頭', '電化學傳感器', '光伏電池板', '鋰電池電芯', '超級電容器', '燃料電池堆', '無線充電線圈', '逆變器模塊', '變壓器組件', '繼電器開關', '電磁閥門', '步進電機', '伺服驅動器', '機器人關節模組', '自動駕駛ECU', '車載雷達', '車規級芯片', '航空電子組件', '衛星姿控系統', '火箭導航芯片', '深空通信終端', '量子加密機', '區塊鏈礦機', '雲服務器主板', '數據中心交換機', '光刻機鏡頭', '半導體蝕刻機', '納米壓印設備', '分子篩膜', '碳納米管材料', '石墨烯晶片', '超導體材料', '柔性電子薄膜', '智能纖維織物', '電子皮膚', '腦機接口探針', '醫療影像探頭', '基因測序儀', '納米機器人', '微流控芯片', '生物傳感器', '人工晶狀體', '仿生義肢', '智能假肢', '外骨骼驅動器', 'AR顯示模組', 'VR定位傳感器', '全息投影儀', '激光投影鏡頭', '智能家居中樞', '物聯網網關', '邊緣服務器', 'AI訓練集群', '超級計算機節點', '量子計算單元'],
 		modifiers: [
 		  { name: '實驗性的', effect: 1.5 },
-		  { name: '防火牆破解', effect: 1.8 },   // 軟體狀態
+		  { name: '破解權限的', effect: 1.8 },   // 軟體狀態
 		  { name: '軍用加密的', effect: 2.4 },   // 安全等級
 		  { name: '過載燒毀的', effect: 0.3 },   // 損壞類型
-		  { name: '模組化設計', effect: 1.7 },   // 結構特性
+		  { name: '模組化設計的', effect: 1.7 },   // 結構特性
 		  { name: '量子加密的', effect: 2.6 },   // 技術層級
 		  { name: '輻射屏蔽的', effect: 1.5 },   // 防護功能
 		  { name: '原型機版本的', effect: 1.9 },   // 開發階段
@@ -1564,7 +1613,7 @@
 		zombieChange: adjustedZombieChange,
 		item: `${modifier.name} ${itemName}`,
 		log: {
-		  text: `探索 ${location} 獲得 ${modifier.name} ${itemName} +${amount} ${resource}`,
+		  text: `探索 ${location} 獲得 ${rarityMapping[rarity]} ${modifier.name} ${itemName} +${amount} ${resource}`,
 		  zombieText: adjustedZombieChange > 0
 					? `⚡ 獲得 ${adjustedZombieChange} 僵尸`
 					: adjustedZombieChange < 0
@@ -1710,7 +1759,7 @@
 		  // 取得原本的遭遇記錄（例如：你派出的僵尸在某地遇到某情況獲得 gain 僵尸）
 		  const encounterMessage = generateZombieEventDescription("increase", gain);
 		  // 在原消息後面添加分配詳情
-		  const distributionMessage = `分配往探索部門 +${toExploration}，種植部門 +${toFarming}，回收部門 +${toRecycling}，科研部門 +${toResearch}`;
+		  const distributionMessage = `探索 +${toExploration}，種植 +${toFarming}，回收 +${toRecycling}，科研 +${toResearch}`;
 		  desc = encounterMessage + distributionMessage;
 	    } else {
 		  const loss = Math.abs(result.zombieChange);
@@ -2010,28 +2059,22 @@
 
 
 	function updateBuildMenuContent(index) {
-	  // 過濾出所有有 baseCost 的建築（排除中心基地）
 	  const available = Object.entries(BUILDINGS)
 		.filter(([key, cfg]) => cfg.baseCost && key.toLowerCase() !== "center");
 
 	  let modalContent = available.map(([key, cfg]) => {
-		// 取得 1 級時的加成情報（可選，用於顯示右側描述）
 		let bonusInfo = "";
 		if (typeof cfg.getUpgradeInfo === "function") {
 		  const info = cfg.getUpgradeInfo(1);
 		  if (info && info.effect) {
 			bonusInfo = Object.entries(info.effect)
-			  .map(([attr, value]) => `${attr}: +${value}`)
+			  .map(([attr, value]) => `${attr}: +${parseFloat(value).toFixed(2)}`)
 			  .join("<br>");
 		  }
 		}
-
-		// 生成所需資源部分的 HTML 內容
 		let costHtml = Object.entries(cfg.baseCost)
-		  .map(([res, val]) => `<span class="cost-item" style="margin-right: 8px;">${res}: ${val}</span>`)
+		  .map(([res, val]) => `<span class="cost-item" style="margin-right: 8px;">${res}: ${parseInt(val)}</span>`)
 		  .join(' ');
-
-		// 檢查當前資源是否足夠支付該建築的基礎成本，決定是否附加「（未滿足）」字樣
 		let unmet = "";
 		if (!canAfford(cfg.baseCost)) {
 		  unmet = " （未滿足）";
@@ -2040,18 +2083,15 @@
 		  <div class="build-box" onclick="startBuilding('${key}', ${index})">
 			<div class="build-top-container">
 			  <div class="build-row">
-				<!-- 左側顯示建築圖示及名稱 -->
 				<div class="build-left">
 				  <span class="build-icon">${getBuildingIcon(key)}</span>
 				  <span class="build-name" style="margin-left:5px; font-weight:bold;">${cfg.name}</span>
 				</div>
-				<!-- 右側顯示 1 級加成描述，僅作參考 -->
 				<div class="build-right">
 				  ${bonusInfo}
 				</div>
 			  </div>
 			</div>
-			<!-- 下方顯示所需資源及是否可建造 -->
 			<div class="build-resources">
 			  ${costHtml}${unmet}
 			</div>
@@ -2060,13 +2100,12 @@
 	  }).join('');
 	  
 	  modalContent += `
-	      <div class="build-box empty"></div>
+		  <div class="build-box empty"></div>
 		  <div class="build-box empty"></div>
 	  `;
-
-	  // 將組合的彈窗內容更新到 DOM 中
 	  document.getElementById('buildOptions').innerHTML = modalContent;
 	}
+
 
 	function closeBuildModal() {
 	  closeNestedModal("buildModal");
@@ -2078,6 +2117,30 @@
 	}
 
 
+	// 每 5 秒檢查一次，如果建造或升級彈窗打開，則刷新其內容
+	setInterval(function() {
+	  // 檢查建造彈窗（buildModal）的狀態
+	  var buildModal = document.getElementById("buildModal");
+	  if (buildModal && buildModal.style.display !== "none" && typeof currentBuildIndex !== "undefined") {
+		updateBuildMenuContent(currentBuildIndex);
+	  }
+	  
+	  // 檢查升級彈窗（upgradeModal）的狀態
+	  var upgradeModal = document.getElementById("upgradeModal");
+	  if (upgradeModal && upgradeModal.style.display !== "none" && typeof currentUpgradeIndex !== "undefined") {
+		updateUpgradeMenuContent(currentUpgradeIndex);
+	  }
+	  
+	  const prodModal = document.getElementById("productionCollectionModal");
+	  if (prodModal && window.getComputedStyle(prodModal).display !== "none") {
+		showProductionCollection();
+	  }
+
+	  const favModal = document.getElementById("favoritesModal");
+	  if (favModal && window.getComputedStyle(favModal).display !== "none") {
+		showCollection();
+	  }
+	}, 5000);
 
 
 
@@ -2246,18 +2309,18 @@
 	  if (!building) return;
 	  const config = BUILDINGS[building.type];
 	  
-	  // 取得當前加成信息
+	  // 取得當前加成信息，保留兩位小數
 	  let currentInfo = "";
 	  if (typeof config.getUpgradeInfo === "function") {
 		const currentUpgrade = config.getUpgradeInfo(building.level);
 		if (currentUpgrade && currentUpgrade.effect) {
 		  currentInfo = Object.entries(currentUpgrade.effect)
-						 .map(([attr, value]) => `${attr}: +${value}`)
+						 .map(([attr, value]) => `${attr}: +${parseFloat(value).toFixed(2)}`)
 						 .join(", ");
 		}
 	  }
 	  
-	  // 取得下一級升級信息
+	  // 取得下一級升級信息，成本保持整數顯示
 	  let nextInfo = "";
 	  const nextUpgrade = (typeof config.getUpgradeInfo === "function")
 							? config.getUpgradeInfo(building.level + 1)
@@ -2265,7 +2328,7 @@
 	  if (nextUpgrade && nextUpgrade.cost) {
 		nextInfo = " ";
 		for (let [res, val] of Object.entries(nextUpgrade.cost)) {
-		  nextInfo += ` ${res}: ${val}`;
+		  nextInfo += ` ${res}: ${parseInt(val)}`;
 		}
 		if (!canAfford(nextUpgrade.cost)) {
 		  nextInfo += " (未滿足)";
@@ -2285,6 +2348,7 @@
 		document.getElementById("demolishBtn").style.display = "inline-block";
 	  }
 	}
+
 
 	function showUpgradeMenu(index) {
 	  currentUpgradeIndex = index;
