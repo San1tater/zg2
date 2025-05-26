@@ -2,7 +2,7 @@
 <html lang="zh">
 <head>
   <meta charset="UTF-8" name="viewport" content="width=device-width, initial-scale=0.45"/>
-  <title>末日控制中心 - 正式版v.1.022ui及日誌修正</title>
+  <title>末日控制中心 - 正式版v.1.03innerhtml update</title>
   <style>
     /* 彈窗系統 */
     .modal-overlay {
@@ -1493,11 +1493,7 @@
 		  div.className += " zombie-event";
 		}
 		// 根據事件類型決定使用 innerHTML 還是 textContent
-		if (eventType === "production") {
-		  div.innerHTML = message;
-		} else {
-		  div.textContent = message;
-		}
+		div.innerHTML = message;
 		
 		// 添加到日誌容器中
 		logElem.appendChild(div);
@@ -1508,6 +1504,7 @@
 		} else {
 		  logElem.scrollTop = previousScrollTop - removedHeight;
 		}
+
 	  }
 	}
 
@@ -2598,6 +2595,15 @@
 	  var modal = document.getElementById(modalId);
 	  if (!modal) return;
 	  modal.style.display = "block";
+	  if (modalId === "buildModal") {
+		let logIds = ["explorationLog", "productionLog"];
+		logIds.forEach(id => {
+		  let logElem = document.getElementById(id);
+		  if (logElem) {
+			logElem.scrollTop = logElem.scrollHeight;
+		  }
+		});
+	  }
 	}
 	function closeNestedModal(modalId) {
 	  var modal = document.getElementById(modalId);
@@ -2752,7 +2758,7 @@
 	    <tbody>`;
 
 	  items.forEach(item => {
-		  html += `<tr>
+		  html += `<tr class="${item.rarity}">
 		    <td style="border:1px solid var(--border-color); padding:5px; text-align: center;">${item.name}</td>
 		    <td style="border:1px solid var(--border-color); padding:5px; text-align: center;">${item.count}</td>
 		  </tr>`;
@@ -2771,6 +2777,7 @@
 	  if (!modal) return;
 	  modal.style.display = 'flex';
 	}
+		
 		
 	// 當文件內容完全加載後啟動遊戲
 	document.addEventListener("DOMContentLoaded", function() {
