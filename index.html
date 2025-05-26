@@ -2,7 +2,7 @@
 <html lang="zh">
 <head>
   <meta charset="UTF-8" name="viewport" content="width=device-width, initial-scale=0.45"/>
-  <title>末日控制中心 - 正式版v.1.021ui及日誌修正</title>
+  <title>末日控制中心 - 正式版v.1.022ui及日誌修正</title>
   <style>
     /* 彈窗系統 */
     .modal-overlay {
@@ -24,12 +24,13 @@
 	  width: min(90vw, 500px);
 	  max-height: 80vh;
 	  overflow-y: auto;
-	  overscroll-behavior: contain; /* 阻止滚动传播 */
+	  overflow-x: visible; /* 允許水平顯示 */
+	  overscroll-behavior-y: contain; /* 仅对垂直方向阻止滚动传播 */
+	  overscroll-behavior-x: auto;    /* 水平方向允許默认处理 */
 	  -webkit-overflow-scrolling: touch; /* 启用弹性滚动 */
 	  position: fixed !important; /* 改用fixed定位 */
 	  left: 50% !important;
 	  top: 20vh !important;
-	  touch-action: pan-y pinch-zoom; /* 允许垂直滚动和缩放 */
 	}
 	.modal-overlay.nested {
 	  overflow: hidden;
@@ -87,6 +88,7 @@
 	#productionCollectionModal .modal-content {
 	  width: 90%;         /* 或直接與行動日誌區同寬 */
 	  max-width: 600px;    /* 根據行動日誌所在區域調整 */
+	  overflow-x: visible;
 	}
 	html {
 	  touch-action: manipulation;
@@ -108,8 +110,8 @@
       --hover-bg: #333333;
        /* 基础级别 - 提升亮度和饱和度 */
 	  --junk: #ab4826;     /* 亮棕色 (原色亮度↑35%) */
-	  --old: #BCAAA4;      /* 浅灰棕 (原色亮度↑30%) */
-	  --damaged: #D7CCC8;  /* 浅米灰 (原色亮度↑25%) */
+	  --old: #d68569;      /* 浅灰棕 (原色亮度↑30%) */
+	  --damaged: #d69e69;  /* 浅米灰 (原色亮度↑25%) */
 	  
 	  /* 普通级别 - 增强对比度 */
 	  --common: #BDBDBD;   /* 亮灰色 (原色亮度↑30%) */
@@ -414,11 +416,15 @@
       box-shadow: 0 0 10px var(--uncommon);
     }
 	 .build-box {
+	  height: 150px;
+	  display: flex;
+	  flex-direction: column;
 	  border: 1px solid var(--border-color);  /* 始終顯示邊框 */
 	  background-color: #2d2d2d;
 	  border-radius: 8px;
 	  padding: 10px;
 	  margin: 10px 0;
+	  margin-bottom: 10px;
 	  transition: background 0.2s;
 	  cursor: pointer;
 	}
@@ -450,19 +456,6 @@
 	.cost-item {
 	  display: inline-block;
 	  margin-right: 8px;
-	}
-	
-	
-	/* 固定每個建造卡片高度 */
-	.build-box {
-	  height: 150px;
-	  display: flex;
-	  flex-direction: column;
-	  border: 1px solid var(--border-color);
-	  border-radius: 8px;
-	  margin-bottom: 10px;
-	  padding: 10px;
-	  cursor: pointer;
 	}
 
 	.build-box.empty {
@@ -566,7 +559,6 @@
 	  max-height: 600px;
 	}
 	
-	}
     /* 稀有度顏色 */
     /* 基础级别 */
 	.junk { color: var(--junk) !important; }
@@ -1805,7 +1797,7 @@
       if (Math.random() < 0.05) {
         const modifier = getRandomModifier(resource);
         const modAmount = convertProduction(amount * modifier.effect);
-		const modColor = (modifier.effect < 1) ? "var(--damaged)" : "var(--sealed)";
+		const modColor = (modifier.effect < 1) ? "var(--junk)" : "var(--sealed)";
 		const styledItemName = `<span style="color: ${modColor}; font-weight: bold; display: inline-block; white-space: nowrap;">${modifier.name} ${getRandomItemName(resource)}</span>`;
         logResource(resource, styledItemName, modAmount, "production");
 		} else {
@@ -2528,51 +2520,54 @@
 	  }
 
 	  function handleTouchStart(e) {
-		// 允許雙指縮放
-		if (e.touches.length > 1) {
-		  currentContainer = null;
-		  isVerticalGesture = null;
-		  return;
+		  if (e.touches.length > 1) {
+			currentContainer = null;
+			isVerticalGesture = null;
+			return;
+		  }
+		  if (e.target.closest('#favoritesModal')) {
+			currentContainer = document.querySelector('#favoritesModal .modal-content');
+		  } else if (e.target.closest('#productionCollectionModal')) {
+			currentContainer = document.querySelector('#productionCollectionModal .modal-content');
+		  } else if (e.target.closest('#buildModal')) {
+			currentContainer = document.querySelector('#buildModal .modal-content');
+		  } else {
+			const container = e.target.closest('.modal-content, .log');
+			currentContainer = container && isScrollable(container) ? container : null;
+		  }
+		  if (currentContainer) {
+			startX = e.touches[0].clientX;
+			startY = e.touches[0].clientY;
+			isVerticalGesture = null;
+		  }
 		}
-		// 僅根據起始位置決定目標容器（例如 .modal-content 或 .log）
-		const container = e.target.closest('.modal-content, .log');
-		if (container && isScrollable(container)) {
-		  currentContainer = container;
-		  startX = e.touches[0].clientX;
-		  startY = e.touches[0].clientY;
-		  // 尚未確定是否為垂直手勢
-		  isVerticalGesture = null;
-		} else {
-		  currentContainer = null;
-		}
-	  }
+
+
 
 	  function handleTouchMove(e) {
-		if (e.touches.length > 1 || !currentContainer) return;
+		  if (e.touches.length > 1 || !currentContainer) return;
 		  
-		const currentX = e.touches[0].clientX;
-		const currentY = e.touches[0].clientY;
-		const deltaX = currentX - startX;
-		const deltaY = currentY - startY;
-
-		// 如果還沒確定此次觸摸操作是否屬於垂直手勢，就在第一次 touchmove 時決定
-		if (isVerticalGesture === null) {
-		  // 注意：如果 deltaY 幾乎為 0，則視為非垂直手勢
-		  const angle = Math.abs(deltaY) < 1 
-			? 90 
-			: Math.atan(Math.abs(deltaX) / Math.abs(deltaY)) * (180 / Math.PI);
-		  isVerticalGesture = angle < verticalThreshold;
+		  const currentX = e.touches[0].clientX;
+		  const currentY = e.touches[0].clientY;
+		  const deltaX = currentX - startX;
+		  const deltaY = currentY - startY;
+		  
+		  if (isVerticalGesture === null) {
+			const angle = Math.atan2(Math.abs(deltaX), Math.abs(deltaY)) * (180 / Math.PI);
+			isVerticalGesture = angle < verticalThreshold;
+		  }
+		  
+		  if (isVerticalGesture) {
+			e.preventDefault();
+			e.stopPropagation();
+			currentContainer.scrollTop -= deltaY;
+		  }
+		  
+		  startX = currentX;
+		  startY = currentY;
 		}
 
-		// 如果此次觸摸操作被初始判定為垂直手勢，就阻止默認行為並更新當前容器的 scrollTop
-		if (isVerticalGesture) {
-		  e.preventDefault();
-		  currentContainer.scrollTop -= deltaY;
-		}
-		// 不更新 currentContainer，而只更新起始位置供下一次計算
-		startX = currentX;
-		startY = currentY;
-	  }
+
 
 	  function handleTouchEnd(e) {
 		// 清空本次觸摸相關數據
@@ -2636,9 +2631,6 @@
 	  document.getElementById(modalId).style.display = 'none';
 	}
 
-
-	// 初始化
-	scrollManager.init();
 	// 视觉视口监听器
 	let currentScale = 1;
 	const viewportHandler = () => {
