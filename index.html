@@ -2,7 +2,7 @@
 <html lang="zh">
 <head>
   <meta charset="UTF-8" name="viewport" content="width=device-width, initial-scale=0.45"/>
-  <title>末日控制中心 - 正式版v.1.02ui及日誌修正</title>
+  <title>末日控制中心 - 正式版v.1.021ui及日誌修正</title>
   <style>
     /* 彈窗系統 */
     .modal-overlay {
@@ -63,19 +63,23 @@
 
 	#upgradeModal .modal-content {
 	  position: absolute;
-	  top: calc(100vh - 700px); /* 根據頁面高度下移 */
 	  left: 50%;
 	  transform: translate(-50%, 0); /* 使其居中 */
 	}
 	#resultModal .modal-content {
 	  position: absolute;
-	  top: calc(100vh - 750px); /* 調整高度，使其比升級彈窗略低 */
 	  left: 50%;
 	  transform: translate(-50%, 0);
+	}
+	#resultModal .modal-content,
+	#resultModal .modal-content p {
+		text-align: center;
 	}
 	#buildModal .modal-content {
 	  max-height: 600px; /* 或根據需要調整 */
 	}
+	
+
 
 
 	/* 收藏彈窗繼承現有 modal 的樣式，若需要與行動日誌區重合，可加入如下設定 */
@@ -674,7 +678,7 @@
 	  .modal-content {
 		width: min(41vw, 400px);
 		margin: 0 auto;
-  }
+      }
 	}
     @media (max-width: 480px) {
       .building-system { padding: 1rem; }
@@ -1110,23 +1114,38 @@
 
 	
 	function showTempMessage(message) {
+	  // 找到基地建設容器（必須確保該容器設置 position: relative）
+	  let buildingContainer = document.getElementById("buildingSystem");
+	  if (!buildingContainer) {
+		// 若不存在則退回 body
+		buildingContainer = document.body;
+	  }
+
+	  // 創建提示元素
 	  let tempDiv = document.createElement("div");
-	  tempDiv.style.position = "fixed";
-	  tempDiv.style.top = "20%"; // 可根據需要調整顯示位置
-	  tempDiv.style.left = "50%";
-	  tempDiv.style.transform = "translate(-50%, 0)";
+	  tempDiv.style.position = "absolute";  // 絕對定位相對於父容器
+	  tempDiv.style.top = "0";                // 上緣貼齊父容器頂部
+	  tempDiv.style.left = "50%";             // 水平居中
+	  tempDiv.style.transform = "translateX(-50%)";
 	  tempDiv.style.background = "#333";
 	  tempDiv.style.color = "#FFF";
 	  tempDiv.style.padding = "1em 2em";
 	  tempDiv.style.borderRadius = "12px";
-	  tempDiv.style.zIndex = "1100"; // 比升級彈窗層次高
+	  tempDiv.style.zIndex = "1100";          // 確保提示層級高於其它內容
 	  tempDiv.style.boxShadow = "0 4px 12px rgba(0,0,0,0.3)";
 	  tempDiv.textContent = message;
-	  document.body.appendChild(tempDiv);
+
+	  // 將提示添加到基地建設容器中
+	  buildingContainer.appendChild(tempDiv);
+
+	  // 300 毫秒後自動移除提示
 	  setTimeout(function() {
-		tempDiv.parentNode.removeChild(tempDiv);
+		if (tempDiv.parentNode) {
+		  tempDiv.parentNode.removeChild(tempDiv);
+		}
 	  }, 300);
 	}
+
 
 
 	
@@ -2169,29 +2188,6 @@
 	}, 5000);
 
 
-
-	function startBuilding(type, index) {
-	  const config = BUILDINGS[type];
-	  // 使用 baseCost 來判定初始建造成本
-	  if (!canAfford(config.baseCost)) {
-		addEventLog(`❌ 資源不足，無法建造 ${config.name}`, 'epic');
-		return;
-	  }
-	  payCost(config.baseCost);
-	  gameState.buildings[index] = {
-		type,
-		level: 1,
-		upgradable: checkUpgradable(type, 1)
-	  };
-	  updateEfficiencies();
-	  addEventLog(`🏗️ 成功建造 ${config.name}`, 'uncommon');
-	  closeModal('buildModal');
-	  updateAllDisplays();
-	  
-	  // 透過彈窗提示建造成功
-	  showResultModal(`成功建造 ${config.name}`);
-	}
-
   
     function updateEfficiencies() {
 	  // 重置所有效率
@@ -2324,6 +2320,7 @@
 	  document.getElementById("resultMessage").textContent = message;
 	  showNestedModal("resultModal");
 	}
+	
 
 	function closeResultModal() {
 	  closeNestedModal("resultModal");
@@ -2469,13 +2466,14 @@
 	function confirmBuildingRemoval(index) {
 	  const building = gameState.buildings[index];
 	  if (!building) return;
+	  closeNestedModal("upgradeModal");
+	  console.log("upgradeModal 已關閉");
 	  let confirmRemoval = confirm(`確定要拆除 ${BUILDINGS[building.type].name}？此操作不可逆！`);
 	  if (!confirmRemoval) return;
 	  
 	  gameState.buildings[index] = null;
 	  addEventLog(`🏗️ ${BUILDINGS[building.type].name} 已被拆除`, "warning");
 	  updateAllDisplays();
-	  closeModal("interactionModal");
 	  showResultModal(`已拆除 ${BUILDINGS[building.type].name}`);
 	}
 
@@ -2607,6 +2605,7 @@
 	function closeNestedModal(modalId) {
 	  var modal = document.getElementById(modalId);
 	  if (modal) {
+	    console.log(`Closing modal: ${modalId}`);
 		modal.style.display = "none";
 	  }
 	}
@@ -2635,8 +2634,8 @@
 
 	function closeModal(modalId) {
 	  document.getElementById(modalId).style.display = 'none';
-	  scrollManager.setModalState(false);
 	}
+
 
 	// 初始化
 	scrollManager.init();
