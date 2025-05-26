@@ -2524,6 +2524,14 @@
 			isVerticalGesture = null;
 			return;
 		  }
+		  const logContainer = e.target.closest('#explorationLog, #productionLog');
+		  currentContainer = logContainer && isScrollable(logContainer) ? logContainer : null;
+		  
+		  if (currentContainer) {
+			startX = e.touches[0].clientX;
+			startY = e.touches[0].clientY;
+			isVerticalGesture = null;
+		  }
 		  if (e.target.closest('#favoritesModal .modal-content')) {
 			currentContainer = document.querySelector('#favoritesModal .modal-content');
 		  } else if (e.target.closest('#productionCollectionModal.modal-content')) {
