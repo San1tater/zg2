@@ -2,7 +2,7 @@
 <html lang="zh">
 <head>
   <meta charset="UTF-8" name="viewport" content="width=device-width, initial-scale=0.45"/>
-  <title>末日控制中心 - 正式版v.1.011資源更新修正</title>
+  <title>末日控制中心 - 正式版v.1.02ui及日誌修正</title>
   <style>
     /* 彈窗系統 */
     .modal-overlay {
@@ -92,8 +92,9 @@
 	}
 	
 	.log {
-	  overflow-y: auto;
+	  overflow-y: scroll;
 	  overflow-anchor: none;
+	  scrollbar-gutter: stable;
 	}
 
     :root {
@@ -552,11 +553,13 @@
 	  left: 50% !important;
 	  /* 為了讓整個彈窗以自身中心作水平定位 */
 	  transform: translateX(-50%) !important;
+	  max-height: 600px; 
 	}
 	#productionCollectionModal .modal-content {
 	  position: fixed !important;
 	  left: 50% !important;
 	  transform: translateX(-50%) !important;
+	  max-height: 600px;
 	}
 	
 	}
@@ -610,6 +613,10 @@
 	  animation: 
 		divine-shine 3s infinite alternate;
 	}
+	.upgrade-indicator.upgrade-available {
+	  color: green;
+	}
+
 
 	/* 动画定义 */
 	@keyframes pulse {
@@ -1455,46 +1462,39 @@
 	  let logContainerId = (eventType === "production") ? "productionLog" : "explorationLog";
 	  const logElem = document.getElementById(logContainerId);
 	  if (logElem) {
-		 const maxLogs = 100;
+		const previousScrollTop = logElem.scrollTop;
+		const isAtBottom = (logElem.scrollTop + logElem.clientHeight >= logElem.scrollHeight - 5);
+		const maxLogs = 100;
+		let removedHeight = 0;
 		while (logElem.childElementCount >= maxLogs) {
-		  logElem.removeChild(logElem.firstChild);
+		  const first = logElem.firstElementChild;
+		  removedHeight += first.offsetHeight;
+		  logElem.removeChild(first);
 		}
 		// 定義稀有度映射對象
-		const rarityMapping = {
-		  junk: "[破爛的]",
-		  old: "[陳舊的]",
-		  damaged: "[破損的]",
-		  common: "[正常的]",
-		  decent: "[看起來不錯的]",
-		  sealed: "[未開封的]",
-		  selected: "[精挑細選的]",
-		  tested: "[歷經考驗的]",
-		  rare: "[稀有的]",
-		  epic: "[史詩的]",
-		  legendary: "[傳奇的]",
-		  divine: "[神聖的]"
-		};
-		const formattedMessage = message.replace(
-		  new RegExp(rarity + "\\b"), 
-		  rarityMapping[rarity] || rarity
-		);
-		
+		// 創建新的日誌元素
 		const div = document.createElement("div");
 		div.className = `log-entry ${rarity}`;
-		if(eventType === "zombie") {
+		// 當事件類型為 "zombie" 或要求使用 zombie 樣式時添加對應class
+		if (eventType === "zombie" || applyZombieStyle) {
 		  div.className += " zombie-event";
 		}
-		if(applyZombieStyle) {
-		  div.className += " zombie-event";
-		}
+		// 根據事件類型決定使用 innerHTML 還是 textContent
 		if (eventType === "production") {
 		  div.innerHTML = message;
 		} else {
 		  div.textContent = message;
 		}
 		
+		// 添加到日誌容器中
 		logElem.appendChild(div);
-		logElem.scrollTop = logElem.scrollHeight;
+		
+		// 更新滾動：如果用戶在底部，則滾動到底部；如果不在底部，則調整 scrollTop，以讓原有數據上移被刪除訊息的高度
+		if (isAtBottom) {
+		  logElem.scrollTop = logElem.scrollHeight;
+		} else {
+		  logElem.scrollTop = previousScrollTop - removedHeight;
+		}
 	  }
 	}
 
@@ -1986,36 +1986,60 @@
     }
   
     /***** 建築管理系統 *****/
-    function initBuildingGrid() {
-      const grid = document.getElementById('buildingGrid');
-      grid.innerHTML = '';
-      gameState.buildings.forEach((building, index) => {
-        const tile = document.createElement('div');
-        tile.className = `tile ${building?.upgradable ? 'upgradable' : ''}`;
-        tile.setAttribute('data-index', index);
-        tile.onclick = () => {
-          console.log("Tile clicked, index:", index);
-          handleBuildingClick(index);
-        };
-        if (building) {
-          const config = BUILDINGS[building.type];
-          tile.innerHTML = `
-            <div class="building-icon">${getBuildingIcon(building.type)}</div>
-            <div class="building-info">
-              <div>${config.name}</div>
-              <div class="building-level">Lv.${building.level}</div>
-            </div>
-            ${building.upgradable ? '<div class="upgrade-indicator">↑</div>' : ''}
-          `;
-        } else {
-          tile.innerHTML = `
-            <div class="empty-plot">🟦</div>
-            <div class="plot-label">空地</div>
-          `;
-        }
-        grid.appendChild(tile);
-      });
-    }
+	function initBuildingGrid() {
+	  const grid = document.getElementById('buildingGrid');
+	  grid.innerHTML = '';
+	  gameState.buildings.forEach((building, index) => {
+		const tile = document.createElement('div');
+		let tileClass = "tile";
+		if (building && building.upgradable) {
+		  tileClass += " upgradable";
+		}
+		tile.className = tileClass;
+		tile.setAttribute('data-index', index);
+		tile.onclick = () => {
+		  console.log("Tile clicked, index:", index);
+		  handleBuildingClick(index);
+		};
+
+		if (building) {
+		  const config = BUILDINGS[building.type];
+		  // 判斷是否可以升級：如果建築標記可升級且資源足夠進行下一級升級
+		  let canUpgrade = false;
+		  if (building.upgradable) {
+			const upgradeInfo = config.getUpgradeInfo(building.level + 1);
+			if (upgradeInfo && canAfford(upgradeInfo.cost)) {
+			  canUpgrade = true;
+			}
+		  }
+		  
+		  // 組合建築資訊的 HTML，如果可升級則增加一個箭頭元素，並且如果可升級則附加 "upgrade-available" class
+		  tile.innerHTML = `
+			<div class="building-icon">${getBuildingIcon(building.type)}</div>
+			<div class="building-info">
+			  <div>${config.name}</div>
+			  <div class="building-level">Lv.${building.level}</div>
+			</div>
+			${building.upgradable 
+				? `<div class="upgrade-indicator ${canUpgrade ? "upgrade-available" : ""}">↑</div>` 
+				: '' }
+		  `;
+		  // 如果可以升級，將整個 tile 邊框設為綠色
+		  if (canUpgrade) {
+			tile.style.borderColor = "green";
+		  }
+		} else {
+		  // 針對空地
+		  tile.innerHTML = `
+			<div class="empty-plot">🟦</div>
+			<div class="plot-label">空地</div>
+		  `;
+		}
+		
+		grid.appendChild(tile);
+	  });
+	}
+
   
     function handleBuildingClick(index) {
 	  const building = gameState.buildings[index];
@@ -2493,39 +2517,69 @@
   
   // 當觸摸開始時，如果目標位於我們關注的區域內（.modal-content 或 .log），則保存該容器與初始位置。
 	const scrollManager = (() => {
-	  let startY = 0;
+	  let startX = 0, startY = 0;
 	  let currentContainer = null;
+	  // 用來標記這次觸摸操作是否是垂直手勢（只在第一次 touchmove 時確定）
+	  let isVerticalGesture = null; 
+	  // 垂直角度閾值（單位：度）
+	  const verticalThreshold = 30; 
 
-	  // 當觸摸開始時，如果目標位於我們關注的區域內（.modal-content 或 .log），則保存該容器與初始位置。
+	  // 檢查元素是否具有垂直滾動功能
+	  function isScrollable(el) {
+		return el && el.scrollHeight > el.clientHeight;
+	  }
+
 	  function handleTouchStart(e) {
-	    if (e.touches.length > 1) return;
-		// 使用 closest 判斷是否在指定區域內
+		// 允許雙指縮放
+		if (e.touches.length > 1) {
+		  currentContainer = null;
+		  isVerticalGesture = null;
+		  return;
+		}
+		// 僅根據起始位置決定目標容器（例如 .modal-content 或 .log）
 		const container = e.target.closest('.modal-content, .log');
-		if (container) {
+		if (container && isScrollable(container)) {
 		  currentContainer = container;
+		  startX = e.touches[0].clientX;
 		  startY = e.touches[0].clientY;
+		  // 尚未確定是否為垂直手勢
+		  isVerticalGesture = null;
 		} else {
 		  currentContainer = null;
 		}
 	  }
 
-	  // 當觸摸移動時，若已在指定區域內，則阻止事件默認並根據移動距離更新該容器的 scrollTop。
 	  function handleTouchMove(e) {
-		if (e.touches.length > 1) return;
-		if (currentContainer) {
-		  // 無論容器是否實際可滾動，只要是在指定區域就阻止瀏覽器默認滾動
-		  e.preventDefault();
-		  const currentY = e.touches[0].clientY;
-		  const deltaY = currentY - startY;
-		  // 更新容器的滾動值（注意，這是在區域內自定義滾動）
-		  currentContainer.scrollTop -= deltaY;
-		  startY = currentY;
+		if (e.touches.length > 1 || !currentContainer) return;
+		  
+		const currentX = e.touches[0].clientX;
+		const currentY = e.touches[0].clientY;
+		const deltaX = currentX - startX;
+		const deltaY = currentY - startY;
+
+		// 如果還沒確定此次觸摸操作是否屬於垂直手勢，就在第一次 touchmove 時決定
+		if (isVerticalGesture === null) {
+		  // 注意：如果 deltaY 幾乎為 0，則視為非垂直手勢
+		  const angle = Math.abs(deltaY) < 1 
+			? 90 
+			: Math.atan(Math.abs(deltaX) / Math.abs(deltaY)) * (180 / Math.PI);
+		  isVerticalGesture = angle < verticalThreshold;
 		}
+
+		// 如果此次觸摸操作被初始判定為垂直手勢，就阻止默認行為並更新當前容器的 scrollTop
+		if (isVerticalGesture) {
+		  e.preventDefault();
+		  currentContainer.scrollTop -= deltaY;
+		}
+		// 不更新 currentContainer，而只更新起始位置供下一次計算
+		startX = currentX;
+		startY = currentY;
 	  }
 
-	  // 觸摸結束後清空當前容器
 	  function handleTouchEnd(e) {
+		// 清空本次觸摸相關數據
 		currentContainer = null;
+		isVerticalGesture = null;
 	  }
 
 	  return {
@@ -2536,6 +2590,8 @@
 		}
 	  };
 	})();
+	scrollManager.init();
+
 
 
 
