@@ -86,8 +86,8 @@
 	/* 收藏彈窗繼承現有 modal 的樣式，若需要與行動日誌區重合，可加入如下設定 */
 	#favoritesModal .modal-content,
 	#productionCollectionModal .modal-content {
-	  width: 90%;         /* 或直接與行動日誌區同寬 */
-	  max-width: 600px;    /* 根據行動日誌所在區域調整 */
+	  width: 60%;         /* 或直接與行動日誌區同寬 */
+	  max-width: 400px;    /* 根據行動日誌所在區域調整 */
 	  overflow-x: visible;
 	}
 	html {
@@ -1100,7 +1100,7 @@
 	  const completionElem = document.getElementById("collectionCompletion");
 	  if (completionElem) {
 		// 即使數值為 0，也顯示0/總數: 0.0%
-		completionElem.textContent = `收集進度: ${obtained}/${total}(${percentage.toFixed(3)}%)`;
+		completionElem.textContent = `${obtained}/${total}(${percentage.toFixed(3)}%)`;
 	  }
 	}
 
@@ -1153,19 +1153,21 @@
 	  
 	  // 生成表格 HTML
 	  let html = `<table style="width:100%; border-collapse:collapse;"> 
-		<thead>
-		  <tr>
-			<th style="border:1px solid var(--border-color); padding:5px;">物品名稱</th>
-			<th style="border:1px solid var(--border-color); padding:5px;">獲得次數</th>
-		  </tr>
-		</thead>
-		<tbody>`;
+	  <thead>
+		<tr>
+		  <th style="border:1px solid var(--border-color); padding:5px; text-align: center;">物品名稱</th>
+		  <th style="border:1px solid var(--border-color); padding:5px; text-align: center;">獲得次數</th>
+		</tr>
+	  </thead>
+	  <tbody>`;
+
 	  
 	  prodItems.forEach(item => {
 		html += `<tr>
-		  <td style="border:1px solid var(--border-color); padding:5px;">${item.name}</td>
-		  <td style="border:1px solid var(--border-color); padding:5px; text-align:right;">${item.count}</td>
+		  <td style="border:1px solid var(--border-color); padding:5px; text-align: center;">${item.name}</td>
+		  <td style="border:1px solid var(--border-color); padding:5px; text-align: center;">${item.count}</td>
 		</tr>`;
+
 	  });
 	  html += `</tbody></table>`;
 	  
@@ -2525,11 +2527,11 @@
 			isVerticalGesture = null;
 			return;
 		  }
-		  if (e.target.closest('#favoritesModal')) {
+		  if (e.target.closest('#favoritesModal .modal-content')) {
 			currentContainer = document.querySelector('#favoritesModal .modal-content');
-		  } else if (e.target.closest('#productionCollectionModal')) {
+		  } else if (e.target.closest('#productionCollectionModal.modal-content')) {
 			currentContainer = document.querySelector('#productionCollectionModal .modal-content');
-		  } else if (e.target.closest('#buildModal')) {
+		  } else if (e.target.closest('#buildModal.modal-content')) {
 			currentContainer = document.querySelector('#buildModal .modal-content');
 		  } else {
 			const container = e.target.closest('.modal-content, .log');
@@ -2741,18 +2743,20 @@
 
 	  // 組合 HTML：只顯示物品名稱和獲得次數
 	  let html = `<table style="width:100%; border-collapse:collapse;"> 
-		<thead>
+	    <thead>
 		  <tr>
-			<th style="border:1px solid var(--border-color); padding:5px;">物品名稱</th>
-			<th style="border:1px solid var(--border-color); padding:5px;">獲得次數</th>
+		    <th style="border:1px solid var(--border-color); padding:5px; text-align: center;">物品名稱</th>
+		    <th style="border:1px solid var(--border-color); padding:5px; text-align: center;">獲得次數</th>
 		  </tr>
-		</thead>
-		<tbody>`;
+	    </thead>
+	    <tbody>`;
+
 	  items.forEach(item => {
-		  html += `<tr class="${item.rarity}">
-			<td style="border:1px solid var(--border-color); padding:5px;">${item.name}</td>
-			<td style="border:1px solid var(--border-color); padding:5px;">${item.count}</td>
+		  html += `<tr>
+		    <td style="border:1px solid var(--border-color); padding:5px; text-align: center;">${item.name}</td>
+		    <td style="border:1px solid var(--border-color); padding:5px; text-align: center;">${item.count}</td>
 		  </tr>`;
+
 	  });
 	  html += `</tbody></table>`;
 
