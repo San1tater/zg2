@@ -2,7 +2,7 @@
 <html lang="zh">
 <head>
   <meta charset="UTF-8" name="viewport" content="width=device-width, initial-scale=0.45"/>
-  <title>末日控制中心 - 正式版v.1.03innerhtml update</title>
+  <title>末日控制中心 - 正式版v.1.04 localsave update</title>
   <style>
     /* 彈窗系統 */
     .modal-overlay {
@@ -700,7 +700,10 @@
    <div class="grid-item" id="resourceDashboard">
     <!-- 左側資源面板 -->
     <div class="dashboard">
-      <h2 class="section-title">🏚️ 末日指揮中心</h2>
+      <h2 class="section-title">
+		🏚️ 末日指揮中心
+		<button id="resetProgressBtn" class="modal-btn" style="margin-left: 10px;">重置存檔</button>
+	  </h2>
       <div class="resource-panel">
         <div class="resource-group">
           <div class="resource-header" onclick="toggleResource('food')">
@@ -1472,6 +1475,9 @@
 
 	/***** 探索隊及僵尸事件處理 *****/
 	function addEventLog(message, rarity, eventType = "exploration", applyZombieStyle = false) {
+	  if (eventType === "production") {
+		message = message.replace(/\n/g, "<br>");
+	  }
 	  let logContainerId = (eventType === "production") ? "productionLog" : "explorationLog";
 	  const logElem = document.getElementById(logContainerId);
 	  if (logElem) {
@@ -2725,10 +2731,110 @@
       gameState.allocations.research = 1;
     }
   
-    function autoSave() {
-      console.log("遊戲已自動存檔");
-    }
-  
+    /*******************
+	 * 存档相关代码
+	 *******************/
+
+	// 保存游戏进度的函数
+	function saveGameState() {
+	  try {
+		// 计算已经流逝的时间
+		const elapsedTime = Date.now() - window.startTime;
+		const saveData = {
+		  gameState: gameState,
+		  collectedItems: collectedItems,
+		  elapsedTime: elapsedTime
+		};
+		localStorage.setItem("gameSave", JSON.stringify(saveData));
+		console.log("游戏进度已保存");
+	  } catch (err) {
+		console.error("保存游戏进度失败：", err);
+	  }
+	}
+
+	// 加载存档的函数
+	function loadGameState() {
+	  const saved = localStorage.getItem("gameSave");
+	  if (saved) {
+		try {
+		  const saveData = JSON.parse(saved);
+		  if (saveData.gameState) {
+			gameState = saveData.gameState;
+		  }
+		  if (saveData.collectedItems) {
+			collectedItems = saveData.collectedItems;
+		  }
+		  if (saveData.elapsedTime) {
+			// 重设 startTime 使计时器继续走
+			window.startTime = Date.now() - saveData.elapsedTime;
+		  } else {
+			window.startTime = Date.now();
+		  }
+		  console.log("已恢复保存的游戏进度");
+		} catch (err) {
+		  console.error("解析游戏存档失败：", err);
+		  window.startTime = Date.now();
+		}
+	  } else {
+		console.log("无已保存进度，使用初始状态");
+		window.startTime = Date.now();
+	  }
+	}
+
+	// 新增：手动重置存档（清空存档和重置游戏状态）
+	function confirmResetProgress() {
+	  if (confirm("确定要重置存档吗？此操作不可逆！")) {
+		localStorage.removeItem("gameSave");
+		// 重置全局变量为初始状态
+		gameState = {
+		  resources: { food: 100, materials: 100, weapons: 50, tech: 20 },
+		  resetCounts: { food: 0, materials: 0, weapons: 0, tech: 0 },
+		  resetCounter: 0,
+		  totalZombies: 10,
+		  allocations: { exploration: 4, farming: 4, recycling: 1, research: 1 },
+		  buildings: new Array(9).fill(null).map((_, i) =>
+			i === 4 ? { type: 'center', level: 1, upgradable: true } : null),
+		  explorationMilestone: 10,
+		  efficiency: { food: 1, materials: 1, weapons: 1, tech: 1, exploration: 1 }
+		};
+		collectedItems = {};
+		window.startTime = Date.now();
+		updateAllDisplays();
+		showTempMessage("进度已重置");
+	  }
+	}
+
+	/*******************
+	 * 合并 DOMContentLoaded 初始化代码
+	 *******************/
+	document.addEventListener("DOMContentLoaded", function() {
+	  
+	  // 绑定重置存档按钮（假定该按钮已在 HTML 中放在末日指挥中心标题旁边，id="resetProgressBtn"）
+	  const resetBtn = document.getElementById("resetProgressBtn");
+	  if (resetBtn) {
+		resetBtn.addEventListener("click", confirmResetProgress);
+	  }
+	  
+	  // 尝试加载存档
+	  loadGameState();
+	  
+	  // 初始化游戏（使用存档或初始状态）
+	  initGame();
+	  
+	  // 初始化计时器：updateTimer 每秒更新，计时器依据 window.startTime 计算已流逝时间
+	  setInterval(updateTimer, 1000);
+	  
+	  // 在浏览器刷新/离开前自动保存
+	  window.addEventListener("beforeunload", saveGameState);
+	  
+	  // 定时保存（例如每10秒保存一次）
+	  setInterval(saveGameState, 10000);
+	});
+
+
+
+
+	
 	 
 	function showCollection() {
 	  // 定義依稀有度排序的順序
@@ -2786,7 +2892,23 @@
 	  modal.style.display = 'flex';
 	}
 		
-		
+	function updateTimer() {
+	  const now = Date.now();
+	  const elapsed = now - window.startTime; // window.startTime 应该已初始化
+	  const seconds = Math.floor((elapsed / 1000) % 60);
+	  const minutes = Math.floor((elapsed / 60000) % 60);
+	  const hours = Math.floor(elapsed / 3600000);
+	  const formattedTime = 
+		String(hours).padStart(2, '0') + ":" +
+		String(minutes).padStart(2, '0') + ":" +
+		String(seconds).padStart(2, '0');
+	  const timerElem = document.getElementById("timerValue");
+	  if (timerElem) {
+		timerElem.textContent = formattedTime;
+	  }
+	}
+
+	
 	// 當文件內容完全加載後啟動遊戲
 	document.addEventListener("DOMContentLoaded", function() {
 		initGame();
@@ -2795,29 +2917,6 @@
 		  if (favBtn) {
 			favBtn.addEventListener("click", showCollection);
 		  }
-		// 記錄計時開始的時間
-		let startTime = Date.now();
-
-		// 更新計時器顯示
-		function updateTimer() {
-		  const now = Date.now();
-		  const elapsed = now - startTime; // 毫秒數
-		  const seconds = Math.floor((elapsed / 1000) % 60);
-		  const minutes = Math.floor((elapsed / 60000) % 60);
-		  const hours = Math.floor(elapsed / 3600000);
-
-		  // 補齊兩位數格式
-		  const formattedTime = 
-			String(hours).padStart(2, '0') + ":" +
-			String(minutes).padStart(2, '0') + ":" +
-			String(seconds).padStart(2, '0');
-		  
-		  // 更新 DOM 中計時器顯示
-		  const timerElem = document.getElementById('timerValue');
-		  if (timerElem) {
-			timerElem.textContent = formattedTime;
-		  }
-		}
 
 		// 每秒更新一次
 		setInterval(updateTimer, 1000);
