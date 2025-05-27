@@ -558,6 +558,12 @@
 	  transform: translateX(-50%) !important;
 	  max-height: 600px;
 	}
+	#productionLog .log-entry {
+	  white-space: normal;      /* 允许自动换行 */
+	  word-break: normal;     /* 保持中文不拆断；注意：对于英文，keep-all 通常不会在单词内部拆分 */
+	  overflow-wrap: break-word; /* 如果单词太长，允许在单词边界断开 */
+	}
+
 	
     /* 稀有度顏色 */
     /* 基础级别 */
@@ -963,7 +969,7 @@
 		]
 	  },
 	  tech: {
-		names: ['電路板', '加密芯片', 'AI核心', '量子處理器', '傳感器模組', '伺服馬達', '固態硬盤', '內存條', 'GPU芯片', 'CPU散熱器', '電源模塊', '藍牙模組', 'WiFi天線', '射頻芯片', '光纖收發器', '觸控面板', '液晶屏幕', 'OLED顯示器', '攝像頭模組', '指紋識別器', '聲波馬達', '微型麥克風', '揚聲器單元', '振動電機', '陀螺儀傳感器', '加速度計', '氣壓傳感器', '溫度傳感器', '濕度傳感器', '紅外線發射器', '激光雷達', '毫米波雷達', 'NFC芯片', 'RFID標籤', '生物識別模組', '語音識別芯片', '神經網絡處理器', '邊緣計算單元', '5G基帶芯片', '衛星通信模塊', '無人機飛控', '機械臂控制器', '工業PLC', '機器視覺鏡頭', '3D打印噴頭', 'CNC控制板', '激光切割頭', '電化學傳感器', '光伏電池板', '鋰電池電芯', '超級電容器', '燃料電池堆', '無線充電線圈', '逆變器模塊', '變壓器組件', '繼電器開關', '電磁閥門', '步進電機', '伺服驅動器', '機器人關節模組', '自動駕駛ECU', '車載雷達', '車規級芯片', '航空電子組件', '衛星姿控系統', '火箭導航芯片', '深空通信終端', '量子加密機', '區塊鏈礦機', '雲服務器主板', '數據中心交換機', '光刻機鏡頭', '半導體蝕刻機', '納米壓印設備', '分子篩膜', '碳納米管材料', '石墨烯晶片', '超導體材料', '柔性電子薄膜', '智能纖維織物', '電子皮膚', '腦機接口探針', '醫療影像探頭', '基因測序儀', '納米機器人', '微流控芯片', '生物傳感器', '人工晶狀體', '仿生義肢', '智能假肢', '外骨骼驅動器', 'AR顯示模組', 'VR定位傳感器', '全息投影儀', '激光投影鏡頭', '智能家居中樞', '物聯網網關', '邊緣服務器', 'AI訓練集群', '超級計算機節點', '量子計算單元'],
+		names: ['電路板', '加密芯片', 'AI核心', '量子處理器', '傳感器模組', '伺服馬達', '固態硬盤', '內存條', 'GPU芯片', 'CPU散熱器', '電源模塊', '藍牙模組', 'WiFi天線', '射頻芯片', '光纖收發器', '觸控面板', '液晶屏幕', 'OLED顯示器', '攝像頭模組', '指紋識別器', '聲波馬達', '微型麥克風', '揚聲器單元', '振動電機', '陀螺儀傳感器', '加速度計', '氣壓傳感器', '溫度傳感器', '濕度傳感器', '紅外線發射器', '激光雷達', '毫米波雷達', 'NFC芯片', 'RFID標籤', '生物識別模組', '語音識別芯片', '神經網絡處理器', '邊緣計算單元', '5G基帶芯片', '衛星通信模塊', '無人機飛控', '機械臂控制器', '工業PLC', '機器視覺鏡頭', '3D打印噴頭', 'CNC控制板', '激光切割頭', '電化學傳感器', '光伏電池板', '鋰電池電芯', '超級電容器', '燃料電池堆', '無線充電線圈', '逆變器模塊', '變壓器組件', '繼電器開關', '電磁閥門', '步進電機', '伺服驅動器', '機器人關節模組', '自動駕駛ECU', '車載雷達', '軍規級芯片', '航空電子組件', '衛星姿控系統', '火箭導航芯片', '深空通信終端', '量子加密機', '區塊鏈礦機', '雲服務器主板', '數據中心交換機', '光刻機鏡頭', '半導體蝕刻機', '納米壓印設備', '分子篩膜', '碳納米管材料', '石墨烯晶片', '超導體材料', '柔性電子薄膜', '智能纖維織物', '電子皮膚', '腦機接口探針', '醫療影像探頭', '基因測序儀', '納米機器人', '微流控芯片', '生物傳感器', '人工晶狀體', '仿生義肢', '智能假肢', '外骨骼驅動器', 'AR顯示模組', 'VR定位傳感器', '全息投影儀', '激光投影鏡頭', '智能家居中樞', '物聯網網關', '邊緣服務器', 'AI訓練集群', '超級計算機節點', '量子計算單元'],
 		modifiers: [
 		  { name: '實驗性的', effect: 1.5 },
 		  { name: '破解權限的', effect: 1.8 },   // 軟體狀態
@@ -1476,7 +1482,7 @@
 	/***** 探索隊及僵尸事件處理 *****/
 	function addEventLog(message, rarity, eventType = "exploration", applyZombieStyle = false) {
 	  if (eventType === "production") {
-		message = message.replace(/\n/g, "<br>");
+		message = message.replace(/\n/g, " ");
 	  }
 	  let logContainerId = (eventType === "production") ? "productionLog" : "explorationLog";
 	  const logElem = document.getElementById(logContainerId);
@@ -1515,7 +1521,13 @@
 	}
 
 	function logResource(resource, itemName, amount, eventType = "production") {
-	  addEventLog(`生產: ${itemName} +${amount} ${resource}`, 'common', eventType);
+	  if (eventType === "production") {
+		// 用一个外层 span 包裹整个消息，确保整体换行
+		const fullMessage = `<span style="white-space: normal; display: inline;">生產: ${itemName} +${amount} ${resource}</span>`;
+		addEventLog(fullMessage, 'common', eventType);
+	  } else {
+		addEventLog(`生產: ${itemName} +${amount} ${resource}`, 'common', eventType);
+	  }
 	  if (!productionCollection[itemName]) {
 		productionCollection[itemName] = 0;
 	  }
@@ -1803,7 +1815,7 @@
         const modifier = getRandomModifier(resource);
         const modAmount = convertProduction(amount * modifier.effect);
 		const modColor = (modifier.effect < 1) ? "var(--junk)" : "var(--sealed)";
-		const styledItemName = `<span style="color: ${modColor}; font-weight: bold; display: inline-block; white-space: nowrap;">${modifier.name} ${getRandomItemName(resource)}</span>`;
+		const styledItemName = `<span style="color: ${modColor}; font-weight: bold;">${modifier.name} ${getRandomItemName(resource)}</span>`;
         logResource(resource, styledItemName, modAmount, "production");
 		} else {
 		  logResource(resource, getRandomItemName(resource), amount, "production");
@@ -2743,6 +2755,7 @@
 		const saveData = {
 		  gameState: gameState,
 		  collectedItems: collectedItems,
+		  productionCollection: productionCollection,
 		  elapsedTime: elapsedTime
 		};
 		localStorage.setItem("gameSave", JSON.stringify(saveData));
@@ -2763,6 +2776,9 @@
 		  }
 		  if (saveData.collectedItems) {
 			collectedItems = saveData.collectedItems;
+		  }
+		  if (saveData.productionCollection) {  // <-- 新增
+			productionCollection = saveData.productionCollection;
 		  }
 		  if (saveData.elapsedTime) {
 			// 重设 startTime 使计时器继续走
