@@ -104,6 +104,13 @@
 	}
 
     :root {
+	
+	  --exploration-height: 120px;
+	  /* 无缝背景图原始比例为3:1，tile 宽度根据窗口高度自动计算 */
+	  --tile-width: calc(var(--exploration-height) * 3);
+	  --zombie-size: 90px;
+	  /* 精靈圖總寬度 = 幀數 × 單帧寬度，由於共 4 幀 */
+	  --zombie-sprite-total-width: calc(4 * var(--zombie-size));
       --bg-color: #1a1a1a;
       --text-color: #e0e0e0;
       --border-color: #4a4a4a;
@@ -698,6 +705,337 @@
       color: var(--warning);
       animation: resource-glow 1.5s infinite;
     }
+	
+	/* 動畫窗口的公共樣式，寬度與日誌一樣，高度約 120px，可根據需要調整 */
+	.anim-window {
+	  width: 100%;
+	  height: 120px;
+	  position: relative;
+	  overflow: hidden;
+	  background-color: #000; /* 可作為預設背景 */
+	}
+
+	/* 生產日誌動畫窗口三欄佈局 */
+	#productionAnim .prod-col {
+	  float: left;
+	  width: 33.33%;
+	  height: 100%;
+	  position: relative;
+	  overflow: hidden;
+	  /* 可設定背景或邊框便於區分 */
+	}
+
+	/* 清除浮動 */
+	#productionAnim::after {
+	  content: "";
+	  display: block;
+	  clear: both;
+	}
+
+	/* 探索動畫背景滾動效果 */
+	#explorationAnim {
+	  width: 100%;
+	  height: var(--exploration-height);
+	  position: relative; /* 作为绝对定位子元素的参照 */
+	  background-image: url('images/location_day_1.png');
+	  background-repeat: repeat-x;
+	  /* 设置背景单元尺寸为 432pt × 144pt */
+	  background-size: var(--tile-width) var(--exploration-height);
+	  background-position: 0 0;
+	  /* 使用明确的像素（pt）值，让背景从 0 滚动到 432pt，即一个完整平铺单元 */
+	  animation: scrollBgRight 30s linear infinite;
+	}
+
+	@keyframes scrollBgRight {
+	  from {
+		background-position: 0 0;
+	  }
+	  to {
+		background-position: 432pt 0;
+	  }
+	}
+
+	/* 1.1 僵尸寻找动画 */
+	.zombie-search {
+	  position: absolute;
+	  left: 50%;
+	  top: 50%;
+	  transform: translate(-50%, -50%);
+	  width: var(--zombie-size);
+	  height: var(--zombie-size);
+	  background-image: url('images/zombie_search_sprite.png');
+	  /* 将背景设为全精灵图 */
+	  background-size: var(--zombie-sprite-total-width) var(--zombie-size);
+	  animation: zombieSearchAnim 3s steps(4) infinite;
+	}
+	@keyframes zombieSearchAnim {
+	  from { background-position: 0 0; }
+	  to { background-position: calc(-1 * var(--zombie-sprite-total-width)) 0; }
+	}
+
+	/* 1.2 僵尸举手动画（物品获得时触发） */
+	.zombie-raise {
+	  position: absolute;
+	  left: 50%;
+	  top: 50%;
+	  /* 居中 */
+	  transform: translate(-50%, -50%);
+	  width: var(--zombie-size);
+	  height: var(--zombie-size);
+	  background-image: url('images/zombie_raise_sprite.png');
+	  /* 单图填充 */
+	  background-size: 100% 100%;
+	  animation: raiseAnim 1s linear;
+	  /* 新增：確保元素可見 */
+	  visibility: visible;
+	}
+
+	@keyframes raiseAnim {
+	  0% { 
+		transform: translate(-50%, -50%) scale(1); 
+		opacity: 1; /* 新增：確保元素可見 */
+	  }
+	  50% { 
+		transform: translate(-50%, -60%) scale(1.1); 
+	  }
+	  100% { 
+		transform: translate(-50%, -50%) scale(1); 
+		opacity: 1; /* 新增：動畫結束時保持可見 */
+	  }
+	}
+
+	/* 1.3 僵尸入场动画（僵尸增加事件触发） */
+	.zombie-entry {
+      position: absolute;
+      top: 50%;
+      right: -200px; /* 初始位置在屏幕外更右侧 */
+      width: var(--zombie-size);
+      height: var(--zombie-size);
+      background-image: url('images/zombie_entry_sprite.png');
+      background-size: var(--zombie-sprite-total-width) var(--zombie-size);
+      background-repeat: no-repeat;
+      transform: translateY(-50%);
+      animation: 
+        zombieEntryMove 4s linear forwards,
+        zombieEntryFrames 0.8s steps(4) infinite;
+      z-index: 10;
+      opacity: 1;
+      transition: opacity 0.5s; /* 平滑淡出效果 */
+    }
+    
+    @keyframes zombieEntryMove {
+      0% { 
+        right: -200px; /* 起始位置 */
+        opacity: 1;
+      }
+      95% { 
+        right: calc(100% + 100px); /* 结束位置 */
+        opacity: 1;
+      }
+      100% {
+        right: calc(100% + 100px);
+        opacity: 0; /* 动画结束时淡出 */
+      }
+    }
+    
+    @keyframes zombieEntryFrames {
+      0% { background-position: 0 0; }
+      100% { background-position: calc(-1 * var(--zombie-sprite-total-width)) 0; }
+    }
+
+    /* 防止其他样式影响 */
+    .zombie-entry * {
+      animation: none !important;
+    }
+
+    
+    @keyframes zombieEntryFrames {
+      0% { background-position: 0 0; }
+      100% { background-position: calc(-1 * var(--zombie-sprite-total-width)) 0; }
+    }
+
+    /* 防止其他样式影响 */
+    .zombie-entry * {
+      animation: none !important;
+    }
+
+    
+	
+
+	/* 1.4 僵尸倒地动画（僵尸减少事件触发） */
+	.zombie-lying {
+	  position: absolute;
+	  top: 65%; /* 位置略低于搜索动画 */
+	  left: -100px;
+	  width: var(--zombie-size);
+	  height: var(--zombie-size);
+	  background-image: url('images/zombie_lying_sprite.png');
+	  background-size: 100% 100%;
+	  transform: translateY(-50%);
+	  z-index: 11; /* 确保低于搜索动画 */
+	  opacity: 0;
+	  
+	  
+	  /* 分离移动和淡入淡出动画 */
+	  animation: 
+		zombieLyingAnim 20s linear forwards,
+		zombieLyingFade 20s linear forwards;
+	}
+
+	@keyframes zombieLyingAnim {
+	  0% { 
+		left: -100px;
+	  }
+	  100% { 
+		left: calc(100% + 100px);
+	  }
+	}
+
+	@keyframes zombieLyingFade {
+	  0% { 
+		opacity: 0;
+	  }
+	  5% { 
+		opacity: 1;
+	  }
+	  95% { 
+		opacity: 1;
+	  }
+	  100% {
+		opacity: 0;
+	  }
+	}
+
+
+	/* 以下為示例，根據需要擴展 production、exploration 動畫 CSS */
+
+	/* ============================================================================
+	   生產日誌動畫窗口 - 背景部分 (固定圖片)
+	============================================================================ */
+
+	#productionAnim {
+	  width: 100%;
+	  height: 120px;             /* 整个生产区域高度 */
+	  position: relative;
+	  /* 不再统一设置背景图片，因为此区域下各栏背景分开设置 */
+	  background: none;
+	}
+
+	/* 每一栏（prod-col）保持现有布局 */
+	#productionAnim .prod-col {
+	  float: left;
+	  width: 33.33%;
+	  height: 100%;
+	  position: relative;
+	  overflow: hidden;
+	}
+
+	/* 清除浮动 */
+	#productionAnim::after {
+	  content: "";
+	  display: block;
+	  clear: both;
+	}
+
+	/* 设置左栏背景 */
+	#prodAnimLeft {
+	  background-image: url('images/zombie_plow.png');
+	  background-size: cover;        /* 填满整个区域 */
+	  background-repeat: no-repeat;
+	  background-position: center center;
+	}
+
+	/* 设置中栏背景 */
+	#prodAnimMid {
+	  background-image: url('images/zombie_weld.png');
+	  background-size: cover;
+	  background-repeat: no-repeat;
+	  background-position: center center;
+	}
+
+	/* 设置右栏背景 */
+	#prodAnimRight {
+	  background-image: url('images/zombie_lab.png');
+	  background-size: cover;
+	  background-repeat: no-repeat;
+	  background-position: center center;
+	}
+
+	/* 生产区域三栏布局 */
+	#productionAnim .prod-col {
+	  float: left;
+	  width: 33.33%;
+	  height: 100%;
+	  position: relative;
+	  overflow: hidden;
+	}
+	#productionAnim::after {
+	  content: "";
+	  display: block;
+	  clear: both;
+	}
+
+	/* 2.1 左栏：僵尸耕田动画 */
+	.prod-zombie-plow {
+	  position: absolute;
+	  bottom: 10%;
+	  left: 10px;
+	  width: var(--zombie-size);
+	  height: var(--zombie-size);
+	  background-image: url('images/zombie_plow_sprite.png');
+	  background-size: calc(4 * var(--zombie-size)) var(--zombie-size);
+	  animation: prodPlowAnim 2s steps(4) infinite;
+	}
+	@keyframes prodPlowAnim {
+	  from { background-position: 0 0; }
+	  to { background-position: calc(-1 * 4 * var(--zombie-size)) 0; }
+	}
+
+	/* 2.2 中栏：僵尸焊接动画 */
+	.prod-zombie-weld {
+	  position: absolute;
+	  bottom: 10%;
+	  left: 10px;
+	  width: var(--zombie-size);
+	  height: var(--zombie-size);
+	  background-image: url('images/zombie_weld_sprite.png');
+	  background-size: calc(4 * var(--zombie-size)) var(--zombie-size);
+	  animation: prodWeldAnim 2s steps(4) infinite;
+	}
+	@keyframes prodWeldAnim {
+	  from { background-position: 0 0; }
+	  to { background-position: calc(-1 * 4 * var(--zombie-size)) 0; }
+	}
+
+	/* 2.3 右栏：僵尸实验室动画 */
+	.prod-zombie-lab {
+	  position: absolute;
+	  bottom: 10%;
+	  left: 10px;
+	  width: var(--zombie-size);
+	  height: var(--zombie-size);
+	  background-image: url('images/zombie_lab_sprite.png');
+	  background-size: calc(4 * var(--zombie-size)) var(--zombie-size);
+	  animation: prodLabAnim 2s steps(4) infinite;
+	}
+	@keyframes prodLabAnim {
+	  from { background-position: 0 0; }
+	  to { background-position: calc(-1 * 4 * var(--zombie-size)) 0; }
+	}
+
+	/* ============================== */
+	/* 其他辅助样式（例如花屏过渡效果 .glitch 及动画公共样式） */
+	/* ============================== */
+
+	.glitch {
+	  animation: glitchEffect 0.5s linear;
+	}
+	@keyframes glitchEffect {
+	  0% { filter: contrast(1); }
+	  50% { filter: contrast(3); }
+	  100% { filter: contrast(1); }
+	}
+
   </style>
 </head>
 <body>
@@ -820,6 +1158,7 @@
 		<div class="log" id="explorationLog">
 		  <div class="log-entry uncommon">✅ 系統初始化完成</div>
 		</div>
+		<div id="explorationAnim" class="anim-window"></div>
 	 </div>
 	  <div class="grid-item" id="productionLogContainer">
 	   <h3 class="log-title">🛠 生產日誌
@@ -832,6 +1171,11 @@
 	   <div class="log" id="productionLog">
 		 <!-- 生產事件將在此顯示 -->
 	   </div>
+	     <div id="productionAnim" class="anim-window">
+	    <div class="prod-col" id="prodAnimLeft"></div>
+	    <div class="prod-col" id="prodAnimMid"></div>
+	    <div class="prod-col" id="prodAnimRight"></div>
+	  </div>
 	 </div>
     <div class="grid-item building-system-container" id="buildingSystem">
       <div class="building-system">
@@ -1770,6 +2114,7 @@
 	  if (result.zombieChange !== 0) {
 	    let desc = "";
 	    if (result.zombieChange > 0) {
+		  triggerZombieEntry();
 		  const gain = result.zombieChange;
 		  // 分配僵尸數量按比例
 		  const toExploration = Math.round(gain * 0.5);
@@ -1790,6 +2135,7 @@
 		  const distributionMessage = `探索 +${toExploration}，種植 +${toFarming}，回收 +${toRecycling}，科研 +${toResearch}`;
 		  desc = encounterMessage + distributionMessage;
 	    } else {
+		  triggerZombieLying();
 		  const loss = Math.abs(result.zombieChange);
 		  desc = generateZombieEventDescription("decrease", loss);
 		  gameState.totalZombies = Math.max(0, gameState.totalZombies - loss);
@@ -2820,35 +3166,6 @@
 	  }
 	}
 
-	/*******************
-	 * 合并 DOMContentLoaded 初始化代码
-	 *******************/
-	document.addEventListener("DOMContentLoaded", function() {
-	  
-	  // 绑定重置存档按钮（假定该按钮已在 HTML 中放在末日指挥中心标题旁边，id="resetProgressBtn"）
-	  const resetBtn = document.getElementById("resetProgressBtn");
-	  if (resetBtn) {
-		resetBtn.addEventListener("click", confirmResetProgress);
-	  }
-	  
-	  // 尝试加载存档
-	  loadGameState();
-	  
-	  // 初始化游戏（使用存档或初始状态）
-	  initGame();
-	  
-	  // 初始化计时器：updateTimer 每秒更新，计时器依据 window.startTime 计算已流逝时间
-	  setInterval(updateTimer, 1000);
-	  
-	  // 在浏览器刷新/离开前自动保存
-	  window.addEventListener("beforeunload", saveGameState);
-	  
-	  // 定时保存（例如每10秒保存一次）
-	  setInterval(saveGameState, 10000);
-	});
-
-
-
 
 	
 	 
@@ -2924,15 +3241,209 @@
 	  }
 	}
 
+	function initExplorationAnimation() {
+	  const container = document.getElementById("explorationAnim");
+	  if (container) {
+		// 如果已经存在则不重复添加
+		if (!container.querySelector('.zombie-search')) {
+		  const zombie = document.createElement("div");
+		  zombie.className = "zombie-search";
+		  container.appendChild(zombie);
+		}
+	  }
+	}
+	// 触发举手动画（在获得物品时调用）
+	function triggerZombieRaise(rarityColor) {
+	  const container = document.getElementById("explorationAnim");
+	  if (!container) return;
+	  
+	  // 先暫停搜索動畫
+	  const searchElem = container.querySelector('.zombie-search');
+	  if (searchElem) {
+		searchElem.style.animationPlayState = 'paused';
+	  }
+
+	  const raiseElem = document.createElement("div");
+	  raiseElem.className = "zombie-raise";
+	  raiseElem.style.border = `2px solid ${rarityColor}`;
+	  container.appendChild(raiseElem);
+	  
+	  // 動畫結束後恢復搜索
+	  setTimeout(() => {
+		if (container.contains(raiseElem)) {
+		  container.removeChild(raiseElem);
+		}
+		if (searchElem) {
+		  searchElem.style.animationPlayState = 'running';
+		}
+	  }, 1000); // 匹配動畫時長
+	}
+
+	// 触发入场动画（僵尸增加时调用）
+	function triggerZombieEntry() {
+	  const container = document.getElementById("explorationAnim");
+	  if (!container) { return; }
+	  
+	  // 创建入场动画元素
+	  const entryElem = document.createElement("div");
+	  entryElem.className = "zombie-entry";
+	  container.appendChild(entryElem);
+	  
+	  // 动画结束后清理
+	  setTimeout(() => {
+		if (container.contains(entryElem)) {
+		  container.removeChild(entryElem);
+		}
+	  }, 4000); // 匹配动画时长
+	}
+
+	// 触发倒地动画（僵尸减少时调用）
+	function triggerZombieLying() {
+	  const container = document.getElementById("explorationAnim");
+	  if (!container) return;
+	  
+	  // 创建倒地动画元素（在下层）
+	  const lyingElem = document.createElement("div");
+	  lyingElem.className = "zombie-lying";
+	  container.appendChild(lyingElem);
+	  
+	  // 动画结束后清理
+	  setTimeout(() => {
+		if (container.contains(lyingElem)) {
+		  container.removeChild(lyingElem);
+		}
+	  }, 20000); // 匹配動畫時長
+	}
+
+	// 初始化生产动画：为生产动画各栏添加前景僵尸动画（常驻循环播放）
+	function initProductionAnimation() {
+	  const leftCol = document.getElementById("prodAnimLeft");
+	  if (leftCol && !leftCol.querySelector('.prod-zombie-plow')) {
+		const zombiePlow = document.createElement("div");
+		zombiePlow.className = "prod-zombie-plow";
+		leftCol.appendChild(zombiePlow);
+	  }
+	  const midCol = document.getElementById("prodAnimMid");
+	  if (midCol && !midCol.querySelector('.prod-zombie-weld')) {
+		const zombieWeld = document.createElement("div");
+		zombieWeld.className = "prod-zombie-weld";
+		midCol.appendChild(zombieWeld);
+	  }
+	  const rightCol = document.getElementById("prodAnimRight");
+	  if (rightCol && !rightCol.querySelector('.prod-zombie-lab')) {
+		const zombieLab = document.createElement("div");
+		zombieLab.className = "prod-zombie-lab";
+		rightCol.appendChild(zombieLab);
+	  }
+	}
+
+
 	
 	// 當文件內容完全加載後啟動遊戲
 	document.addEventListener("DOMContentLoaded", function() {
-		initGame();
-		// 假設您的收藏按鈕 ID 為 favoritesBtn
-	     const favBtn = document.getElementById("favoritesBtn");
-		  if (favBtn) {
-			favBtn.addEventListener("click", showCollection);
+		initProductionAnimation();
+		initExplorationAnimation();
+		
+		// 探索動畫相關變數
+		let explorationBackgroundsDay = [
+		  "images/location_day_1.png",
+		  "images/location_day_2.png",
+		  "images/location_day_3.png"
+		];
+		let explorationBackgroundsNight = [
+		  "images/location_night_1.png",
+		  "images/location_night_2.png",
+		  "images/location_night_3.png"
+		];
+		let currentExplorationBg = "";
+		let explorationAnimElem = document.getElementById("explorationAnim");
+
+		// 每分鐘隨機更換背景
+		function updateExplorationBackground() {
+		  let now = new Date();
+		  // 判斷當前時段（08:00-20:00日間，否則夜間）
+		  let isDay = now.getHours() >= 8 && now.getHours() < 20;
+		  let bgArray = isDay ? explorationBackgroundsDay : explorationBackgroundsNight;
+		  // 隨機選一個背景
+		  let newBg = bgArray[Math.floor(Math.random() * bgArray.length)];
+		  
+		  if (newBg !== currentExplorationBg) {
+			// 添加花屏過渡效果
+			explorationAnimElem.classList.add("glitch");
+			setTimeout(() => {
+			  explorationAnimElem.style.backgroundImage = `url('${newBg}')`;
+			  explorationAnimElem.classList.remove("glitch");
+			}, 500); // 約0.5秒花屏效果
+			currentExplorationBg = newBg;
 		  }
+		}
+		// 設置每分鐘更新背景
+		setInterval(updateExplorationBackground, 60000);
+		updateExplorationBackground(); // 初始化時先執行一次
+
+
+		// 當遊戲事件觸發獲得物品時，可在 handleExploration 裡調用 triggerZombieRaise。
+		// 例如在 handleExploration 的獲得物品後：
+		// triggerZombieRaise(最高稀有度顏色)，你可以根據物品稀有度映射設定一個顏色，例如 rarityMappingColor[rarity]
+
+		// 生產動畫部分（簡化示例）：
+		// 正常工作動畫已由 CSS keyframes 控制，若發生事故則根據部門決定在對應欄中追加爆炸動畫
+		function triggerProductionAccident(dept) {
+		  // 假設 dept 為 "farming", "recycling", 或 "research"
+		  let targetElem = null;
+		  if(dept === "farming") targetElem = document.getElementById("prodAnimLeft");
+		  else if(dept === "recycling") targetElem = document.getElementById("prodAnimMid");
+		  else if(dept === "research") targetElem = document.getElementById("prodAnimRight");
+		  if(!targetElem) return;
+		  
+		  // 創建爆炸動畫元素；這裡示例使用一個 div 並添加 CSS 類名 "explosion"
+		  let explosionElem = document.createElement("div");
+		  explosionElem.className = "explosion";
+		  // 為爆炸動畫添加必要的樣式，可用 CSS keyframes 播放
+		  targetElem.appendChild(explosionElem);
+		  // 爆炸動畫播放 1 秒後，移除爆炸動畫並展示焦黑甩塵動畫（可用另一個 class 觸發，這裏為示例）
+		  setTimeout(() => {
+			targetElem.removeChild(explosionElem);
+			// 此處可以根據需要添加焦黑甩塵動畫，後續恢復正常工作動畫
+		  }, 1000);
+		}
+
+		// 可根據遊戲事件在相應地方調用 triggerProductionAccident(dept)；
+		// 比如在 produceResources 發生事故的地方。
+
+		// 另外，針對殭屍增減事件，類似地可寫觸發函數：
+		// triggerZombieEntry() 與 triggerZombieExit() 用於探索動畫窗口，這裡省略實作細節，
+		// 其原理類似：建立一個動態元素，設置初始位置在窗口邊緣，運用 CSS 動畫使其移動、並在合適時轉換為尋找狀態，再移出屏幕。
+
+		// 同樣，以上動畫實作細節可依需求進一步調整，此處提供的只是基於 CSS class 切換的基本結構範例。
+
+	
+		// 绑定重置存档按钮（假定该按钮已在 HTML 中放在末日指挥中心标题旁边，id="resetProgressBtn"）
+		const resetBtn = document.getElementById("resetProgressBtn");
+		if (resetBtn) {
+		 resetBtn.addEventListener("click", confirmResetProgress);
+		}
+		  
+		// 尝试加载存档
+		loadGameState();
+		  
+		// 初始化游戏（使用存档或初始状态）
+		initGame();
+		  
+		// 初始化计时器：updateTimer 每秒更新，计时器依据 window.startTime 计算已流逝时间
+		setInterval(updateTimer, 1000);
+		  
+		// 在浏览器刷新/离开前自动保存
+		window.addEventListener("beforeunload", saveGameState);
+		  
+		// 定时保存（例如每10秒保存一次）
+		setInterval(saveGameState, 10000);
+		  
+		// 假設您的收藏按鈕 ID 為 favoritesBtn
+	    const favBtn = document.getElementById("favoritesBtn");
+		if (favBtn) {
+		  favBtn.addEventListener("click", showCollection);
+		}
 
 		// 每秒更新一次
 		setInterval(updateTimer, 1000);
