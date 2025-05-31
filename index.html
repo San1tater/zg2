@@ -2028,7 +2028,7 @@
 	}
 
 	// 根據稀有度權重隨機選取一個稀有度
-	function weightedRandomRarity() {
+	function weightedRandomRarity(teamSize) {
 	  const weights = {
 		junk: 25,
 		old: 20,
@@ -2043,6 +2043,19 @@
 		legendary: 0.3,
 		divine: 0.2
 	  };
+	   // 例如：當 teamSize 過 10 時，給高稀有度加上額外獎勵
+	  // 下面這個 bonus 使用對數函數產生一個隨著 teamSize 增長但邊際效益遞減的加成
+	  let bonus = 0;
+	  if (teamSize > 10) {
+		bonus = 0.2 * Math.log(teamSize); // 你可以根據需求微調這裡的係數
+	  }
+	  
+	  // 將 bonus 加到高稀有度項目上（也可以針對不同稀有度設置不同增幅）
+	  weights.rare += bonus;
+	  weights.epic += bonus * 0.8;
+	  weights.legendary += bonus * 0.5;
+	  weights.divine += bonus * 0.3;
+	  
 	  if (isBTRActive) {
 		weights.rare *= 1.5;
 		weights.epic *= 1.5;
@@ -2132,11 +2145,11 @@
 	  const location = LOCATIONS[Math.floor(Math.random() * LOCATIONS.length)];
 	  const resourceTypes = ['food', 'materials', 'weapons', 'tech'];
 	  const resource = resourceTypes[Math.floor(Math.random() * resourceTypes.length)];
-	  const rarity = weightedRandomRarity();
+	  const rarity = weightedRandomRarity(teamSize);
 	  const baseAmount = Math.floor(Math.random() * 5) + 5;
 	  
 	  const randFactor = 0.95 + Math.random() * 0.1;
-	  const multiplier = 1 + 0.1 * Math.log(teamSize + 1);
+	  const multiplier = 1 + 0.3 * Math.log(teamSize + 1);
 	  
 	  const computed = applyRarityMultiplier(baseAmount, rarity) * multiplier;
 	  const amount = convertProduction(computed);
