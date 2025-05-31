@@ -2260,7 +2260,7 @@
     }
   
 	   // 军械工坊生产武器
-	  function produceWeaponsFromArmories() {
+	function produceWeaponsFromArmories() {
 	  // 取得所有軍械工坊
 	  const armories = gameState.buildings.filter(b => b && b.type === 'armory');
 	  if (armories.length === 0) return;
@@ -2288,6 +2288,9 @@
 		}
 	  });
 	  const roundedProduction = Math.round(totalProduction);
+	  const productionCap = 990000;
+	  // 限制武器生產單次上限
+	  const finalProduction = Math.min(roundedProduction, productionCap);
 	  if (roundedProduction > 0) {
 		if (Math.random() < 0.05) {
 		  // 5% 機率觸發特殊產量
@@ -2364,6 +2367,12 @@
 	  const effectiveMultiplier = baseMultiplier * bonusMultiplier;
       const computed = baseRate * effectiveMultiplier * gameState.efficiency[resource];
       const amount = convertProduction(computed);
+	  
+	  // 設置單次生產上限
+	  const productionCap = 990000;
+	  // 限制原始生產量
+	  const limitedAmount = Math.min(amount, productionCap);
+	  
       if (Math.random() < 0.05) {
         const modifier = getRandomModifier(resource);
         const modAmount = convertProduction(amount * modifier.effect);
