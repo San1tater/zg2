@@ -303,11 +303,10 @@
 	  background: #262626;
 	  border-radius: 12px;
 	  border: 1px solid var(--border-color);
-	  height: 80px;
+	  height: 80px; /* 調整高度，可根據需要調整 */
 	  padding: 10px;
 	}
 
-	/* 成就選項卡內 header */
 	.achievement-header {
 	  display: flex;
 	  justify-content: space-between;
@@ -317,24 +316,24 @@
 	  font-size: 1em;
 	}
 
-	/* 成就系統內部的 3x2 網格 */
+	/* 3x2 成就網格 */
 	.achievement-grid {
 	  display: grid;
 	  grid-template-columns: repeat(3, 1fr);
 	  grid-gap: 5px;
 	}
 
-	/* 每個成就單元卡片 */
+	/* 每個成就單元：不帶邊框，加粗文字 */
 	.achievement-cell {
-	  background: #2d2d2d;
-	  border: 1px solid var(--border-color);
-	  border-radius: 8px;
-	  padding: 4px;
-	  font-size: 0.85em;
+	  /* 移除邊框 */
+	  border: none;
+	  background: transparent;
+	  font-weight: bold;
 	  text-align: center;
+	  /* 稀有度類：common, uncommon, rare, epic, legendary, divine；請確保這些類設定對應顏色和動畫 */
 	}
 
-	/* 稱號庫模態視窗，風格可參考收藏模態 */
+	/* 稱號庫模態視窗，兩欄表格 */
 	#titlesModal .modal-content {
 	  width: 60%;
 	  max-width: 400px;
@@ -1876,9 +1875,9 @@
 		}
 	  },
 
-	  // 新增：武器影響中樞，給予強力生產加成，但持續消耗武器資源
-	  weaponConsumptionFacility: {
-		name: '武器影響中樞',
+	  // 新增：警衛室，給予強力生產加成，但持續消耗武器資源
+	  guardFacility: {
+		name: '警衛室',
 		baseCost: { weapons: 350, materials: 150, tech: 150 },
 		costMultiplier: 1.7,
 		baseEffect: { productionBonus: 0.1, weaponConsumptionRate: 0.02 },
@@ -1932,9 +1931,9 @@
 		  baseEffect: { 
 			foodConsumption: 1000,               // 每一輪（或每次 gameLoop）消耗的食物量
 			btrChance: 0.50,                   // 每 30 秒 50% 觸發 BTR 事件
-			btrZombieEventChanceBonus: 0.10,   // 在 BTR 效果期間，增加 10% 僵尸事件觸發機率
+			btrZombieEventChanceBonus: 0.20,   // 在 BTR 效果期間，增加 20% 僵尸事件觸發機率
 			btrZombieMaxBonus: 0.10,           // 同時提高最大僵尸獲得比例 10%
-			btrRareItemBonus: 0.40             // 增加高稀有度物品機率 40%
+			btrRareItemBonus: 0.20             // 增加高稀有度物品機率 20%
 		  },
 		  effectMultiplier: 1.05,
 		  getUpgradeInfo: function(currentLevel) {
@@ -2000,7 +1999,6 @@
 
 	function logResource(resource, itemName, amount, eventType = "production") {
 	  if (eventType === "production") {
-		// 用一个外层 span 包裹整个消息，确保整体换行
 		const fullMessage = `<span style="white-space: normal; display: inline;">生產: ${itemName} +${amount} ${resource}</span>`;
 		addEventLog(fullMessage, 'common', eventType);
 	  } else {
@@ -2010,6 +2008,12 @@
 		productionCollection[itemName] = 0;
 	  }
 	  productionCollection[itemName] += 1;
+	  // 同步更新收藏記錄（假設 collectedItems 為收藏記錄對象）
+	  if (!collectedItems[itemName]) {
+		collectedItems[itemName] = { count: 1, rarity: 'common' };
+	  } else {
+		collectedItems[itemName].count += 1;
+	  }
 	}
 
     function checkUpgradable(type, level) {
@@ -2072,14 +2076,21 @@
 	function generateZombieChange(teamSize) {
 	  // 如果存在 armoredGarage，則閱讀它的加成效果
 	  let bonusPositive = 0;      // 正向事件概率加成
+	  let gainBonus = 0; // 新增：专门处理增益的变量
 	  let lossReduction = 0;      // 負向事件損失折扣（例如 0.25 表示損失降低 25%）
-	  const garages = gameState.buildings.filter(b => b && b.type.toLowerCase() === "armoredgarage");
-	  if (garages.length > 0) {
-		const garageInfo = BUILDINGS.armoredGarage.getUpgradeInfo(garages[0].level);
-		// 增加正向事件發生的概率
-		bonusPositive = garageInfo.effect.btrZombieEventChanceBonus || 0;
-		// 負向事件損失折扣：將原始損失乘以 (1 - lossReduction)
-		lossReduction = garageInfo.effect.btrZombieMaxBonus || 0;
+	  if (isBTRActive) {
+		const garages = gameState.buildings.filter(b =>
+		  b && 
+		  b.type && 
+		  typeof b.type === 'string' && 
+		  b.type.toLowerCase() === "armoredgarage");
+		  
+		if (garages.length > 0) {
+		  const garageInfo = BUILDINGS.armoredGarage.getUpgradeInfo(garages[0].level);
+		  bonusPositive = garageInfo.effect.btrZombieEventChanceBonus || 0;
+		  gainBonus = garageInfo.effect.btrZombieGainBonus || 0; // 使用新字段
+		  lossReduction = garageInfo.effect.btrZombieMaxBonus || 0;
+		}
 	  }
 	  // 若總僵尸數為 0，直接返回 0
 	  if (gameState.totalZombies <= 0) return 0;
@@ -2292,11 +2303,10 @@
 
 
     function handleExploration() {
-       // ...其他處理邏輯
 	  const teamSize = gameState.allocations.exploration;
+	  console.log("handleExploration 執行，teamSize =", teamSize);
 	  if (teamSize < 1) return;
 	  const result = generateExplorationResult(teamSize);
-	  // 進行資源加減等等
 	  gameState.resources[result.resource] += result.amount;
 	  addEventLog(result.log.text, result.rarity, "exploration");
 	  
@@ -2309,43 +2319,37 @@
 		}
 	  }
 	  
-	  // 處理僵尸變化描述（增加或減少）
+	  // 處理僵尸變化描述（即使結果可能為0也會生成 log）
 	  if (result.zombieChange !== 0) {
-	    let desc = "";
-	    if (result.zombieChange > 0) {
+		let desc = "";
+		if (result.zombieChange > 0) {
 		  triggerZombieEntry();
 		  const gain = result.zombieChange;
-		  // 分配僵尸數量按比例
 		  const toExploration = Math.round(gain * 0.5);
-		  const toFarming     = Math.round(gain * 0.3);
-		  const toRecycling   = Math.round(gain * 0.1);
-		  const toResearch    = gain - toExploration - toFarming - toRecycling;
-		
-		  // 更新全局總僵尸數和各部門分配
+		  const toFarming = Math.round(gain * 0.3);
+		  const toRecycling = Math.round(gain * 0.1);
+		  const toResearch = gain - toExploration - toFarming - toRecycling;
 		  gameState.totalZombies += gain;
 		  gameState.allocations.exploration += toExploration;
-		  gameState.allocations.farming     += toFarming;
-		  gameState.allocations.recycling   += toRecycling;
-		  gameState.allocations.research    += toResearch;
-		
-		  // 取得原本的遭遇記錄（例如：你派出的僵尸在某地遇到某情況獲得 gain 僵尸）
+		  gameState.allocations.farming += toFarming;
+		  gameState.allocations.recycling += toRecycling;
+		  gameState.allocations.research += toResearch;
 		  const encounterMessage = generateZombieEventDescription("increase", gain);
-		  // 在原消息後面添加分配詳情
 		  const distributionMessage = `探索 +${toExploration}，種植 +${toFarming}，回收 +${toRecycling}，科研 +${toResearch}`;
 		  desc = encounterMessage + distributionMessage;
-	    } else {
+		} else {
 		  triggerZombieLying();
 		  const loss = Math.abs(result.zombieChange);
 		  desc = generateZombieEventDescription("decrease", loss);
 		  gameState.totalZombies = Math.max(0, gameState.totalZombies - loss);
 		  gameState.allocations.exploration = Math.max(0, gameState.allocations.exploration - loss);
-	    }
-	    addEventLog(desc, "uncommon", "zombie");
+		}
+		addEventLog(desc, "uncommon", "zombie");
 	  }
-
 	  
 	  updateAllDisplays();
 	}
+
   
     /***** 資源生產 *****/
     function produceResources(dept, resource, baseRate) {
@@ -2618,7 +2622,7 @@
 	  ]
 	};
 
-	// 2. 稀有度映射：根據 achievement 等級返回稀有度
+	// 稀有度映射：根據升級等級返回稀有度
 	function getRarityForAchievement(level) {
 	  if (level <= 2) return "common";
 	  else if (level <= 4) return "uncommon";
@@ -2628,27 +2632,64 @@
 	  else return "divine";
 	}
 
-	// 3. 全局陣列保存已解鎖的成就
-	let unlockedAchievements = [];  // 每項形如 { category, level, title, rarity, unlockedTime }
+	// 全局陣列保存已獲得成就
+	let unlockedAchievements = []; // 每項形如 { category, level, title, rarity, unlockedTime }
 
-	// 4. 檢查並解鎖成就
-	// 假定你有以下函數來獲取當前數據：
-	// getCollectionCompletion() 返回收藏完成率百分比（數字）
-	// gameState.divineItemsCount（神聖物品獲得數）、 gameState.totalZombies、 gameState.btrTriggerCount（btr觸發次數）
-	// 請根據你現有的變量名稱作相應修改。
+	function getAchievementDetails(category, rule) {
+	  switch (category) {
+		case "collectionCompleteness":
+		  return `達到 ${rule.threshold}%收藏率`;
+		case "divineItems":
+		  return `獲得 ${rule.threshold}件神聖物品`;
+		case "totalZombies":
+		  return `達到 ${rule.threshold}隻僵尸`;
+		case "btrTriggers":
+		  return `呼叫BTR ${rule.threshold}次`;
+		default:
+		  return "";
+	  }
+	}
+
+	function isAchievementUnlocked(category, level) {
+	  return unlockedAchievements.some(a => a.category === category && a.level === level);
+	}
+
+	function awardAchievement(category, rule) {
+	  if (isAchievementUnlocked(category, rule.level)) {
+		// 如果已解鎖，直接返回，不重複添加
+		console.log(`成就 [${rule.title}] (分類：${category}，等級：${rule.level}) 已經解鎖過了，跳過。`);
+		return;
+	  }
+	  let rarity = getRarityForAchievement(rule.level);
+	  let details = getAchievementDetails(category, rule);
+	  let achievement = {
+		category,
+		level: rule.level,
+		title: rule.title,
+		rarity,
+		details,
+		unlockedTime: Date.now()
+	  };
+	  // 永久保存到 gameState
+	  if (!gameState.unlockedAchievements) {
+		gameState.unlockedAchievements = [];
+	  }
+	  gameState.unlockedAchievements.push(achievement);
+	  unlockedAchievements.push(achievement);
+	  addEventLog(`成就解鎖：[${rule.title}] (${category})`, rarity, "achievement");
+	  updateAchievementsUI();
+	}
 
 	function checkAchievements() {
-	  // 依次檢查每一類
-
-	  // 4.1 收藏完成度
-	  let collValue = getCollectionCompletion(); // 例如返回數字 75 表示75%
+	  // 檢查收藏完成度
+	  let collValue = getCollectionCompletion();
 	  achievementRules.collectionCompleteness.forEach(rule => {
 		if (collValue >= rule.threshold && !isAchievementUnlocked("collectionCompleteness", rule.level)) {
 		  awardAchievement("collectionCompleteness", rule);
 		}
 	  });
 	  
-	  // 4.2 神聖物品的獲得數量
+	  // 檢查神聖物品獲得數量
 	  let divineCount = gameState.divineItemsCount || 0;
 	  achievementRules.divineItems.forEach(rule => {
 		if (divineCount >= rule.threshold && !isAchievementUnlocked("divineItems", rule.level)) {
@@ -2656,7 +2697,7 @@
 		}
 	  });
 	  
-	  // 4.3 僵尸總量
+	  // 檢查僵尸總量
 	  let totalZombies = gameState.totalZombies || 0;
 	  achievementRules.totalZombies.forEach(rule => {
 		if (totalZombies >= rule.threshold && !isAchievementUnlocked("totalZombies", rule.level)) {
@@ -2664,7 +2705,7 @@
 		}
 	  });
 	  
-	  // 4.4 btr觸發次數
+	  // 檢查BTR觸發次數
 	  let btrCount = gameState.btrTriggerCount || 0;
 	  achievementRules.btrTriggers.forEach(rule => {
 		if (btrCount >= rule.threshold && !isAchievementUnlocked("btrTriggers", rule.level)) {
@@ -2675,81 +2716,48 @@
 	  updateAchievementsUI();
 	}
 
-	// 判斷某個類別的成就在相應階級是否已解鎖
-	function isAchievementUnlocked(category, level) {
-	  return unlockedAchievements.some(a => a.category === category && a.level === level);
-	}
-
-	// 解鎖成就的函數
-	function awardAchievement(category, rule) {
-	  let rarity = getRarityForAchievement(rule.level);
-	  unlockedAchievements.push({
-		category,
-		level: rule.level,
-		title: rule.title,
-		rarity,
-		unlockedTime: Date.now()
-	  });
-	  // 可加入提示、彈窗或音效
-	  addEventLog(`成就解鎖：[${rule.title}] (${category})`, rarity, "achievement");
-	  updateAchievementsUI();
-	}
-
-	// 5. 更新成就系統 UI：在 achievementCard 中，以3*2的格局顯示最新6個獎勵
 	function updateAchievementsUI() {
 	  const grid = document.getElementById("achievementGrid");
 	  if (!grid) return;
-	  // 這裡以獲取 unlock 時間倒序排序，取最新6個
+	  // 以解鎖時間倒序排序，取最新6個
 	  let sorted = unlockedAchievements.slice().sort((a, b) => b.unlockedTime - a.unlockedTime);
 	  let latest6 = sorted.slice(0, 6);
 	  grid.innerHTML = "";
 	  latest6.forEach(ach => {
 		const cell = document.createElement("div");
 		cell.className = "achievement-cell " + ach.rarity;
-		cell.textContent = ach.title;  // 可以附加其他信息，如類型與階級
+		cell.textContent = ach.title;
 		grid.appendChild(cell);
 	  });
 	}
 
-	// 6. 顯示稱號庫模態視窗，全部成就按稀有度由高到低排序
 	function showTitlesLibrary() {
-	  // 定義一個稀有度排序順序對象（你也可以根據 getRarityForAchievement 的返回進行映射）
-	  const rarityOrder = { divine: 6, legendary: 5, epic: 4, rare: 3, uncommon: 2, common: 1 };
-	  
-	  let sorted = unlockedAchievements.slice().sort((a, b) => {
-		return (rarityOrder[b.rarity] || 0) - (rarityOrder[a.rarity] || 0);
-	  });
-	  
 	  const container = document.getElementById("titlesContent");
 	  if (!container) return;
-	  container.innerHTML = "";
 	  
-	  let html = '<table style="width:100%; border-collapse:collapse;">';
-	  html += '<thead><tr><th>稱號</th><th>類別</th><th>稀有度</th></tr></thead><tbody>';
+	  let sorted = unlockedAchievements.slice().sort((a, b) => b.level - a.level);
+
+	  
+	   let html = '<table style="width:100%; border-collapse:collapse;">';
+	  html += '<thead><tr>';
+	  html += '<th style="text-align:center;">稱號</th>';
+	  html += '<th style="text-align:center;">詳情</th>';
+	  html += '</tr></thead><tbody>';
+	  
 	  sorted.forEach(ach => {
-		html += `<tr class="${ach.rarity}">
+		html += `<tr class="${ach.rarity}" style="font-weight:bold; text-align:center;">
 		  <td>${ach.title}</td>
-		  <td>${ach.category}</td>
-		  <td>${ach.rarity}</td>
+		  <td>${ach.details}</td>
 		</tr>`;
 	  });
 	  html += '</tbody></table>';
 	  container.innerHTML = html;
-	  
 	  showModal('titlesModal');
 	}
 
-	// 綁定「稱號庫」按鈕事件
-	document.addEventListener("DOMContentLoaded", function() {
-	  const titleLibraryBtn = document.getElementById("titleLibraryBtn");
-	  if (titleLibraryBtn) {
-		titleLibraryBtn.addEventListener("click", showTitlesLibrary);
-	  }
-	});
-
-	// 假設的示例：計算收藏完成度，這裡你需要根據實際邏輯實現
+	// 模擬定義 getCollectionCompletion()，請根據實際數據修改
 	function getCollectionCompletion() {
-	  // 例如：已收藏項數 / 全部收藏組合數 * 100
+	  // 例如使用 collectedItems 和 ALL_COMBINATIONS
 	  const obtained = Object.keys(collectedItems || {}).length;
 	  const total = ALL_COMBINATIONS || 1;
 	  return (obtained / total) * 100;
@@ -3004,7 +3012,7 @@
 		resourceamplifier: "📈",       // 替換為更常見的符號
 		zombiecommandcenter: "🧟",
 		rarevault: "💎",
-		weaponconsumptionfacility: "⚔️", // 改為交叉劍
+		guardfacility: "⚔️", // 改為交叉劍
 		safetycenter: "🛡️",
 		recyclingfactory: "♻️",
 		armoredgarage: "🚜",
@@ -3031,29 +3039,24 @@
 		  }
 	  });
 	}
+	let isBTRActive = false;
 	function triggerBTRAnimation() {
 	  const container = document.getElementById("explorationAnim");
 	  if (!container) {
 		console.error("找不到 #explorationAnim 容器");
 		return;
 	  }
-	  // 取得父容器寬度 (W)
+	  
 	  const containerWidth = container.clientWidth;
-	  // 從 CSS 中讀取單幀寬度 (Q)，預期 240px
 	  const rootStyles = getComputedStyle(document.documentElement);
 	  const btrFrameWidth = parseFloat(rootStyles.getPropertyValue('--btr-frame-width')) || 240;
 	  
-	  const offset = 50;  // 右側外偏移（以確保完全隱藏）
+	  const offset = 50;
+	  const centerStart = containerWidth + offset + 0.5 * btrFrameWidth;
+	  const centerStop = 0.75 * containerWidth;
+	  const startLeft = centerStart - 0.5 * btrFrameWidth;
+	  const stopLeft = centerStop - 0.5 * btrFrameWidth;
 	  
-	  // 計算中心點位置
-	  const centerStart = containerWidth + offset + 0.5 * btrFrameWidth; // Entrance center = W + offset + 0.5*Q
-	  const centerStop  = 0.75 * containerWidth;                          // 停留時中心 = 75% of W
-	  
-	  // wrapper 的 left = (center - 0.5*Q)
-	  const startLeft = centerStart - 0.5 * btrFrameWidth;  // Entrance/Exit left
-	  const stopLeft = centerStop - 0.5 * btrFrameWidth;      // 停留 left
-	  
-	  // 動態生成 keyframes 以控制 wrapper 的 left 屬性
 	  const keyframesText = `
 		@keyframes btrMoveDynamic {
 		  0%   { left: ${startLeft}px; }
@@ -3063,7 +3066,6 @@
 		}
 	  `;
 	  
-	  // 將 keyframes 插入 head
 	  let styleElem = document.getElementById("btrKeyframes");
 	  if (!styleElem) {
 		styleElem = document.createElement("style");
@@ -3073,27 +3075,27 @@
 	  styleElem.textContent = keyframesText;
 	  console.log("動態 keyframes:", keyframesText);
 	  
-	  // 創建 wrapper
 	  const wrapper = document.createElement("div");
 	  wrapper.className = "btr-wrapper";
 	  wrapper.style.position = "absolute";
 	  wrapper.style.top = "0";
-	  // 初始化 left 為 startLeft
 	  wrapper.style.left = startLeft + "px";
-	  // 應用移動動畫，總時長 10秒
 	  wrapper.style.animation = "btrMoveDynamic 10s ease-in-out forwards";
 	  
-	  // 創建內部的 BTR 精靈圖元素
 	  const btrElem = document.createElement("div");
 	  btrElem.className = "btr-animation";
 	  
 	  wrapper.appendChild(btrElem);
 	  container.appendChild(wrapper);
 	  
+	  gameState.btrTriggerCount = (gameState.btrTriggerCount || 0) + 1;
+	  
 	  addEventLog('[BTR-82A]入場，獲得僵尸事件獎勵提升！', 'btr-active', 'exploration');
 	  console.log(`BTR動畫啟動：containerWidth = ${containerWidth}px, startLeft = ${startLeft}px, stopLeft = ${stopLeft}px`);
 	  
-	  // 動畫 10 秒後移除 wrapper
+	  isBTRActive = true;
+	  setTimeout(() => { isBTRActive = false; }, 10000);
+	  
 	  setTimeout(() => {
 		if (container.contains(wrapper)) {
 		  container.removeChild(wrapper);
@@ -3103,17 +3105,12 @@
 	}
 			  
 	  
-	let isBTRActive = false; // 全局標記，BTR 效果是否處於激活狀態
 	function checkBTREvent() {
 	  const garages = gameState.buildings.filter(b => b && b.type.toLowerCase() === "armoredgarage");
 	  if (garages.length > 0) {
-		// 取得該建築當前等級的升級資訊（例：從 BUILDINGS.armoredGarage）
 		const garageInfo = BUILDINGS.armoredGarage.getUpgradeInfo(garages[0].level);
-		// 如果觸發機率（btrChance）是定義在 upgradeInfo.effect 中：
 		if (Math.random() < garageInfo.effect.btrChance) {
 		  triggerBTRAnimation();
-		  isBTRActive = true;
-		  setTimeout(() => { isBTRActive = false; }, 10000);
 		}
 	   }
 	 }
@@ -3593,6 +3590,7 @@
 		  gameState: gameState,
 		  collectedItems: collectedItems,
 		  productionCollection: productionCollection,
+		  unlockedAchievements: unlockedAchievements, // 保存成就記錄
 		  elapsedTime: elapsedTime
 		};
 		localStorage.setItem("gameSave", JSON.stringify(saveData));
@@ -3616,6 +3614,10 @@
 		  }
 		  if (saveData.productionCollection) {  // <-- 新增
 			productionCollection = saveData.productionCollection;
+		  }
+		  if (saveData.unlockedAchievements) {
+			unlockedAchievements = saveData.unlockedAchievements;
+			gameState.unlockedAchievements = unlockedAchievements;
 		  }
 		  if (saveData.elapsedTime) {
 			// 重设 startTime 使计时器继续走
@@ -3926,6 +3928,7 @@
 		setInterval(updateTimer, 1000);
 		
 		function gameLoop() {
+		  checkAchievements();  // 每次循環檢查成就條件
 		  // 資源生產、僵尸生產、食物消耗、探索等操作集中執行
 		  produceResources('farming', 'food', 1.7 * 5);
 		  produceResources('recycling', 'materials', 0.5 * 5);
