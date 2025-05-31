@@ -1009,7 +1009,6 @@
 
 	/* 设置左栏背景 */
 	#prodAnimLeft {
-	  background-image: url('images/zombie_plow.png');
 	  background-size: cover;        /* 填满整个区域 */
 	  background-repeat: no-repeat;
 	  background-position: center center;
@@ -1017,7 +1016,6 @@
 
 	/* 设置中栏背景 */
 	#prodAnimMid {
-	  background-image: url('images/zombie_weld.png');
 	  background-size: cover;
 	  background-repeat: no-repeat;
 	  background-position: center center;
@@ -1025,7 +1023,6 @@
 
 	/* 设置右栏背景 */
 	#prodAnimRight {
-	  background-image: url('images/zombie_lab.png');
 	  background-size: cover;
 	  background-repeat: no-repeat;
 	  background-position: center center;
@@ -1667,7 +1664,7 @@
 		buildable: false,
 		baseCost: { materials: 200, tech: 50 },
 		costMultiplier: 1.5,      // 每升級一次，成本乘以1.5
-		baseEffect: { capacity: 10, explorationBoost: 0.05 },
+		baseEffect: { resourceBonus: 0.02, explorationBoost: 0.05 },
 		effectMultiplier: 1.2,    // 每升級一次，效果乘以1.2
 		getUpgradeInfo: function(currentLevel) {
 		  // currentLevel 代表目標升級後的等級
@@ -1677,7 +1674,7 @@
 			  tech: Math.floor(this.baseCost.tech * Math.pow(this.costMultiplier, currentLevel - 1))
 			},
 			effect: {
-			  capacity: this.baseEffect.capacity * Math.pow(this.effectMultiplier, currentLevel - 1),
+			  resourceBonus: this.baseEffect.resourceBonus * Math.pow(this.effectMultiplier, currentLevel - 1),
 			  explorationBoost: this.baseEffect.explorationBoost * Math.pow(this.effectMultiplier, currentLevel - 1)
 			}
 		  };
@@ -1935,7 +1932,7 @@
 		  baseEffect: { 
 			foodConsumption: 1000,               // 每一輪（或每次 gameLoop）消耗的食物量
 			btrChance: 0.50,                   // 每 30 秒 50% 觸發 BTR 事件
-			btrZombieEventChanceBonus: 0.30,   // 在 BTR 效果期間，增加 30% 僵尸事件觸發機率
+			btrZombieEventChanceBonus: 0.10,   // 在 BTR 效果期間，增加 10% 僵尸事件觸發機率
 			btrZombieMaxBonus: 0.10,           // 同時提高最大僵尸獲得比例 10%
 			btrRareItemBonus: 0.40             // 增加高稀有度物品機率 40%
 		  },
@@ -2562,58 +2559,164 @@
     
     }
 	/***** 成就系統 *****/
+	const achievementRules = {
+	  collectionCompleteness: [
+		{ threshold: 0.001, title: "這是啥？", level: 1 },
+		{ threshold: 0.1, title: "好像能用", level: 2 },
+		{ threshold: 0.5, title: "拾荒者", level: 3 },
+		{ threshold: 1, title: "拾荒高手", level: 4 },
+		{ threshold: 5, title: "末日採購員", level: 5 },
+		{ threshold: 10, title: "清空貨架！", level: 6 },
+		{ threshold: 30, title: "物資收集者", level: 7 },
+		{ threshold: 50, title: "末日收藏家", level: 8 },
+		{ threshold: 70, title: "末日收集狂", level: 9 },
+		{ threshold: 85, title: "優秀率", level: 10 },
+		{ threshold: 90, title: "強迫症", level: 11 },
+		{ threshold: 100, title: "頂級搜刮者", level: 12 }
+	  ],
+	  divineItems: [
+		{ threshold: 1, title: "狗屎運", level: 1 },
+		{ threshold: 5, title: "亮閃閃", level: 2 },
+		{ threshold: 10, title: "金光閃閃", level: 3 },
+		{ threshold: 50, title: "金碧輝煌", level: 4 },
+		{ threshold: 100, title: "天選之子", level: 5 },
+		{ threshold: 300, title: "鑒寶專家", level: 6 },
+		{ threshold: 500, title: "被眷顧者", level: 7 },
+		{ threshold: 666, title: "惡魔的祝福", level: 8 },
+		{ threshold: 750, title: "科學無法解釋", level: 9 },
+		{ threshold: 900, title: "命運的安排", level: 10 },
+		{ threshold: 999, title: "倒立惡魔的祝福", level: 11 },
+		{ threshold: 1200, title: "這有啥稀奇的？", level: 12 }
+	  ],
+	  totalZombies: [
+		{ threshold: 100, title: "僵尸收容者", level: 1 },
+		{ threshold: 200, title: "僵尸小隊", level: 2 },
+		{ threshold: 300, title: "僵尸中隊", level: 3 },
+		{ threshold: 400, title: "初具規模", level: 4 },
+		{ threshold: 500, title: "加強營", level: 5 },
+		{ threshold: 1000, title: "積少成多", level: 6 },
+		{ threshold: 1500, title: "聚落領主", level: 7 },
+		{ threshold: 3000, title: "所向披靡", level: 8 },
+		{ threshold: 5000, title: "合成旅", level: 9 },
+		{ threshold: 8000, title: "人多尸眾", level: 10 },
+		{ threshold: 10000, title: "一方豪強", level: 11 },
+		{ threshold: 100000, title: "區域霸主", level: 12 }
+	  ],
+	  btrTriggers: [
+		{ threshold: 1, title: "裝甲保護", level: 1 },
+		{ threshold: 5, title: "火力支援", level: 2 },
+		{ threshold: 50, title: "裝甲先鋒", level: 3 },
+		{ threshold: 100, title: "機械化僵尸", level: 4 },
+		{ threshold: 500, title: "尸坦協同", level: 5 },
+		{ threshold: 1000, title: "機炮仙人", level: 6 },
+		{ threshold: 5000, title: "裝甲猛虎", level: 7 },
+		{ threshold: 10000, title: "銅墻鐵壁", level: 8 },
+		{ threshold: 20000, title: "堅不可摧", level: 9 },
+		{ threshold: 50000, title: "裝甲大軍", level: 10 },
+		{ threshold: 100000, title: "鋼鐵尸流", level: 11 },
+		{ threshold: 200000, title: "金屬地獄", level: 12 }
+	  ]
+	};
+
+	// 2. 稀有度映射：根據 achievement 等級返回稀有度
+	function getRarityForAchievement(level) {
+	  if (level <= 2) return "common";
+	  else if (level <= 4) return "uncommon";
+	  else if (level <= 6) return "rare";
+	  else if (level <= 8) return "epic";
+	  else if (level <= 10) return "legendary";
+	  else return "divine";
+	}
+
+	// 3. 全局陣列保存已解鎖的成就
+	let unlockedAchievements = [];  // 每項形如 { category, level, title, rarity, unlockedTime }
+
+	// 4. 檢查並解鎖成就
+	// 假定你有以下函數來獲取當前數據：
+	// getCollectionCompletion() 返回收藏完成率百分比（數字）
+	// gameState.divineItemsCount（神聖物品獲得數）、 gameState.totalZombies、 gameState.btrTriggerCount（btr觸發次數）
+	// 請根據你現有的變量名稱作相應修改。
+
 	function checkAchievements() {
-	  // 例如：如果收藏完成度達到某一百分比，首次解鎖成就
-	  if (!achievements.find(a => a.category === "collectionCompleteness") &&
-		  getCollectionCompletion() >= 50) {  // 假設標準是 50%
-		achievements.push({
-		  category: "collectionCompleteness",
-		  title: "收藏新手",
-		  rarity: "common",
-		  unlockedTime: Date.now()
-		});
-	  }
+	  // 依次檢查每一類
+
+	  // 4.1 收藏完成度
+	  let collValue = getCollectionCompletion(); // 例如返回數字 75 表示75%
+	  achievementRules.collectionCompleteness.forEach(rule => {
+		if (collValue >= rule.threshold && !isAchievementUnlocked("collectionCompleteness", rule.level)) {
+		  awardAchievement("collectionCompleteness", rule);
+		}
+	  });
 	  
-	  // 其他條件示例：最大僵尸數超過 500
-	  if (!achievements.find(a => a.category === "maxZombies") &&
-		  gameState.maxZombies && gameState.maxZombies >= 500) {
-		achievements.push({
-		  category: "maxZombies",
-		  title: "猛士無懼",
-		  rarity: "rare",
-		  unlockedTime: Date.now()
-		});
-	  }
+	  // 4.2 神聖物品的獲得數量
+	  let divineCount = gameState.divineItemsCount || 0;
+	  achievementRules.divineItems.forEach(rule => {
+		if (divineCount >= rule.threshold && !isAchievementUnlocked("divineItems", rule.level)) {
+		  awardAchievement("divineItems", rule);
+		}
+	  });
 	  
-	  // 此處可以依據需求增加多個條件…
+	  // 4.3 僵尸總量
+	  let totalZombies = gameState.totalZombies || 0;
+	  achievementRules.totalZombies.forEach(rule => {
+		if (totalZombies >= rule.threshold && !isAchievementUnlocked("totalZombies", rule.level)) {
+		  awardAchievement("totalZombies", rule);
+		}
+	  });
+	  
+	  // 4.4 btr觸發次數
+	  let btrCount = gameState.btrTriggerCount || 0;
+	  achievementRules.btrTriggers.forEach(rule => {
+		if (btrCount >= rule.threshold && !isAchievementUnlocked("btrTriggers", rule.level)) {
+		  awardAchievement("btrTriggers", rule);
+		}
+	  });
 	  
 	  updateAchievementsUI();
 	}
-	/*
-	  注意：getCollectionCompletion() 是你現有計算收藏完成度的函數；
-	  gameState.maxZombies 可在遊戲中更新最大僵尸數據，每次更新 gameState.totalZombies 時判斷是否超新最大值。
-	*/
+
+	// 判斷某個類別的成就在相應階級是否已解鎖
+	function isAchievementUnlocked(category, level) {
+	  return unlockedAchievements.some(a => a.category === category && a.level === level);
+	}
+
+	// 解鎖成就的函數
+	function awardAchievement(category, rule) {
+	  let rarity = getRarityForAchievement(rule.level);
+	  unlockedAchievements.push({
+		category,
+		level: rule.level,
+		title: rule.title,
+		rarity,
+		unlockedTime: Date.now()
+	  });
+	  // 可加入提示、彈窗或音效
+	  addEventLog(`成就解鎖：[${rule.title}] (${category})`, rarity, "achievement");
+	  updateAchievementsUI();
+	}
+
+	// 5. 更新成就系統 UI：在 achievementCard 中，以3*2的格局顯示最新6個獎勵
 	function updateAchievementsUI() {
 	  const grid = document.getElementById("achievementGrid");
 	  if (!grid) return;
-	  // 以最新解鎖排序：你可以根據需求排序，比如按 unlockedTime 逆序
-	  let sorted = achievements.slice().sort((a, b) => b.unlockedTime - a.unlockedTime);
-	  // 取前三行中前六個
+	  // 這裡以獲取 unlock 時間倒序排序，取最新6個
+	  let sorted = unlockedAchievements.slice().sort((a, b) => b.unlockedTime - a.unlockedTime);
 	  let latest6 = sorted.slice(0, 6);
-	  
 	  grid.innerHTML = "";
 	  latest6.forEach(ach => {
 		const cell = document.createElement("div");
-		cell.className = "achievement-cell " + ach.rarity;  // 可以根據稀有度添加特殊動畫樣式
-		cell.textContent = ach.title;
+		cell.className = "achievement-cell " + ach.rarity;
+		cell.textContent = ach.title;  // 可以附加其他信息，如類型與階級
 		grid.appendChild(cell);
 	  });
 	}
+
+	// 6. 顯示稱號庫模態視窗，全部成就按稀有度由高到低排序
 	function showTitlesLibrary() {
-	  // 先排序所有成就，按稀有度從高到低
-	  // 假設你定義一個 rarityOrder，比如：
-	  const rarityOrder = { divine: 6, legendary: 5, epic: 4, rare: 3, tested: 2, common: 1 };  
-	  let sorted = achievements.slice().sort((a, b) => {
+	  // 定義一個稀有度排序順序對象（你也可以根據 getRarityForAchievement 的返回進行映射）
+	  const rarityOrder = { divine: 6, legendary: 5, epic: 4, rare: 3, uncommon: 2, common: 1 };
+	  
+	  let sorted = unlockedAchievements.slice().sort((a, b) => {
 		return (rarityOrder[b.rarity] || 0) - (rarityOrder[a.rarity] || 0);
 	  });
 	  
@@ -2621,9 +2724,8 @@
 	  if (!container) return;
 	  container.innerHTML = "";
 	  
-	  // 可以以列表或網格形式展示，這裡採用表格形式示例
 	  let html = '<table style="width:100%; border-collapse:collapse;">';
-	  html += '<thead><tr><th>稱號</th><th>類型</th><th>稀有度</th></tr></thead><tbody>';
+	  html += '<thead><tr><th>稱號</th><th>類別</th><th>稀有度</th></tr></thead><tbody>';
 	  sorted.forEach(ach => {
 		html += `<tr class="${ach.rarity}">
 		  <td>${ach.title}</td>
@@ -2634,10 +2736,24 @@
 	  html += '</tbody></table>';
 	  container.innerHTML = html;
 	  
-	  // 顯示模態視窗，以現有的 showModal() 函數
 	  showModal('titlesModal');
 	}
 
+	// 綁定「稱號庫」按鈕事件
+	document.addEventListener("DOMContentLoaded", function() {
+	  const titleLibraryBtn = document.getElementById("titleLibraryBtn");
+	  if (titleLibraryBtn) {
+		titleLibraryBtn.addEventListener("click", showTitlesLibrary);
+	  }
+	});
+
+	// 假設的示例：計算收藏完成度，這裡你需要根據實際邏輯實現
+	function getCollectionCompletion() {
+	  // 例如：已收藏項數 / 全部收藏組合數 * 100
+	  const obtained = Object.keys(collectedItems || {}).length;
+	  const total = ALL_COMBINATIONS || 1;
+	  return (obtained / total) * 100;
+	}
 
 	
   
