@@ -948,7 +948,7 @@
 	  background-size: var(--btr-sprite-total-width) var(--btr-frame-height); /* 960px x 120px */
 	  background-repeat: no-repeat;   /* 不重複 */
 	  /* 精靈圖幀動畫，每2秒循環一次，共4帧 */
-	  animation: btrFrame 2s steps(4) infinite;
+	  animation: btrFrame 1s steps(4) infinite;
 	}
 
 	/* 移動動畫：使用百分比，相對於父容器寬度 */
@@ -2176,10 +2176,10 @@
 	  
 	  if (type === "increase") {
 		const encounter = ZOMBIE_ENCOUNTER_POOL[Math.floor(Math.random() * ZOMBIE_ENCOUNTER_POOL.length)];
-		return `你派出的僵尸在 ${location} 遇到 ${encounter}，獲得 ${quantity} 僵尸。`;
+		return `你派出的僵尸在 ${location} 遇到 ${encounter}，⚡獲得 ${quantity} 僵尸。`;
 	  } else if (type === "decrease") {
 		const disaster = ZOMBIE_DISASTER_POOL[Math.floor(Math.random() * ZOMBIE_DISASTER_POOL.length)];
-		return `你派出的僵尸在 ${location} 遭遇 ${disaster}，損失 ${quantity} 僵尸。`;
+		return `你派出的僵尸在 ${location} 遭遇 ${disaster}，☠️損失 ${quantity} 僵尸。`;
 	  } else {
 		return "";
 	  }
@@ -2405,11 +2405,11 @@
 		
 		let eventMsg = "";
 		if (dept === "farming") {
-		  eventMsg = `發生食物中毒：種植部門損失 ${lost} 僵尸 (${(lossPercentage * 100).toFixed(1)}%)`;
+		  eventMsg = `發生食物中毒：種植部門☠️損失 ${lost} 僵尸 (${(lossPercentage * 100).toFixed(1)}%)`;
 		} else if (dept === "recycling") {
-		  eventMsg = `發生意外事故：回收部門損失 ${lost} 僵尸 (${(lossPercentage * 100).toFixed(1)}%)`;
+		  eventMsg = `發生意外事故：回收部門☠️損失 ${lost} 僵尸 (${(lossPercentage * 100).toFixed(1)}%)`;
 		} else if (dept === "research") {
-		  eventMsg = `發生爆炸事故：科研部門損失 ${lost} 僵尸 (${(lossPercentage * 100).toFixed(1)}%)`;
+		  eventMsg = `發生爆炸事故：科研部門☠️損失 ${lost} 僵尸 (${(lossPercentage * 100).toFixed(1)}%)`;
 		}
 		addEventLog(eventMsg, "warning", "production", true);
 		triggerProductionAccident(dept);
