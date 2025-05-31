@@ -2,7 +2,7 @@
 <html lang="zh">
 <head>
   <meta charset="UTF-8" name="viewport" content="width=device-width, initial-scale=0.45"/>
-  <title>末日控制中心 - 正式版v.1.05 btr-82a update</title>
+  <title>末日控制中心 - 正式版v.1.051 btr-82a update</title>
   <style>
     /* 彈窗系統 */
     .modal-overlay {
@@ -1448,6 +1448,44 @@
 	const ZOMBIE_DISASTER_POOL = [
 	  "暴走的變異獸","大規模的坍塌", "強雷雨天氣","突如其來的颶風","被感染的警犬群","巨型腐爛烏鴉王","寄生藤蔓僵尸樹","成群尸鼠遷徙","黏菌覆蓋的腐化熊","食尸禿鷲群襲擊","軍方燃燒彈地毯轟炸","自動哨戒機槍陣列啟動","地下瓦斯管線大爆炸","高壓電網意外過載","致命抗體空氣傳播","智能無人機群掃蕩","生化溶尸酸雨雲團","精神干擾波無差別攻擊","反僵尸真菌快速蔓延","異種捕食者集團狩獵" // 可擴充更多選項
 	];
+	const effectMapping = {
+	  food: "食物生產",
+	  materials: "材料生產",
+	  weapons: "武器生產",
+	  tech: "科技生產",
+	  resourceBonus: "資源加成",
+	  explorationBoost: "探索提升",
+	  zombieEfficiency: "僵尸效率",
+	  production: "僵尸生產",
+	  zombieBoost: "探索加成",
+	  zombieLossReduction: "損失控制",
+	  productionBonus: "生產加成",
+	  resourceConsumptionRate: "全資源消耗",
+	  weaponConsumptionRate: "武器消耗",
+	  techConsumptionRate: "科技消耗",
+	  foodConsumption: "食物消耗",
+	  rareChanceBoost: "稀有幾率",
+	  accidentReduction: "意外控制",
+	  btrChance: "BTR應答率",
+	  btrZombieEventChanceBonus: "BTR協助",
+	  btrZombieMaxBonus:"BTR收容",
+	  btrRareItemBonus: "BTR收集",
+	  maxZombieCapBonus: "收容上限"
+	};
+
+	const costMapping = {
+	  food: "食物",
+	  materials: "材料",
+	  weapons: "武器",
+	  tech: "科技"
+	};
+	const resourceMapping = {
+	  food: "食物",
+	  materials: "材料",
+	  weapons: "武器",
+	  tech: "科技"
+	};
+
 	
 	/***** 全局變量定義 *****/
 	
@@ -1827,7 +1865,8 @@
 	    costMultiplier: 1.5,
 	    baseEffect: { 
 	      zombieBoost: 0.05, 
-		  zombieLossReduction: 0.1 
+		  zombieLossReduction: 0.1,
+		  maxZombieCapBonus: 525
 	    },
 	    // 新增：1級時每秒消耗武器資源 0.5%（即 0.005）
 	    baseWeaponConsumptionRate: 0.02,
@@ -1845,7 +1884,8 @@
 			  zombieBoost: this.baseEffect.zombieBoost * Math.pow(this.effectMultiplier, currentLevel - 1),
 			  zombieLossReduction: this.baseEffect.zombieLossReduction * Math.pow(this.effectMultiplier, currentLevel - 1),
 			  // 動態計算武器資源消耗率：1級為 baseWeaponConsumptionRate，之後按 effectMultiplier 指數增長
-			  weaponConsumptionRate: this.baseWeaponConsumptionRate * Math.pow(this.effectMultiplier, currentLevel - 1)
+			  weaponConsumptionRate: this.baseWeaponConsumptionRate * Math.pow(this.effectMultiplier, currentLevel - 1),
+			  maxZombieCapBonus: this.baseEffect.maxZombieCapBonus * currentLevel  
 		    }
 		  };
 	    }
@@ -1857,7 +1897,7 @@
 		name: '珍稀庫',
 		baseCost: { tech: 500, materials: 150, weapons: 150 },
 		costMultiplier: 1.55,
-		baseEffect: { rareChanceBoost: 0.05 },  // 初始 +5%
+		baseEffect: { rareChanceBoost: 0.05, techConsumptionRate: 0.05},  // 初始 +5%
 		effectMultiplier: 1.2,
 		getUpgradeInfo: function(currentLevel) {
 		  const center = gameState.buildings.find(b => b && b.type === "center");
@@ -1869,7 +1909,8 @@
 			  materials: Math.floor(this.baseCost.materials * Math.pow(this.costMultiplier, currentLevel - 1))
 			},
 			effect: {
-			  rareChanceBoost: this.baseEffect.rareChanceBoost * Math.pow(this.effectMultiplier, currentLevel - 1)
+			  rareChanceBoost: this.baseEffect.rareChanceBoost * Math.pow(this.effectMultiplier, currentLevel - 1),
+			  techConsumptionRate: this.baseEffect.techConsumptionRate * Math.pow(this.effectMultiplier, currentLevel - 1)
 			}
 		  };
 		}
@@ -1998,23 +2039,29 @@
 	}
 
 	function logResource(resource, itemName, amount, eventType = "production") {
+	  // 使用映射表將英文資源名轉為中文
+	  const resourceCn = resourceMapping[resource] || resource;
+	  
 	  if (eventType === "production") {
-		const fullMessage = `<span style="white-space: normal; display: inline;">生產: ${itemName} +${amount} ${resource}</span>`;
+		const fullMessage = `<span style="white-space: normal; display: inline;">生產: ${itemName} +${amount} ${resourceCn}</span>`;
 		addEventLog(fullMessage, 'common', eventType);
 	  } else {
-		addEventLog(`生產: ${itemName} +${amount} ${resource}`, 'common', eventType);
+		addEventLog(`生產: ${itemName} +${amount} ${resourceCn}`, 'common', eventType);
 	  }
+	  
 	  if (!productionCollection[itemName]) {
 		productionCollection[itemName] = 0;
 	  }
 	  productionCollection[itemName] += 1;
-	  // 同步更新收藏記錄（假設 collectedItems 為收藏記錄對象）
+	  
+	  // 更新收藏記錄（這裡如果需要中文化，也可同步用中文顯示）
 	  if (!collectedItems[itemName]) {
 		collectedItems[itemName] = { count: 1, rarity: 'common' };
 	  } else {
 		collectedItems[itemName].count += 1;
 	  }
 	}
+
 
     function checkUpgradable(type, level) {
 	  const centerBuilding = gameState.buildings.find(b => b && b.type.toLowerCase() === "center");
@@ -2132,13 +2179,26 @@
 	  }
 	  
 	  const finalZombieChange = Math.round(baseZombieChange + offset);
-	  if (finalZombieChange > 10000) {
-		return 10000;
+	  let effectiveCap = 10000;
+	  const zccBuildings = gameState.buildings.filter(b =>
+		b && b.type.toLowerCase() === "zombiecommandcenter"
+	  );
+	  zccBuildings.forEach(b => {
+		const info = BUILDINGS.zombiecommandcenter.getUpgradeInfo(b.level);
+		if (info && info.effect.maxZombieCapBonus) {
+		  effectiveCap += info.effect.maxZombieCapBonus;
+		}
+	  });
+	  
+	  if (finalZombieChange > effectiveCap) {
+		return effectiveCap;
 	  }
 	  return finalZombieChange;
 	}
 
 
+
+	// 定義資源名稱的中文映射對象
 
 	function generateExplorationResult(teamSize) {
 	  // 原有隨機生成部分
@@ -2156,9 +2216,10 @@
 	  const itemName = getRandomItemName(resource);
 	  const modifier = getRandomModifier(resource);
 	  
-	  // 調用 generateZombieChange 定義
+	  // 調用 generateZombieChange 定義，計算探索可能導致的僵尸增加或損失
 	  const adjustedZombieChange = generateZombieChange(teamSize);
 	  
+	  // 返回結果時，利用 resourceMapping 將英文資源名稱轉為中文顯示，但內部仍保持 resource 為英文
 	  return {
 		resource,
 		amount,
@@ -2166,16 +2227,17 @@
 		zombieChange: adjustedZombieChange,
 		item: `${modifier.name} ${itemName}`,
 		log: {
-		  text: `探索 ${location} 獲得 ${rarityMapping[rarity]} ${modifier.name} ${itemName} +${amount} ${resource}`,
+		  text: `探索 ${location} 獲得 ${rarityMapping[rarity]} ${modifier.name} ${itemName} +${amount} ${resourceMapping[resource] || resource}`,
 		  zombieText: adjustedZombieChange > 0
-					? `⚡ 獲得 ${adjustedZombieChange} 僵尸`
-					: adjustedZombieChange < 0
-					  ? `☠️ 損失 ${Math.abs(adjustedZombieChange)} 僵尸`
-					  : null,
+			? `⚡ 獲得 ${adjustedZombieChange} 僵尸`
+			: adjustedZombieChange < 0
+			  ? `☠️ 損失 ${Math.abs(adjustedZombieChange)} 僵尸`
+			  : null,
 		  rarity
 		}
 	  };
 	}
+
 
 
 
@@ -2267,7 +2329,7 @@
         gameState.allocations.farming += toFarming;
         gameState.allocations.recycling += toRecycling;
         gameState.allocations.research += toResearch;
-        addEventLog(`兵營生產：新增 ${gained} 僵尸，探索+ ${toExploration}, 種植+${toFarming}, 回收+${toRecycling}, 科研+${toResearch}`, 'uncommon', 'zombie');
+        addEventLog(`兵營生產：新增⚡ ${gained} 僵尸，探索+ ${toExploration}, 種植+${toFarming}, 回收+${toRecycling}, 科研+${toResearch}`, 'uncommon', 'zombie');
       }
       updateResourceDisplays();
     }
@@ -2443,6 +2505,28 @@
 	}	  
       updateResourceDisplays();
     }
+	
+	function updateTechConsumptionFromRareVault() {
+	  let totalTechRate = 0;
+	  // 選取所有珍稀庫
+	  const rareVaultBuildings = gameState.buildings.filter(b => b && b.type.toLowerCase() === "rarevault");
+	  rareVaultBuildings.forEach(b => {
+		const info = BUILDINGS.rarevault.getUpgradeInfo(b.level);
+		if (info && typeof info.effect.techConsumptionRate !== "undefined") {
+		  totalTechRate += info.effect.techConsumptionRate;
+		}
+	  });
+	  
+	  // 消耗量 = 累計的tech消耗率 * 遊戲中總僵尸數
+	  const consumption = totalTechRate * gameState.totalZombies;
+	  
+	  // 從科技資源中扣除，並保持不小於0
+	  gameState.resources.tech = Math.max(0, gameState.resources.tech - consumption);
+	  
+	  updateResourceDisplays();
+	}
+
+
 	function updateSafetyCenterConsumption() {
 	  // 檢查安全中心是否存在
 	  const safety = gameState.buildings.find(b => b && b.type.toLowerCase() === "safetycenter");
@@ -2916,47 +3000,55 @@
 	  }
 	}
 
-
 	function updateBuildMenuContent(index) {
 	  const available = Object.entries(BUILDINGS)
 		.filter(([key, cfg]) => cfg.baseCost && key.toLowerCase() !== "center");
 
 	  let modalContent = available.map(([key, cfg]) => {
-		let bonusInfo = "";
-		if (typeof cfg.getUpgradeInfo === "function") {
-		  const info = cfg.getUpgradeInfo(1);
-		  if (info && info.effect) {
-			bonusInfo = Object.entries(info.effect)
-			  .map(([attr, value]) => `${attr}: +${parseFloat(value).toFixed(2)}`)
-			  .join("<br>");
-		  }
+	  // 顯示效果描述：將 effect 內各項轉換成中文
+	  let bonusInfo = "";
+	  if (typeof cfg.getUpgradeInfo === "function") {
+		const info = cfg.getUpgradeInfo(1);
+		if (info && info.effect) {
+		  bonusInfo = Object.entries(info.effect)
+			.map(([attr, value]) => {
+			  // 將 attr 轉換為中文，若映射裡沒有則直接輸出 attr
+			  const cnAttr = effectMapping[attr] || attr;
+			  return `${cnAttr}: +${parseFloat(value).toFixed(2)}`;
+			})
+			.join("<br>");
 		}
-		let costHtml = Object.entries(cfg.baseCost)
-		  .map(([res, val]) => `<span class="cost-item" style="margin-right: 8px;">${res}: ${parseInt(val)}</span>`)
-		  .join(' ');
-		let unmet = "";
-		if (!canAfford(cfg.baseCost)) {
-		  unmet = " （❌）";
-		}
-		return `
-		  <div class="build-box" onclick="startBuilding('${key}', ${index})">
-			<div class="build-top-container">
-			  <div class="build-row">
-				<div class="build-left">
-				  <span class="build-icon">${getBuildingIcon(key)}</span>
-				  <span class="build-name" style="margin-left:5px; font-weight:bold;">${cfg.name}</span>
-				</div>
-				<div class="build-right">
-				  ${bonusInfo}
-				</div>
+	  }
+	  let costHtml = Object.entries(cfg.baseCost)
+		.map(([res, val]) => {
+		  const cnRes = costMapping[res] || res;
+		  return `<span class="cost-item" style="margin-right: 8px;">${cnRes}: ${parseInt(val)}</span>`;
+		})
+		.join(' ');
+	  let unmet = "";
+	  if (!canAfford(cfg.baseCost)) {
+		unmet = " （❌）";
+	  }
+	  return `
+		<div class="build-box" onclick="startBuilding('${key}', ${index})">
+		  <div class="build-top-container">
+			<div class="build-row">
+			  <div class="build-left">
+				<span class="build-icon">${getBuildingIcon(key)}</span>
+				<span class="build-name" style="margin-left:5px; font-weight:bold;">${cfg.name}</span>
+			  </div>
+			  <div class="build-right">
+				${bonusInfo}
 			  </div>
 			</div>
-			<div class="build-resources">
-			  ${costHtml}${unmet}
-			</div>
 		  </div>
-		`;
-	  }).join('');
+		  <div class="build-resources">
+			${costHtml}${unmet}
+		  </div>
+		</div>
+	  `;
+	}).join('');
+
 	  
 	  modalContent += `
 		  <div class="build-box empty"></div>
@@ -3228,29 +3320,31 @@
 	  if (!building) return;
 	  const config = BUILDINGS[building.type];
 	  
-	  // 取得當前加成信息，保留兩位小數
 	  let currentInfo = "";
 	  if (typeof config.getUpgradeInfo === "function") {
 		const currentUpgrade = config.getUpgradeInfo(building.level);
 		if (currentUpgrade && currentUpgrade.effect) {
 		  currentInfo = Object.entries(currentUpgrade.effect)
-						 .map(([attr, value]) => `${attr}: +${parseFloat(value).toFixed(2)}`)
-						 .join(", ");
+			.map(([attr, value]) => {
+			  const cnAttr = effectMapping[attr] || attr;
+			  return `${cnAttr}: +${parseFloat(value).toFixed(2)}`;
+			})
+			.join("，");
 		}
 	  }
 	  
-	  // 取得下一級升級信息，成本保持整數顯示
 	  let nextInfo = "";
 	  const nextUpgrade = (typeof config.getUpgradeInfo === "function")
-							? config.getUpgradeInfo(building.level + 1)
-							: null;
+						  ? config.getUpgradeInfo(building.level + 1)
+						  : null;
 	  if (nextUpgrade && nextUpgrade.cost) {
 		nextInfo = " ";
 		for (let [res, val] of Object.entries(nextUpgrade.cost)) {
-		  nextInfo += ` ${res}: ${parseInt(val)}`;
+		  const cnRes = costMapping[res] || res;
+		  nextInfo += ` ${cnRes}: ${parseInt(val)}`;
 		}
 		if (!canAfford(nextUpgrade.cost)) {
-		  nextInfo += " (❌)";
+		  nextInfo += " （❌）";
 		}
 	  } else {
 		nextInfo = "已達最高級";
@@ -3267,6 +3361,7 @@
 		document.getElementById("demolishBtn").style.display = "inline-block";
 	  }
 	}
+
 
 
 	function showUpgradeMenu(index) {
