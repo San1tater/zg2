@@ -1187,7 +1187,7 @@
 	  <!-- 稱號庫模態視窗 -->
 		<div id="titlesModal" class="modal-overlay">
 		  <div class="modal-content">
-			<h3 style="display: flex; justify-content: space-between; align-items: center;">稱號庫</h3>
+			<h3 id="titleLibraryTitle" style="text-align: center; font-weight: bold;">稱號庫</h3>
 			<div class="titles-content" id="titlesContent">
 			  <!-- 全部稱號，按稀有度排序顯示 -->
 			</div>
@@ -2684,6 +2684,8 @@
 	  // 檢查收藏完成度
 	  let collValue = getCollectionCompletion();
 	  achievementRules.collectionCompleteness.forEach(rule => {
+	    let currentMax = Math.max(0, ...unlockedAchievements.filter(a => a.category === "collectionCompleteness")
+                                                  .map(a => a.level));
 		if (collValue >= rule.threshold && !isAchievementUnlocked("collectionCompleteness", rule.level)) {
 		  awardAchievement("collectionCompleteness", rule);
 		}
@@ -2692,6 +2694,8 @@
 	  // 檢查神聖物品獲得數量
 	  let divineCount = gameState.divineItemsCount || 0;
 	  achievementRules.divineItems.forEach(rule => {
+	  let currentMax = Math.max(0, ...unlockedAchievements.filter(a => a.category === "divineItems")
+                                                  .map(a => a.level));
 		if (divineCount >= rule.threshold && !isAchievementUnlocked("divineItems", rule.level)) {
 		  awardAchievement("divineItems", rule);
 		}
@@ -2700,6 +2704,8 @@
 	  // 檢查僵尸總量
 	  let totalZombies = gameState.totalZombies || 0;
 	  achievementRules.totalZombies.forEach(rule => {
+	  let currentMax = Math.max(0, ...unlockedAchievements.filter(a => a.category === "divineItems")
+                                                  .map(a => a.level));
 		if (totalZombies >= rule.threshold && !isAchievementUnlocked("totalZombies", rule.level)) {
 		  awardAchievement("totalZombies", rule);
 		}
@@ -2708,6 +2714,8 @@
 	  // 檢查BTR觸發次數
 	  let btrCount = gameState.btrTriggerCount || 0;
 	  achievementRules.btrTriggers.forEach(rule => {
+	  let currentMax = Math.max(0, ...unlockedAchievements.filter(a => a.category === "divineItems")
+                                                  .map(a => a.level));
 		if (btrCount >= rule.threshold && !isAchievementUnlocked("btrTriggers", rule.level)) {
 		  awardAchievement("btrTriggers", rule);
 		}
@@ -2739,15 +2747,15 @@
 
 	  
 	   let html = '<table style="width:100%; border-collapse:collapse;">';
-	  html += '<thead><tr>';
-	  html += '<th style="text-align:center;">稱號</th>';
-	  html += '<th style="text-align:center;">詳情</th>';
-	  html += '</tr></thead><tbody>';
+	   html += '<thead><tr>';
+	   html += '<th style="border:1px solid var(--border-color); padding:5px; text-align:center;">稱號</th>';
+	   html += '<th style="border:1px solid var(--border-color); padding:5px; text-align:center;">詳情</th>';
+	   html += '</tr></thead><tbody>';
 	  
 	  sorted.forEach(ach => {
 		html += `<tr class="${ach.rarity}" style="font-weight:bold; text-align:center;">
-		  <td>${ach.title}</td>
-		  <td>${ach.details}</td>
+		  <td style="border:1px solid var(--border-color); padding:5px;">${ach.title}</td>
+		  <td style="border:1px solid var(--border-color); padding:5px;">${ach.details}</td>
 		</tr>`;
 	  });
 	  html += '</tbody></table>';
@@ -2763,7 +2771,26 @@
 	  return (obtained / total) * 100;
 	}
 
-	
+	function removeDuplicateAchievements() {
+	  // 使用一個 Map 以 "category_title" 為鍵，保證每個稱號只保留一筆
+	  const dedupMap = new Map();
+	  // 遍歷 unlockedAchievements，若重複則只保留第一筆
+	  unlockedAchievements = unlockedAchievements.filter(achievement => {
+		// 定義鍵值（你也可以使用 category+level 作為區分依據）
+		const key = achievement.category + "_" + achievement.title;
+		if (dedupMap.has(key)) {
+		  // 已存在則跳過
+		  return false;
+		} else {
+		  dedupMap.set(key, true);
+		  return true;
+		}
+	  });
+	  // 同步存入 gameState 中（如果你需要統一存放）
+	  gameState.unlockedAchievements = unlockedAchievements.slice();
+	  // 更新成就界面
+	  updateAchievementsUI();
+	}
   
     /***** 建築管理系統 *****/
 	function initBuildingGrid() {
@@ -3905,6 +3932,7 @@
 		  
 		// 尝试加载存档
 		loadGameState();
+		removeDuplicateAchievements();
 		  
 		// 初始化游戏（使用存档或初始状态）
 		initGame();
