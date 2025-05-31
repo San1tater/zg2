@@ -2119,6 +2119,9 @@
 	  }
 	  
 	  const finalZombieChange = Math.round(baseZombieChange + offset);
+	  if (finalZombieChange > 10000) {
+		return 10000;
+	  }
 	  return finalZombieChange;
 	}
 
@@ -2312,12 +2315,13 @@
 	  
 	  // 更新收藏記錄
 	  if (result.item) {
-		if (collectedItems[result.item]) {
-		  collectedItems[result.item].count += 1;
-		} else {
-		  collectedItems[result.item] = { count: 1, rarity: result.rarity };
-		}
-	  }
+		const key = `${result.item}_${result.rarity}`;
+	    if (collectedItems[key]) {
+		  collectedItems[key].count += 1;
+	    } else {
+	      collectedItems[key] = { count: 1, rarity: result.rarity, name: result.item };
+	    }
+      }
 	  
 	  // 處理僵尸變化描述（即使結果可能為0也會生成 log）
 	  if (result.zombieChange !== 0) {
@@ -3706,11 +3710,17 @@
 		  junk: 1     
 	  };
 	  // 將 collectedItems 轉換成陣列，每個項目包含：名稱、獲得次數與稀有度
-	  let items = Object.keys(collectedItems).map(key => ({
-		  name: key,
-		  count: collectedItems[key].count,
-		  rarity: collectedItems[key].rarity
-	  }));
+	  let items = Object.keys(collectedItems).map(key => {
+		  let itemName = collectedItems[key].name;
+		  if (itemName === undefined) {
+			itemName = key.split("_")[0];
+		  }
+		  return {
+			name: itemName,
+			count: collectedItems[key].count,
+			rarity: collectedItems[key].rarity
+		  };
+	  });
 	  // 按照稀有度由高到低排序
 	  items.sort((a, b) => (rarityOrder[b.rarity] || 0) - (rarityOrder[a.rarity] || 0));
 	  items = items.slice(0, 100); // 只取前100條
