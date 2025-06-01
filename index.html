@@ -739,6 +739,8 @@
 	  .modal-content {
 		width: min(41vw, 400px);
 		margin: 0 auto;
+		touch-action: auto;        /* 允許原生滾動處理 */
+		overscroll-behavior: contain;  /* 抑制滾動連鎖效應 */
       }
 	}
     @media (max-width: 480px) {
@@ -2181,10 +2183,10 @@
 	  const finalZombieChange = Math.round(baseZombieChange + offset);
 	  let effectiveCap = 10000;
 	  const zccBuildings = gameState.buildings.filter(b =>
-		b && b.type.toLowerCase() === "zombiecommandcenter"
+		b && b.type.toLowerCase() === "zombieCommandCenter"
 	  );
 	  zccBuildings.forEach(b => {
-		const info = BUILDINGS.zombiecommandcenter.getUpgradeInfo(b.level);
+		const info = BUILDINGS.zombieCommandCenter.getUpgradeInfo(b.level);
 		if (info && info.effect.maxZombieCapBonus) {
 		  effectiveCap += info.effect.maxZombieCapBonus;
 		}
@@ -3137,6 +3139,11 @@
 	  gameState.researchEfficiency = 1 + researchBoost;
 	  gameState.zombieEfficiency = 1 + zombieEfficiency;
 	  gameState.productionEfficiency = 1 + productionBonus;
+	 
+	 // ★ 將 productionBonus 全局應用到所有資源的效率上 ★
+	  ['food', 'materials', 'weapons', 'tech'].forEach(res => {
+		gameState.efficiency[res] = (gameState.efficiency[res] || 1) + productionBonus;
+	  });
 
 	  // 限制其他建築的最高等級
 	  gameState.buildings.forEach(b => {
@@ -3508,76 +3515,66 @@
 	const scrollManager = (() => {
 	  let startX = 0, startY = 0;
 	  let currentContainer = null;
-	  // 用來標記這次觸摸操作是否是垂直手勢（只在第一次 touchmove 時確定）
+	  // 用來標記是否為垂直手勢（第一次 touchmove 時確定）
 	  let isVerticalGesture = null; 
-	  // 垂直角度閾值（單位：度）
-	  const verticalThreshold = 30; 
+	  const verticalThreshold = 30; // 垂直角度閾值
 
-	  // 檢查元素是否具有垂直滾動功能
+	  // 判斷元素是否可滾動該垂直方向
 	  function isScrollable(el) {
 		return el && el.scrollHeight > el.clientHeight;
 	  }
 
 	  function handleTouchStart(e) {
-		  if (e.touches.length > 1) {
-			currentContainer = null;
-			isVerticalGesture = null;
-			return;
-		  }
-		  const logContainer = e.target.closest('#explorationLog, #productionLog');
-		  currentContainer = logContainer && isScrollable(logContainer) ? logContainer : null;
-		  
-		  if (currentContainer) {
-			startX = e.touches[0].clientX;
-			startY = e.touches[0].clientY;
-			isVerticalGesture = null;
-		  }
-		  if (e.target.closest('#favoritesModal .modal-content')) {
-			currentContainer = document.querySelector('#favoritesModal .modal-content');
-		  } else if (e.target.closest('#productionCollectionModal.modal-content')) {
-			currentContainer = document.querySelector('#productionCollectionModal .modal-content');
-		  } else if (e.target.closest('#buildModal.modal-content')) {
-			currentContainer = document.querySelector('#buildModal .modal-content');
-		  } else {
-			const container = e.target.closest('.modal-content, .log');
-			currentContainer = container && isScrollable(container) ? container : null;
-		  }
-		  if (currentContainer) {
-			startX = e.touches[0].clientX;
-			startY = e.touches[0].clientY;
-			isVerticalGesture = null;
-		  }
+		if (e.touches.length > 1) {
+		  currentContainer = null;
+		  isVerticalGesture = null;
+		  return;
 		}
-
-
+		// 如果目標在 modal-content 內，直接使用該元素，讓瀏覽器處理原生滾動
+		const modalContent = e.target.closest('.modal-content');
+		if (modalContent) {
+		  currentContainer = modalContent;
+		  return; // 不進一步處理
+		}
+		// 否則，判斷是否在日誌區域內
+		const logContainer = e.target.closest('#explorationLog, #productionLog');
+		currentContainer = logContainer && isScrollable(logContainer) ? logContainer : null;
+		if (currentContainer) {
+		  startX = e.touches[0].clientX;
+		  startY = e.touches[0].clientY;
+		  isVerticalGesture = null;
+		}
+	  }
 
 	  function handleTouchMove(e) {
-		  if (e.touches.length > 1 || !currentContainer) return;
-		  
-		  const currentX = e.touches[0].clientX;
-		  const currentY = e.touches[0].clientY;
-		  const deltaX = currentX - startX;
-		  const deltaY = currentY - startY;
-		  
-		  if (isVerticalGesture === null) {
-			const angle = Math.atan2(Math.abs(deltaX), Math.abs(deltaY)) * (180 / Math.PI);
-			isVerticalGesture = angle < verticalThreshold;
-		  }
-		  
-		  if (isVerticalGesture) {
-			e.preventDefault();
-			e.stopPropagation();
-			currentContainer.scrollTop -= deltaY;
-		  }
-		  
-		  startX = currentX;
-		  startY = currentY;
+		// 若 currentContainer 為 modal-content，則不阻止原生滾動
+		if (currentContainer && currentContainer.classList.contains('modal-content')) {
+		  return;
 		}
+		if (e.touches.length > 1 || !currentContainer) return;
+		
+		const currentX = e.touches[0].clientX;
+		const currentY = e.touches[0].clientY;
+		const deltaX = currentX - startX;
+		const deltaY = currentY - startY;
 
-
+		if (isVerticalGesture === null) {
+		  const angle = Math.atan2(Math.abs(deltaX), Math.abs(deltaY)) * (180 / Math.PI);
+		  isVerticalGesture = angle < verticalThreshold;
+		}
+		
+		if (isVerticalGesture) {
+		  e.preventDefault();
+		  e.stopPropagation();
+		  currentContainer.scrollTop -= deltaY;
+		}
+		
+		startX = currentX;
+		startY = currentY;
+	  }
 
 	  function handleTouchEnd(e) {
-		// 清空本次觸摸相關數據
+		// 重置觸摸相關數據
 		currentContainer = null;
 		isVerticalGesture = null;
 	  }
@@ -3590,8 +3587,8 @@
 		}
 	  };
 	})();
-	scrollManager.init();
 
+	scrollManager.init();
 
 
 
