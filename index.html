@@ -78,7 +78,7 @@
 	}
 	#buildModal .modal-content {
 	  overflow-y: hidden;
-	  height: 500px; /* 或根據需要調整 */
+	  height: 580px; /* 或根據需要調整 */
 	}
 	
 
@@ -3016,22 +3016,19 @@
 	function showBuildMenu(index) {
 	  currentBuildIndex = index;
 	  currentBuildPage = 0;
-	  // 同步生成選項卡內容（此時 buildModalReady 會自動設為 false，並在內容生成與翻頁按鈕更新完畢後設為 true）
 	  updateBuildMenuContent(index);
 	  
-	  // 先計算總項目數與總頁數（用 getBuildItems()）
-	  const totalItems = getBuildItems().length;
+	  const totalItems = getBuildItems().length; // 此處 getBuildItems() 取可建造項目
 	  const itemsPerPage = 2;
 	  const totalPages = Math.ceil(totalItems / itemsPerPage);
 	  
-	  // 使用 requestAnimationFrame 確保 DOM 更新完成後再更新翻頁按鈕與顯示彈窗
+	  // 利用 requestAnimationFrame 確保 DOM 更新完成後再設置導航
 	  requestAnimationFrame(() => {
 		updateBuildNavButtons(totalPages);
 		updateBuildHeaderNumbers();
 		showNestedModal("buildModal");
 	  });
 	}
-
 	
 	// 全局變量：當前建造選單所在頁碼與起始索引（預設頁碼從 0 開始）
 	let currentBuildPage = 0;
@@ -3139,149 +3136,73 @@
 
 	// 更新导航按钮（放置于 modal-overlay 内部，但不在 modal-content 内部）
 	function updateBuildNavButtons(totalPages) {
-	  // 取得彈窗 overlay 及 modal-content 的位置
 	  const modalOverlay = document.getElementById("buildModal");
 	  const modalContent = modalOverlay.querySelector(".modal-content");
 	  if (!modalOverlay || !modalContent) return;
-
-	  const overlayRect = modalOverlay.getBoundingClientRect();
-	  const contentRect = modalContent.getBoundingClientRect();
-
-	  // 固定容器尺寸
-	  const btnContainerWidth = 80;  // 每側容器寬度
-	  const btnContainerHeight = 300; // 每側容器高度
-	  // 計算容器的垂直位置：使容器垂直居中於 modal-content
-	  const topOffset = contentRect.top - overlayRect.top + (contentRect.height - btnContainerHeight) / 2;
-
-	  // 刪除舊的導航容器（如果存在）
-	  let navWrap = document.getElementById("buildNavButtons");
-	  if (navWrap) navWrap.parentNode.removeChild(navWrap);
-
-	  // 父容器
-	  navWrap = document.createElement("div");
-	  navWrap.id = "buildNavButtons";
-	  navWrap.style.position = "absolute";
-	  navWrap.style.top = "0";
-	  navWrap.style.left = "0";
-	  navWrap.style.width = "100%";
-	  navWrap.style.height = "100%";
-	  navWrap.style.pointerEvents = "none"; 
-
-	  // ----- 左側容器 -----
-	  const leftContainer = document.createElement("div");
-	  leftContainer.id = "leftNavContainer";
-	  leftContainer.style.position = "absolute";
-	  leftContainer.style.width = btnContainerWidth + "px";
-	  leftContainer.style.height = btnContainerHeight + "px";
-	  // 使左側容器右邊緣與 modal-content 的左邊緣對齊
-	  const leftEdge = contentRect.left - overlayRect.left;
-	  leftContainer.style.right = (overlayRect.width - leftEdge) + "px";
-	  leftContainer.style.top = topOffset + "px";
-	  leftContainer.style.pointerEvents = "all";
-
-	  // 左側上按鈕：上一頁
-	  const leftUpBtn = document.createElement("button");
-	  leftUpBtn.innerHTML = "↑";
-	  leftUpBtn.style.width = btnContainerWidth + "px";
-	  leftUpBtn.style.height = (btnContainerHeight / 2) + "px"; // 150px
-	  leftUpBtn.style.display = "block";
-	  leftUpBtn.style.margin = "0";
-	  leftUpBtn.style.border = "none";
-	  leftUpBtn.style.background = "#444";
-	  leftUpBtn.style.color = "#fff";
-	  leftUpBtn.style.cursor = "pointer";
-	  leftUpBtn.onclick = function(e) {
+	  
+	  // 移除舊的導航容器（如果存在）
+	  let existingNav = modalContent.querySelector(".nav-container");
+	  if (existingNav) {
+		existingNav.parentNode.removeChild(existingNav);
+	  }
+	  
+	  // 創建新的導航容器
+	  const navContainer = document.createElement("div");
+	  navContainer.className = "nav-container";
+	  // 設置為絕對定位，參考 modalContent（父級相對定位）
+	  navContainer.style.position = "absolute";
+	  navContainer.style.left = "0";
+	  navContainer.style.right = "0";
+	  // 設定底部對齊，並將上邊沿向上略移以覆蓋圓角（例如 -10px）
+	  navContainer.style.bottom = "-10px";
+	  navContainer.style.height = "100px";
+	  // 設置背景（半透明遮蓋）以使按鈕區塊更顯眼
+	  navContainer.style.background = "rgba(45,45,45,0.95)";
+	  // 使用 Flexbox 水平排列內部按鈕（左右各一個）
+	  navContainer.style.display = "flex";
+	  navContainer.style.justifyContent = "space-between";
+	  navContainer.style.alignItems = "center";
+	  navContainer.style.padding = "0 20px";
+	  navContainer.style.boxSizing = "border-box";
+	  navContainer.style.zIndex = "100"; // 確保位於頂層
+	  
+	  // 創建左側按鈕（向上箭頭）
+	  const upBtn = document.createElement("button");
+	  upBtn.textContent = "↑";
+	  upBtn.style.fontSize = "1.8em";
+	  upBtn.style.height = "100px";
+	  upBtn.style.width = "250px";
+	  upBtn.style.cursor = "pointer";
+	  // 點擊處理：向上翻頁（此處你可以調整邏輯，比如在第一頁時禁用增加操作）
+	  upBtn.onclick = function(e) {
 		e.stopPropagation();
+		// 若已在第一頁則不操作（或可根據需求提前檢查）
+		if (currentBuildPage === 0) return;
 		changeBuildPage(-1, totalPages);
 		updateBuildNavButtons(totalPages);
 	  };
-
-	  // 左側下按鈕：下一頁
-	  const leftDownBtn = document.createElement("button");
-	  leftDownBtn.innerHTML = "↓";
-	  leftDownBtn.style.width = btnContainerWidth + "px";
-	  leftDownBtn.style.height = (btnContainerHeight / 2) + "px"; // 150px
-	  leftDownBtn.style.display = "block";
-	  leftDownBtn.style.margin = "0";
-	  leftDownBtn.style.border = "none";
-	  leftDownBtn.style.background = "#444";
-	  leftDownBtn.style.color = "#fff";
-	  leftDownBtn.style.cursor = "pointer";
-	  leftDownBtn.onclick = function(e) {
+	  
+	  // 創建右側按鈕（向下箭頭）
+	  const downBtn = document.createElement("button");
+	  downBtn.textContent = "↓";
+	  downBtn.style.fontSize = "1.8em";
+	  downBtn.style.height = "100px";
+	  downBtn.style.width = "250px";
+	  downBtn.style.cursor = "pointer";
+	  downBtn.onclick = function(e) {
 		e.stopPropagation();
 		changeBuildPage(1, totalPages);
 		updateBuildNavButtons(totalPages);
 	  };
 
-	  leftContainer.appendChild(leftUpBtn);
-	  leftContainer.appendChild(leftDownBtn);
-
-	  // ----- 右側容器 -----
-	  const rightContainer = document.createElement("div");
-	  rightContainer.id = "rightNavContainer";
-	  rightContainer.style.position = "absolute";
-	  rightContainer.style.width = btnContainerWidth + "px";
-	  rightContainer.style.height = btnContainerHeight + "px";
-	  // 使右側容器左邊緣與 modal-content 的右邊緣對齊
-	  const rightEdge = contentRect.right - overlayRect.left;
-	  rightContainer.style.left = rightEdge + "px";
-	  rightContainer.style.top = topOffset + "px";
-	  rightContainer.style.pointerEvents = "all";
-
-	  // 右側上按鈕：上一頁
-	  const rightUpBtn = document.createElement("button");
-	  rightUpBtn.innerHTML = "↑";
-	  rightUpBtn.style.width = btnContainerWidth + "px";
-	  rightUpBtn.style.height = (btnContainerHeight / 2) + "px";
-	  rightUpBtn.style.display = "block";
-	  rightUpBtn.style.margin = "0";
-	  rightUpBtn.style.border = "none";
-	  rightUpBtn.style.background = "#444";
-	  rightUpBtn.style.color = "#fff";
-	  rightUpBtn.style.cursor = "pointer";
-	  rightUpBtn.onclick = function(e) {
-		e.stopPropagation();
-		changeBuildPage(-1, totalPages);
-		updateBuildNavButtons(totalPages);
-	  };
-
-	  // 右側下按鈕：下一頁
-	  const rightDownBtn = document.createElement("button");
-	  rightDownBtn.innerHTML = "↓";
-	  rightDownBtn.style.width = btnContainerWidth + "px";
-	  rightDownBtn.style.height = (btnContainerHeight / 2) + "px";
-	  rightDownBtn.style.display = "block";
-	  rightDownBtn.style.margin = "0";
-	  rightDownBtn.style.border = "none";
-	  rightDownBtn.style.background = "#444";
-	  rightDownBtn.style.color = "#fff";
-	  rightDownBtn.style.cursor = "pointer";
-	  rightDownBtn.onclick = function(e) {
-		e.stopPropagation();
-		changeBuildPage(1, totalPages);
-		updateBuildNavButtons(totalPages);
-	  };
-
-	  rightContainer.appendChild(rightUpBtn);
-	  rightContainer.appendChild(rightDownBtn);
-
-	  // 頁碼指示器（可選）
-	  const indicator = document.createElement("div");
-	  indicator.id = "pageIndicator";
-	  indicator.style.position = "absolute";
-	  indicator.style.bottom = "-30px";
-	  indicator.style.width = "100%";
-	  indicator.style.textAlign = "center";
-	  indicator.style.fontSize = "0.9em";
-	  indicator.style.color = "#fff";
-	  indicator.textContent = `頁碼：${currentBuildPage + 1} / ${totalPages || 1}`;
-
-	  navWrap.appendChild(leftContainer);
-	  navWrap.appendChild(rightContainer);
-	  navWrap.appendChild(indicator);
-	  modalOverlay.appendChild(navWrap);
-
-	  console.log("Left container top:", leftContainer.style.top, "Right container left:", rightContainer.style.left);
+	  // 將按鈕加入導航容器
+	  navContainer.appendChild(upBtn);
+	  navContainer.appendChild(downBtn);
+	  
+	  // 將導航容器加入 modalContent，使其成為彈窗的一部分
+	  modalContent.appendChild(navContainer);
+	  
+	  console.log("更新導航容器：totalPages =", totalPages, "currentBuildPage =", currentBuildPage);
 	}
 
 
