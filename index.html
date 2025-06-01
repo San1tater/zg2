@@ -2428,7 +2428,20 @@
 	  const teamSize = gameState.allocations.exploration;
 	  console.log("handleExploration 執行，teamSize =", teamSize);
 	  if (teamSize < 1) return;
+	  const baseMultiplier = Math.pow(teamSize, 0.85);
+	  const bonusMultiplier = Math.pow(1.0005, teamSize);
+	  const effectiveMultiplier = baseMultiplier * bonusMultiplier;
+
 	  const result = generateExplorationResult(teamSize);
+	   let amountAfterMultiplier = Math.floor(result.amount * effectiveMultiplier);
+  
+	  // 設定單次資源獲得上限（例如 productionCap 為 990000）
+	  const productionCap = 990000;
+	  amountAfterMultiplier = Math.min(amountAfterMultiplier, productionCap);
+	  
+	  result.amount = amountAfterMultiplier;
+	  
+	  // 將獲得數量累加到對應資源上;
 	  gameState.resources[result.resource] += result.amount;
 	  addEventLog(result.log.text, result.rarity, "exploration");
 	  
