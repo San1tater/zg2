@@ -2442,6 +2442,7 @@
 	  amountAfterMultiplier = Math.min(amountAfterMultiplier, productionCap);
 	  
 	  result.amount = amountAfterMultiplier;
+	  result.log.text = result.log.text.replace(/\+\d+/, "+" + result.amount);
 	  
 	  // 將獲得數量累加到對應資源上;
 	  gameState.resources[result.resource] += result.amount;
