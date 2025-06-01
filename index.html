@@ -2250,9 +2250,11 @@
 	  const baseAmount = Math.floor(Math.random() * 5) + 5;
 	  
 	  const randFactor = 0.95 + Math.random() * 0.1;
-	  const multiplier = 1 + 0.3 * Math.log(teamSize + 1);
-	  
-	  const computed = applyRarityMultiplier(baseAmount, rarity) * multiplier;
+	  // 原來使用對數增長：
+	  // const multiplier = 1 + 0.3 * Math.log(teamSize + 1);
+	  // const computed = applyRarityMultiplier(baseAmount, rarity) * multiplier;
+	  // const amount = convertProduction(computed);
+	  const computed = applyRarityMultiplier(baseAmount, rarity);
 	  const amount = convertProduction(computed);
 	  const itemName = getRandomItemName(resource);
 	  const modifier = getRandomModifier(resource);
@@ -2433,7 +2435,7 @@
 	  const effectiveMultiplier = baseMultiplier * bonusMultiplier;
 
 	  const result = generateExplorationResult(teamSize);
-	   let amountAfterMultiplier = Math.floor(result.amount * effectiveMultiplier);
+	  let amountAfterMultiplier = Math.floor(result.amount * effectiveMultiplier);
   
 	  // 設定單次資源獲得上限（例如 productionCap 為 990000）
 	  const productionCap = 990000;
