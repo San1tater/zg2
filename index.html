@@ -78,7 +78,7 @@
 	}
 	#buildModal .modal-content {
 	  overflow-y: hidden;
-	  max-height: 500px; /* 或根據需要調整 */
+	  height: 500px; /* 或根據需要調整 */
 	}
 	
 
@@ -2944,6 +2944,8 @@
 	  // 更新成就界面
 	  updateAchievementsUI();
 	}
+	 
+	
   
     /***** 建築管理系統 *****/
 	function initBuildingGrid() {
@@ -3013,35 +3015,23 @@
 	let currentBuildIndex = null;
 	function showBuildMenu(index) {
 	  currentBuildIndex = index;
+	  currentBuildPage = 0;
+	  // 同步生成選項卡內容（此時 buildModalReady 會自動設為 false，並在內容生成與翻頁按鈕更新完畢後設為 true）
 	  updateBuildMenuContent(index);
-	  showNestedModal("buildModal");
-
-	  const modalContent = document.querySelector('#buildModal .modal-content');
-	  const baseTitleElem = document.querySelector('.building-system h2.section-title');
-	  const centerTile = document.querySelector('[data-index="4"]'); // 中心基地
-
-	  if (modalContent && baseTitleElem && centerTile) {
-		const titleRect = baseTitleElem.getBoundingClientRect();
-		const centerRect = centerTile.getBoundingClientRect();
-		
-		// 如果是桌面：
-		if (window.innerWidth >= 768) {
-		  modalContent.style.position = "fixed";
-		  // 將 top 設在基地建設標題的下邊緣：
-		  modalContent.style.top = titleRect.bottom + "px";
-		  // 左側根據中心基地卡片水平居中
-		  const modalWidth = modalContent.offsetWidth;
-		  modalContent.style.left = (centerRect.left + centerRect.width / 2 - modalWidth / 2) + "px";
-		} else {
-		  // 如果是移動端，則用較合理的設置，這裡我們讓彈窗寬度由上面的 CSS 控制，
-		  // 只需要調整 top 為基地建設標題下方一定距離（比如20px）
-		  modalContent.style.position = "absolute";
-		  modalContent.style.top = (titleRect.bottom + 20) + "px";
-		  modalContent.style.left = "50%";
-		  modalContent.style.transform = "translateX(-50%)";
-		}
-	  }
+	  
+	  // 先計算總項目數與總頁數（用 getBuildItems()）
+	  const totalItems = getBuildItems().length;
+	  const itemsPerPage = 2;
+	  const totalPages = Math.ceil(totalItems / itemsPerPage);
+	  
+	  // 使用 requestAnimationFrame 確保 DOM 更新完成後再更新翻頁按鈕與顯示彈窗
+	  requestAnimationFrame(() => {
+		updateBuildNavButtons(totalPages);
+		updateBuildHeaderNumbers();
+		showNestedModal("buildModal");
+	  });
 	}
+
 	
 	// 全局變量：當前建造選單所在頁碼與起始索引（預設頁碼從 0 開始）
 	let currentBuildPage = 0;
@@ -3129,39 +3119,45 @@
 	
 
 	// 翻页按钮回调：更新页码后重新刷新内容
-	function changeBuildPage(direction) {
+	function changeBuildPage(direction, totalPages) {
+		if (direction < 0 && currentBuildPage === 0) {
+		return;
+	  }
+	  // 更新當前頁碼（方向可以為正數即向後，或負數即向前）
 	  currentBuildPage += direction;
-	  if (currentBuildPage < 0) currentBuildPage = 0;
+	  
+	  // 如果超出範圍，進行循環處理：
+	  if (currentBuildPage >= totalPages) {
+		currentBuildPage = 0;
+	  } else if (currentBuildPage < 0) {
+		currentBuildPage = totalPages - 1;
+	  }
+	  
+	  // 更新選項卡內容（需確保 updateBuildMenuContent 依照 currentBuildPage 使用最新頁碼）
 	  updateBuildMenuContent(currentBuildIndex);
-	  updateBuildNavButtons(); // 同步更新位置
 	}
 
 	// 更新导航按钮（放置于 modal-overlay 内部，但不在 modal-content 内部）
 	function updateBuildNavButtons(totalPages) {
+	  // 取得彈窗 overlay 及 modal-content 的位置
 	  const modalOverlay = document.getElementById("buildModal");
 	  const modalContent = modalOverlay.querySelector(".modal-content");
 	  if (!modalOverlay || !modalContent) return;
-	  
-	  // 取得 modal-content 的位置
-	  const contentRect = modalContent.getBoundingClientRect();
+
 	  const overlayRect = modalOverlay.getBoundingClientRect();
-	  // 垂直中心，注意這個數值在 modal-content 可見且已 reflow 後應正確
-	  const centerY = contentRect.top - overlayRect.top + contentRect.height / 2;
-	  
-	  // 設置按鈕寬度與間隔
-	  const btnWidth = 40; 
-	  const hGap = 10; // 與 modal-content 間留的間距
-	  
-	  // 左側按鈕應放在 modal-content 左側外部
-	  const leftBtnLeft = contentRect.left - overlayRect.left - btnWidth - hGap;
-	  // 右側按鈕應放在 modal-content 右側外部
-	  const rightBtnLeft = contentRect.right - overlayRect.left + hGap;
-	  
-	  // 移除已有按鈕容器
+	  const contentRect = modalContent.getBoundingClientRect();
+
+	  // 固定容器尺寸
+	  const btnContainerWidth = 80;  // 每側容器寬度
+	  const btnContainerHeight = 300; // 每側容器高度
+	  // 計算容器的垂直位置：使容器垂直居中於 modal-content
+	  const topOffset = contentRect.top - overlayRect.top + (contentRect.height - btnContainerHeight) / 2;
+
+	  // 刪除舊的導航容器（如果存在）
 	  let navWrap = document.getElementById("buildNavButtons");
 	  if (navWrap) navWrap.parentNode.removeChild(navWrap);
-	  
-	  // 創建導航按鈕容器，這個容器位於 modal-overlay 中
+
+	  // 父容器
 	  navWrap = document.createElement("div");
 	  navWrap.id = "buildNavButtons";
 	  navWrap.style.position = "absolute";
@@ -3169,47 +3165,107 @@
 	  navWrap.style.left = "0";
 	  navWrap.style.width = "100%";
 	  navWrap.style.height = "100%";
-	  navWrap.style.pointerEvents = "none";  // 容器本身不阻擋事件
-	  
-	  // 創建左側翻頁按鈕
-	  const leftBtn = document.createElement("button");
-	  leftBtn.innerHTML = "←";
-	  leftBtn.style.position = "absolute";
-	  leftBtn.style.left = leftBtnLeft + "px";
-	  leftBtn.style.top = (centerY - 20) + "px";  // 假設按鈕高度40px
-	  leftBtn.style.width = btnWidth + "px";
-	  leftBtn.style.height = "40px";
-	  leftBtn.style.pointerEvents = "all";
-	  leftBtn.style.background = "#444";
-	  leftBtn.style.color = "#fff";
-	  leftBtn.style.border = "none";
-	  leftBtn.style.cursor = "pointer";
-	  leftBtn.onclick = function(e) {
+	  navWrap.style.pointerEvents = "none"; 
+
+	  // ----- 左側容器 -----
+	  const leftContainer = document.createElement("div");
+	  leftContainer.id = "leftNavContainer";
+	  leftContainer.style.position = "absolute";
+	  leftContainer.style.width = btnContainerWidth + "px";
+	  leftContainer.style.height = btnContainerHeight + "px";
+	  // 使左側容器右邊緣與 modal-content 的左邊緣對齊
+	  const leftEdge = contentRect.left - overlayRect.left;
+	  leftContainer.style.right = (overlayRect.width - leftEdge) + "px";
+	  leftContainer.style.top = topOffset + "px";
+	  leftContainer.style.pointerEvents = "all";
+
+	  // 左側上按鈕：上一頁
+	  const leftUpBtn = document.createElement("button");
+	  leftUpBtn.innerHTML = "↑";
+	  leftUpBtn.style.width = btnContainerWidth + "px";
+	  leftUpBtn.style.height = (btnContainerHeight / 2) + "px"; // 150px
+	  leftUpBtn.style.display = "block";
+	  leftUpBtn.style.margin = "0";
+	  leftUpBtn.style.border = "none";
+	  leftUpBtn.style.background = "#444";
+	  leftUpBtn.style.color = "#fff";
+	  leftUpBtn.style.cursor = "pointer";
+	  leftUpBtn.onclick = function(e) {
 		e.stopPropagation();
-		changeBuildPage(-1);
-		updateBuildNavButtons();
+		changeBuildPage(-1, totalPages);
+		updateBuildNavButtons(totalPages);
 	  };
-	  
-	  // 創建右側翻頁按鈕
-	  const rightBtn = document.createElement("button");
-	  rightBtn.innerHTML = "→";
-	  rightBtn.style.position = "absolute";
-	  rightBtn.style.left = rightBtnLeft + "px";
-	  rightBtn.style.top = (centerY - 20) + "px";
-	  rightBtn.style.width = btnWidth + "px";
-	  rightBtn.style.height = "40px";
-	  rightBtn.style.pointerEvents = "all";
-	  rightBtn.style.background = "#444";
-	  rightBtn.style.color = "#fff";
-	  rightBtn.style.border = "none";
-	  rightBtn.style.cursor = "pointer";
-	  rightBtn.onclick = function(e) {
+
+	  // 左側下按鈕：下一頁
+	  const leftDownBtn = document.createElement("button");
+	  leftDownBtn.innerHTML = "↓";
+	  leftDownBtn.style.width = btnContainerWidth + "px";
+	  leftDownBtn.style.height = (btnContainerHeight / 2) + "px"; // 150px
+	  leftDownBtn.style.display = "block";
+	  leftDownBtn.style.margin = "0";
+	  leftDownBtn.style.border = "none";
+	  leftDownBtn.style.background = "#444";
+	  leftDownBtn.style.color = "#fff";
+	  leftDownBtn.style.cursor = "pointer";
+	  leftDownBtn.onclick = function(e) {
 		e.stopPropagation();
-		changeBuildPage(1);
-		updateBuildNavButtons();
+		changeBuildPage(1, totalPages);
+		updateBuildNavButtons(totalPages);
 	  };
-	  
-	  // 創建頁碼指示器（可選）
+
+	  leftContainer.appendChild(leftUpBtn);
+	  leftContainer.appendChild(leftDownBtn);
+
+	  // ----- 右側容器 -----
+	  const rightContainer = document.createElement("div");
+	  rightContainer.id = "rightNavContainer";
+	  rightContainer.style.position = "absolute";
+	  rightContainer.style.width = btnContainerWidth + "px";
+	  rightContainer.style.height = btnContainerHeight + "px";
+	  // 使右側容器左邊緣與 modal-content 的右邊緣對齊
+	  const rightEdge = contentRect.right - overlayRect.left;
+	  rightContainer.style.left = rightEdge + "px";
+	  rightContainer.style.top = topOffset + "px";
+	  rightContainer.style.pointerEvents = "all";
+
+	  // 右側上按鈕：上一頁
+	  const rightUpBtn = document.createElement("button");
+	  rightUpBtn.innerHTML = "↑";
+	  rightUpBtn.style.width = btnContainerWidth + "px";
+	  rightUpBtn.style.height = (btnContainerHeight / 2) + "px";
+	  rightUpBtn.style.display = "block";
+	  rightUpBtn.style.margin = "0";
+	  rightUpBtn.style.border = "none";
+	  rightUpBtn.style.background = "#444";
+	  rightUpBtn.style.color = "#fff";
+	  rightUpBtn.style.cursor = "pointer";
+	  rightUpBtn.onclick = function(e) {
+		e.stopPropagation();
+		changeBuildPage(-1, totalPages);
+		updateBuildNavButtons(totalPages);
+	  };
+
+	  // 右側下按鈕：下一頁
+	  const rightDownBtn = document.createElement("button");
+	  rightDownBtn.innerHTML = "↓";
+	  rightDownBtn.style.width = btnContainerWidth + "px";
+	  rightDownBtn.style.height = (btnContainerHeight / 2) + "px";
+	  rightDownBtn.style.display = "block";
+	  rightDownBtn.style.margin = "0";
+	  rightDownBtn.style.border = "none";
+	  rightDownBtn.style.background = "#444";
+	  rightDownBtn.style.color = "#fff";
+	  rightDownBtn.style.cursor = "pointer";
+	  rightDownBtn.onclick = function(e) {
+		e.stopPropagation();
+		changeBuildPage(1, totalPages);
+		updateBuildNavButtons(totalPages);
+	  };
+
+	  rightContainer.appendChild(rightUpBtn);
+	  rightContainer.appendChild(rightDownBtn);
+
+	  // 頁碼指示器（可選）
 	  const indicator = document.createElement("div");
 	  indicator.id = "pageIndicator";
 	  indicator.style.position = "absolute";
@@ -3219,28 +3275,29 @@
 	  indicator.style.fontSize = "0.9em";
 	  indicator.style.color = "#fff";
 	  indicator.textContent = `頁碼：${currentBuildPage + 1} / ${totalPages || 1}`;
-	  
-	  navWrap.appendChild(leftBtn);
-	  navWrap.appendChild(rightBtn);
+
+	  navWrap.appendChild(leftContainer);
+	  navWrap.appendChild(rightContainer);
 	  navWrap.appendChild(indicator);
-	  
-	  // 將 navWrap 作為子元素加入 modal-overlay（而非 modal-content）
 	  modalOverlay.appendChild(navWrap);
+
+	  console.log("Left container top:", leftContainer.style.top, "Right container left:", rightContainer.style.left);
 	}
 
 
-	// 请确保在弹窗显示时调用 updateBuildMenuContent()
-	// 例如，当用户点击一个空地后触发 showBuildMenu(index)：
-	function showBuildMenu(index) {
-	  currentBuildIndex = index;
-	  currentBuildPage = 0;
-	  // 先更新選項卡內容
-	  updateBuildMenuContent(index);
-	  // 立即更新頭部的數字部分
-	  updateBuildHeaderNumbers();
-	  // 顯示彈窗
-	  showNestedModal("buildModal");
+
+	function getBuildItems() {
+	  // 從 BUILDINGS 過濾出具建造成本且非中心基地的項目
+	  return Object.entries(BUILDINGS)
+		.filter(([key, cfg]) => cfg.baseCost && key.toLowerCase() !== "center");
 	}
+	function calculateTotalPages() {
+	  const itemsPerPage = 2;  // 每頁2個項目（根據你的 updateBuildMenuContent() 設定）
+	  const totalItems = getBuildItems().length;
+	  return Math.ceil(totalItems / itemsPerPage);
+	}
+	
+
 
 	// 每 5 秒檢查一次，如果建造或升級彈窗打開，則刷新其內容
 	setInterval(function() {
@@ -3743,6 +3800,10 @@
 
 
 	  function handleTouchMove(e) {
+		  if (e.target.closest('#buildModal .modal-content')) {
+			// 不阻止事件傳播或預設行為，這樣就讓頁面滾動正常
+			return;
+		  }
 		  if (e.touches.length > 1 || !currentContainer) return;
 		  
 		  const currentX = e.touches[0].clientX;
@@ -3782,10 +3843,6 @@
 	  };
 	})();
 	scrollManager.init();
-
-
-
-
 
 
 
