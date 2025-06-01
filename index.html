@@ -77,7 +77,8 @@
 		text-align: center;
 	}
 	#buildModal .modal-content {
-	  max-height: 600px; /* 或根據需要調整 */
+	  overflow-y: hidden;
+	  max-height: 500px; /* 或根據需要調整 */
 	}
 	
 
@@ -347,8 +348,28 @@
 	  padding: 2rem;
 	}
 
+	/* 收藏彈窗 */
+	.collection-table {
+	  width: 100%;
+	  border-collapse: collapse;
+	  font-family: inherit; /* 使用全局字體 */
+	}
 
-	
+	.collection-table th,
+	.collection-table td {
+	  border: 1px solid var(--border-color); /* 使用你定義的邊框顏色 */
+	  padding: 5px;
+	}
+
+	/* 對 th 進行居中屬性 */
+	.collection-table th,
+	.collection-table td{
+	  text-align: center;
+	  vertical-align: middle;
+	  font-weight: bold;
+	}
+
+		
     /* 部門管理界面 */
     .operations-panel {
       display: flex;
@@ -1301,7 +1322,26 @@
 		<!-- 建造彈窗：加上 nested 類 -->
 		<div id="buildModal" class="modal-overlay nested">
 		  <div class="modal-content">
-			<h3>選擇建造項目</h3>
+		    <div id="buildHeaderStatus" style="margin-bottom: 1rem; font-size: 1.1em; color: var(--text-color);">
+			  <div style="display: flex; flex-wrap: wrap;">
+				<div style="width: 50%; text-align: left;">
+				  <span class="resource-label">🍖食物: </span>
+				  <span id="foodCountDisplay">0</span>
+				</div>
+				<div style="width: 50%; text-align: left;">
+				  <span class="resource-label">🔩材料: </span>
+				  <span id="materialsCountDisplay">0</span>
+				</div>
+				<div style="width: 50%; text-align: left;">
+				  <span class="resource-label">🔫武器: </span>
+				  <span id="weaponsCountDisplay">0</span>
+				</div>
+				<div style="width: 50%; text-align: left;">
+				  <span class="resource-label">💾科技: </span>
+				  <span id="techCountDisplay">0</span>
+				</div>
+			  </div>
+			</div>
 			<div class="build-options" id="buildOptions"></div>
 		  </div>
 		</div>
@@ -1436,7 +1476,7 @@
 	  }
 	};
 
-	let LOCATIONS = ["废弃超市", "核电站废墟", "地铁隧道", "军事基地", "医院地下室", "科研所遗址", "加油站", "农场谷仓", "廢棄購物中心", "核反應爐冷卻池", "地鐵維修通道", "退役導彈發射井", "精神病院停尸間", "化工實驗室廢墟", "漏油加油站", "穀物黴變倉庫", "銹蝕輸油管道", "坍塌礦山隧道", "廢棄冷凍食品廠", "放射性廢料坑", "城市防空洞群", "軍用雷達站遺址", "焚化爐處理車間", "水庫控制塔", "報廢火車調度場", "抗生素生產線", "鋼鐵廠高爐區", "海底隧道滲水段", "航空燃料儲罐區", "生物製劑實驗室", "晶圓廠無塵室", "纜車中轉機房", "造紙廠汙水池", "地下鈾礦豎井", "跨海大橋橋墩", "電弧爐煉鋼車間", "穀物升降機筒倉", "石化管線加壓站", "報廢船舶拆解場", "放射性汙水井", "山區纜車塔架", "混凝土預拌工廠", "地下配電總站", "戰備糧食儲藏庫", "鐵路信號控制塔", "製藥廠發酵車間", "廢棄紡織印染廠", "山體滑坡掩埋村", "冷戰時期觀察哨", "地下種子基因庫", "港口貨櫃吊裝區", "鋁電解車間廢墟", "河川疏浚設備場", "火力發電煤倉", "廢棄汽車壓縮廠", "深層地質鑽探井", "戰時地下印刷所", "放射性醫療器械庫"];
+	let LOCATIONS = ["廢棄超市", "核電站廢墟", "地鐵隧道", "軍事基地", "醫院地下室", "研究所遺址", "加油站", "農場穀倉", "廢棄購物中心", "核反應爐冷卻池", "地鐵維修通道", "退役導彈發射井", "精神病院停尸間", "化工實驗室廢墟", "漏油加油站", "穀物黴變倉庫", "銹蝕輸油管道", "坍塌礦山隧道", "廢棄冷凍食品廠", "放射性廢料坑", "城市防空洞群", "軍用雷達站遺址", "焚化爐處理車間", "水庫控制塔", "報廢火車調度場", "抗生素生產線", "鋼鐵廠高爐區", "海底隧道滲水段", "航空燃料儲罐區", "生物製劑實驗室", "晶圓廠無塵室", "纜車中轉機房", "造紙廠汙水池", "地下鈾礦豎井", "跨海大橋橋墩", "電弧爐煉鋼車間", "穀物升降機筒倉", "石化管線加壓站", "報廢船舶拆解場", "放射性汙水井", "山區纜車塔架", "混凝土預拌工廠", "地下配電總站", "戰備糧食儲藏庫", "鐵路信號控制塔", "製藥廠發酵車間", "廢棄紡織印染廠", "山體滑坡掩埋村", "冷戰時期觀察哨", "地下種子基因庫", "港口貨櫃吊裝區", "鋁電解車間廢墟", "河川疏浚設備場", "火力發電煤倉", "廢棄汽車壓縮廠", "深層地質鑽探井", "戰時地下印刷所", "放射性醫療器械庫"];
 	let currentUpgradeIndex;
     
 	let productionCollection = {};
@@ -1649,15 +1689,14 @@
 	  prodItems.sort((a, b) => b.count - a.count);
 	  prodItems = prodItems.slice(0, 100); // 只取前100條
 	  
-	  // 生成表格 HTML
-	  let html = `<table style="width:100%; border-collapse:collapse;"> 
-	  <thead>
-		<tr>
-		  <th style="border:1px solid var(--border-color); padding:5px; text-align: center;">物品名稱</th>
-		  <th style="border:1px solid var(--border-color); padding:5px; text-align: center;">獲得次數</th>
-		</tr>
-	  </thead>
-	  <tbody>`;
+	  let html = `<table class="collection-table">
+		<thead>
+		  <tr>
+			<th>物品名稱</th>
+			<th>獲得次數</th>
+		  </tr>
+		</thead>
+		<tbody>`;
 
 	  
 	  prodItems.forEach(item => {
@@ -2858,16 +2897,18 @@
 	  let sorted = unlockedAchievements.slice().sort((a, b) => b.level - a.level);
 
 	  
-	   let html = '<table style="width:100%; border-collapse:collapse;">';
-	   html += '<thead><tr>';
-	   html += '<th style="border:1px solid var(--border-color); padding:5px; text-align:center;">稱號</th>';
-	   html += '<th style="border:1px solid var(--border-color); padding:5px; text-align:center;">詳情</th>';
-	   html += '</tr></thead><tbody>';
-	  
+	  let html = `<table class="collection-table">
+		<thead>
+		  <tr>
+			<th>稱號</th>
+			<th>詳情</th>
+		  </tr>
+		</thead>
+		<tbody>`;
 	  sorted.forEach(ach => {
-		html += `<tr class="${ach.rarity}" style="font-weight:bold; text-align:center;">
-		  <td style="border:1px solid var(--border-color); padding:5px;">${ach.title}</td>
-		  <td style="border:1px solid var(--border-color); padding:5px;">${ach.details}</td>
+		html += `<tr class="${ach.rarity}">
+		  <td>${ach.title}</td>
+		  <td>${ach.details}</td>
 		</tr>`;
 	  });
 	  html += '</tbody></table>';
@@ -3001,77 +3042,210 @@
 		}
 	  }
 	}
-
+	
+	// 全局變量：當前建造選單所在頁碼與起始索引（預設頁碼從 0 開始）
+	let currentBuildPage = 0;
+	
 	function updateBuildMenuContent(index) {
+	  currentBuildIndex = index; // 保存當前觸發彈窗的索引
+
+	  // 取得所有可建造項目，排除中心基地（假設 "center" 表示中心基地）
 	  const available = Object.entries(BUILDINGS)
 		.filter(([key, cfg]) => cfg.baseCost && key.toLowerCase() !== "center");
 
-	  let modalContent = available.map(([key, cfg]) => {
-	  // 顯示效果描述：將 effect 內各項轉換成中文
-	  let bonusInfo = "";
-	  if (typeof cfg.getUpgradeInfo === "function") {
-		const info = cfg.getUpgradeInfo(1);
-		if (info && info.effect) {
-		  bonusInfo = Object.entries(info.effect)
-			.map(([attr, value]) => {
-			  // 將 attr 轉換為中文，若映射裡沒有則直接輸出 attr
-			  const cnAttr = effectMapping[attr] || attr;
-			  return `${cnAttr}: +${parseFloat(value).toFixed(2)}`;
-			})
-			.join("<br>");
+	  // 分頁：每頁 2 個項目（垂直排列）
+	  let pages = [];
+	  for (let i = 0; i < available.length; i += 2) {
+		pages.push(available.slice(i, i + 2));
+	  }
+	  if (currentBuildPage < 0) currentBuildPage = 0;
+	  if (currentBuildPage >= pages.length) currentBuildPage = pages.length - 1;
+	  const currentPage = pages[currentBuildPage] || [];
+
+	  // 生成選項卡的 HTML
+	  let boxesHtml = "";
+	  currentPage.forEach(([key, cfg]) => {
+		let bonusInfo = "";
+		if (typeof cfg.getUpgradeInfo === "function") {
+		  const info = cfg.getUpgradeInfo(1);
+		  if (info && info.effect) {
+			bonusInfo = Object.entries(info.effect)
+			  .map(([attr, value]) => {
+				const cnAttr = effectMapping[attr] || attr;
+				return `${cnAttr}: +${parseFloat(value).toFixed(2)}`;
+			  })
+			  .join("<br>");
+		  }
 		}
-	  }
-	  let costHtml = Object.entries(cfg.baseCost)
-		.map(([res, val]) => {
-		  const cnRes = costMapping[res] || res;
-		  return `<span class="cost-item" style="margin-right: 8px;">${cnRes}: ${parseInt(val)}</span>`;
-		})
-		.join(' ');
-	  let unmet = "";
-	  if (!canAfford(cfg.baseCost)) {
-		unmet = " （❌）";
-	  }
-	  return `
-		<div class="build-box" onclick="startBuilding('${key}', ${index})">
-		  <div class="build-top-container">
-			<div class="build-row">
-			  <div class="build-left">
-				<span class="build-icon">${getBuildingIcon(key)}</span>
-				<span class="build-name" style="margin-left:5px; font-weight:bold;">${cfg.name}</span>
-			  </div>
-			  <div class="build-right">
-				${bonusInfo}
+		let costHtml = Object.entries(cfg.baseCost)
+		  .map(([res, val]) => {
+			const cnRes = costMapping[res] || res;
+			return `<span class="cost-item">${cnRes}: ${parseInt(val)}</span>`;
+		  })
+		  .join(" ");
+		let unmet = "";
+		if (!canAfford(cfg.baseCost)) {
+		  unmet = " （❌）";
+		}
+		boxesHtml += `
+		  <div class="build-box" onclick="startBuilding('${key}', ${index})">
+			<div class="build-top-container">
+			  <div class="build-row">
+				<div class="build-left">
+				  <span class="build-icon">${getBuildingIcon(key)}</span>
+				  <span class="build-name">${cfg.name}</span>
+				</div>
+				<div class="build-right">
+				  ${bonusInfo}
+				</div>
 			  </div>
 			</div>
+			<div class="build-resources">
+			  ${costHtml}${unmet}
+			</div>
 		  </div>
-		  <div class="build-resources">
-			${costHtml}${unmet}
+		`;
+	  });
+	  // 如果不足 2 個項目，補齊空白項
+	  const remainder = 2 - currentPage.length;
+	  for (let i = 0; i < remainder; i++) {
+		boxesHtml += `<div class="build-box empty"></div>`;
+	  }
+
+	  // 使用一個容器包裹所有選項（不用額外設置寬度，直接讓 .build-options 貼滿父容器）
+	  const pageContainerHtml = `
+		<div id="buildPageContainer" style="position: relative; height: 480px; overflow: hidden; width: 100%;">
+		  <div id="buildPageContent" style="display: flex; flex-direction: column; align-items: stretch;">
+			${boxesHtml}
 		  </div>
 		</div>
 	  `;
-	}).join('');
+	  // 將生成的 HTML 填入 buildOptions。注意：buildOptions 的 CSS (width: 100%;) 需與原文件中保持一致。
+	  document.getElementById('buildOptions').innerHTML = pageContainerHtml;
 
+	  // 更新翻页导航按钮
+	  updateBuildNavButtons(pages.length);
+	}
+	
+
+	// 翻页按钮回调：更新页码后重新刷新内容
+	function changeBuildPage(direction) {
+	  currentBuildPage += direction;
+	  if (currentBuildPage < 0) currentBuildPage = 0;
+	  updateBuildMenuContent(currentBuildIndex);
+	  updateBuildNavButtons(); // 同步更新位置
+	}
+
+	// 更新导航按钮（放置于 modal-overlay 内部，但不在 modal-content 内部）
+	function updateBuildNavButtons(totalPages) {
+	  const modalOverlay = document.getElementById("buildModal");
+	  const modalContent = modalOverlay.querySelector(".modal-content");
+	  if (!modalOverlay || !modalContent) return;
 	  
-	  modalContent += `
-		  <div class="build-box empty"></div>
-		  <div class="build-box empty"></div>
-	  `;
-	  document.getElementById('buildOptions').innerHTML = modalContent;
+	  // 取得 modal-content 的位置
+	  const contentRect = modalContent.getBoundingClientRect();
+	  const overlayRect = modalOverlay.getBoundingClientRect();
+	  // 垂直中心，注意這個數值在 modal-content 可見且已 reflow 後應正確
+	  const centerY = contentRect.top - overlayRect.top + contentRect.height / 2;
+	  
+	  // 設置按鈕寬度與間隔
+	  const btnWidth = 40; 
+	  const hGap = 10; // 與 modal-content 間留的間距
+	  
+	  // 左側按鈕應放在 modal-content 左側外部
+	  const leftBtnLeft = contentRect.left - overlayRect.left - btnWidth - hGap;
+	  // 右側按鈕應放在 modal-content 右側外部
+	  const rightBtnLeft = contentRect.right - overlayRect.left + hGap;
+	  
+	  // 移除已有按鈕容器
+	  let navWrap = document.getElementById("buildNavButtons");
+	  if (navWrap) navWrap.parentNode.removeChild(navWrap);
+	  
+	  // 創建導航按鈕容器，這個容器位於 modal-overlay 中
+	  navWrap = document.createElement("div");
+	  navWrap.id = "buildNavButtons";
+	  navWrap.style.position = "absolute";
+	  navWrap.style.top = "0";
+	  navWrap.style.left = "0";
+	  navWrap.style.width = "100%";
+	  navWrap.style.height = "100%";
+	  navWrap.style.pointerEvents = "none";  // 容器本身不阻擋事件
+	  
+	  // 創建左側翻頁按鈕
+	  const leftBtn = document.createElement("button");
+	  leftBtn.innerHTML = "←";
+	  leftBtn.style.position = "absolute";
+	  leftBtn.style.left = leftBtnLeft + "px";
+	  leftBtn.style.top = (centerY - 20) + "px";  // 假設按鈕高度40px
+	  leftBtn.style.width = btnWidth + "px";
+	  leftBtn.style.height = "40px";
+	  leftBtn.style.pointerEvents = "all";
+	  leftBtn.style.background = "#444";
+	  leftBtn.style.color = "#fff";
+	  leftBtn.style.border = "none";
+	  leftBtn.style.cursor = "pointer";
+	  leftBtn.onclick = function(e) {
+		e.stopPropagation();
+		changeBuildPage(-1);
+		updateBuildNavButtons();
+	  };
+	  
+	  // 創建右側翻頁按鈕
+	  const rightBtn = document.createElement("button");
+	  rightBtn.innerHTML = "→";
+	  rightBtn.style.position = "absolute";
+	  rightBtn.style.left = rightBtnLeft + "px";
+	  rightBtn.style.top = (centerY - 20) + "px";
+	  rightBtn.style.width = btnWidth + "px";
+	  rightBtn.style.height = "40px";
+	  rightBtn.style.pointerEvents = "all";
+	  rightBtn.style.background = "#444";
+	  rightBtn.style.color = "#fff";
+	  rightBtn.style.border = "none";
+	  rightBtn.style.cursor = "pointer";
+	  rightBtn.onclick = function(e) {
+		e.stopPropagation();
+		changeBuildPage(1);
+		updateBuildNavButtons();
+	  };
+	  
+	  // 創建頁碼指示器（可選）
+	  const indicator = document.createElement("div");
+	  indicator.id = "pageIndicator";
+	  indicator.style.position = "absolute";
+	  indicator.style.bottom = "-30px";
+	  indicator.style.width = "100%";
+	  indicator.style.textAlign = "center";
+	  indicator.style.fontSize = "0.9em";
+	  indicator.style.color = "#fff";
+	  indicator.textContent = `頁碼：${currentBuildPage + 1} / ${totalPages || 1}`;
+	  
+	  navWrap.appendChild(leftBtn);
+	  navWrap.appendChild(rightBtn);
+	  navWrap.appendChild(indicator);
+	  
+	  // 將 navWrap 作為子元素加入 modal-overlay（而非 modal-content）
+	  modalOverlay.appendChild(navWrap);
 	}
 
 
-	function closeBuildModal() {
-	  closeNestedModal("buildModal");
-	  // 清除更新計時器
-	  if(buildMenuUpdateTimer) {
-		clearInterval(buildMenuUpdateTimer);
-		buildMenuUpdateTimer = null;
-	  }
+	// 请确保在弹窗显示时调用 updateBuildMenuContent()
+	// 例如，当用户点击一个空地后触发 showBuildMenu(index)：
+	function showBuildMenu(index) {
+	  currentBuildIndex = index;
+	  currentBuildPage = 0;
+	  // 先更新選項卡內容
+	  updateBuildMenuContent(index);
+	  // 立即更新頭部的數字部分
+	  updateBuildHeaderNumbers();
+	  // 顯示彈窗
+	  showNestedModal("buildModal");
 	}
-
 
 	// 每 5 秒檢查一次，如果建造或升級彈窗打開，則刷新其內容
 	setInterval(function() {
+	  updateBuildMenuContent(currentBuildIndex);
+	  updateBuildHeaderNumbers();
 	  // 檢查建造彈窗（buildModal）的狀態
 	  var buildModal = document.getElementById("buildModal");
 	  if (buildModal && buildModal.style.display !== "none" && typeof currentBuildIndex !== "undefined") {
@@ -3094,6 +3268,16 @@
 		showCollection();
 	  }
 	}, 5000);
+	
+
+	function updateBuildHeaderNumbers() {
+	  document.getElementById("foodCountDisplay").textContent = formatNumber(gameState.resources.food);
+	  document.getElementById("materialsCountDisplay").textContent = formatNumber(gameState.resources.materials);
+	  document.getElementById("weaponsCountDisplay").textContent = formatNumber(gameState.resources.weapons);
+	  document.getElementById("techCountDisplay").textContent = formatNumber(gameState.resources.tech);
+	}
+
+
 
 
   
@@ -3609,7 +3793,9 @@
 	function showNestedModal(modalId) {
 	  var modal = document.getElementById(modalId);
 	  if (!modal) return;
-	  modal.style.display = "block";
+	  modal.style.display = "flex";
+	  modal.offsetHeight;
+	  updateBuildNavButtons();
 	  if (modalId === "buildModal") {
 		let logIds = ["explorationLog", "productionLog"];
 		logIds.forEach(id => {
@@ -3849,29 +4035,25 @@
 	  items.sort((a, b) => (rarityOrder[b.rarity] || 0) - (rarityOrder[a.rarity] || 0));
 	  items = items.slice(0, 100); // 只取前100條
 
-	  // 組合 HTML：只顯示物品名稱和獲得次數
-	  let html = `<table style="width:100%; border-collapse:collapse;"> 
-	    <thead>
+	  // 建議：改用 CSS 類，避免每個 cell 都在內聯中設置樣式
+	  let html = `<table class="collection-table">
+		<thead>
 		  <tr>
-		    <th style="border:1px solid var(--border-color); padding:5px; text-align: center;">物品名稱</th>
-		    <th style="border:1px solid var(--border-color); padding:5px; text-align: center;">獲得次數</th>
+			<th>物品名稱</th>
+			<th>獲得次數</th>
 		  </tr>
-	    </thead>
-	    <tbody>`;
-
+		</thead>
+		<tbody>`;
 	  items.forEach(item => {
 		  html += `<tr class="${item.rarity}">
-		    <td style="border:1px solid var(--border-color); padding:5px; text-align: center;">${item.name}</td>
-		    <td style="border:1px solid var(--border-color); padding:5px; text-align: center;">${item.count}</td>
+			<td>${item.name}</td>
+			<td>${item.count}</td>
 		  </tr>`;
-
 	  });
 	  html += `</tbody></table>`;
-
-	  // 將生成的 HTML 填入彈窗內容容器中
+	  
 	  document.getElementById("collectionContent").innerHTML = html;
 	  updateCollectionCompletion();
-	  // 將收藏彈窗打開
 	  showModal('favoritesModal');
 	}
 	function showModal(modalId) {
