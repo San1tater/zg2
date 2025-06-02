@@ -1144,6 +1144,11 @@
 	  background-size: cover;
 	  z-index: 10;
 	}
+		.achievement-header {
+	  display: inline-flex;
+	  align-items: center;
+	  gap: 10px;
+	}
   </style>
 </head>
 <body>
@@ -1151,7 +1156,6 @@
    <!-- 上排：左 - 末日指揮中心；右 - 尸群指揮系統 -->
    <div class="grid-item" id="resourceDashboard">
     <!-- 左側資源面板 -->
-    <div class="dashboard">
       <h2 class="section-title">
 		🏚️ 末日指揮中心
 		<button id="resetProgressBtn" class="modal-btn" style="margin-left: 10px;">重置存檔</button>
@@ -1216,8 +1220,7 @@
 			</div>
 		  </div>
 		</div>
-	</div>
-   </div>	
+	</div>	
 	   <div class="grid-item" id="zombieCommand">
 		<!-- 尸群指揮系統：操作控制區域 -->
 		<div class="operations-panel">
@@ -1304,12 +1307,10 @@
 	  </div>
 	 </div>
     <div class="grid-item building-system-container" id="buildingSystem">
-      <div class="building-system">
         <h2 class="section-title">🏗️ 基地建設</h2>
         <div class="construction-grid" id="buildingGrid">
           <!-- 動態生成的建築格子 -->
         </div>
-      </div>
 	  
 	  <!-- 請將下面這四個彈窗的 HTML 移入 id="buildingSystem" 的容器內 -->
 		<!-- 結果提示彈窗：加上 nested 類 -->
