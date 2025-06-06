@@ -2,7 +2,7 @@
 <html lang="zh">
 <head>
   <meta charset="UTF-8" name="viewport" content="width=device-width, initial-scale=0.45"/>
-  <title>末日控制中心 - 正式版v.1.051 btr-82a update</title>
+  <title>末日控制中心 - 正式版v.1.06 btr-82a update</title>
   <style>
     /* 彈窗系統 */
     .modal-overlay {
@@ -2847,50 +2847,48 @@
 	  addEventLog(`成就解鎖：[${rule.title}] (${category})`, rarity, "achievement");
 	  updateAchievementsUI();
 	}
+	
+	/***** (2) 修正神聖物品成就統計 *****/
+	// 每次檢查成就前調用，統計 collectedItems 中神聖物品的總數
+	function updateDivineItemsCount() {
+	  let count = 0;
+	  for (let key in collectedItems) {
+		if (collectedItems[key].rarity === "divine") {
+		  count += collectedItems[key].count;
+		}
+	  }
+	  gameState.divineItemsCount = count;
+	}
 
 	function checkAchievements() {
-	  // 檢查收藏完成度
+	  updateDivineItemsCount();  // 調整神聖物品數量
 	  let collValue = getCollectionCompletion();
 	  achievementRules.collectionCompleteness.forEach(rule => {
-	    let currentMax = Math.max(0, ...unlockedAchievements.filter(a => a.category === "collectionCompleteness")
-                                                  .map(a => a.level));
 		if (collValue >= rule.threshold && !isAchievementUnlocked("collectionCompleteness", rule.level)) {
 		  awardAchievement("collectionCompleteness", rule);
 		}
 	  });
-	  
-	  // 檢查神聖物品獲得數量
 	  let divineCount = gameState.divineItemsCount || 0;
 	  achievementRules.divineItems.forEach(rule => {
-	  let currentMax = Math.max(0, ...unlockedAchievements.filter(a => a.category === "divineItems")
-                                                  .map(a => a.level));
 		if (divineCount >= rule.threshold && !isAchievementUnlocked("divineItems", rule.level)) {
 		  awardAchievement("divineItems", rule);
 		}
 	  });
-	  
-	  // 檢查僵尸總量
 	  let totalZombies = gameState.totalZombies || 0;
 	  achievementRules.totalZombies.forEach(rule => {
-	  let currentMax = Math.max(0, ...unlockedAchievements.filter(a => a.category === "divineItems")
-                                                  .map(a => a.level));
 		if (totalZombies >= rule.threshold && !isAchievementUnlocked("totalZombies", rule.level)) {
 		  awardAchievement("totalZombies", rule);
 		}
 	  });
-	  
-	  // 檢查BTR觸發次數
 	  let btrCount = gameState.btrTriggerCount || 0;
 	  achievementRules.btrTriggers.forEach(rule => {
-	  let currentMax = Math.max(0, ...unlockedAchievements.filter(a => a.category === "divineItems")
-                                                  .map(a => a.level));
 		if (btrCount >= rule.threshold && !isAchievementUnlocked("btrTriggers", rule.level)) {
 		  awardAchievement("btrTriggers", rule);
 		}
 	  });
-	  
 	  updateAchievementsUI();
 	}
+
 
 	function updateAchievementsUI() {
 	  const grid = document.getElementById("achievementGrid");
@@ -3674,21 +3672,34 @@
       }
     }
   
-    function adjustZombies(dept, amount) {
-      if (!gameState.allocations[dept]) gameState.allocations[dept] = 0;
-      let newVal = gameState.allocations[dept] + amount;
-      if (newVal < 0) newVal = 0;
-      const totalAllocated = gameState.allocations.exploration +
-                             gameState.allocations.farming +
-                             gameState.allocations.recycling +
-                             gameState.allocations.research;
-      if (totalAllocated + amount > gameState.totalZombies) {
-        addEventLog("沒有足夠的僵尸分配", "warning");
-        return;
-      }
-      gameState.allocations[dept] = newVal;
-      updateAllDisplays();
-    }
+    	/***** (3) 調整各部門僵尸分配的加減步幅為當前數量的 5%（下限 1） *****/
+	function adjustZombies(dept, amount) {
+	  let current = gameState.allocations[dept] || 0;
+	  let step = 0;
+	  if (amount > 0) {
+		// 若目前為0，點加號則至少增加1；否則取 5%（向上取整，最少 1）
+		step = current > 0 ? Math.max(Math.ceil(current * 0.05), 1) : 1;
+	  } else {
+		// 減少時同理（不得出現負數）
+		step = current > 0 ? -Math.max(Math.ceil(current * 0.05), 1) : 0;
+	  }
+	  const newVal = current + step;
+	  if (newVal < 0) {
+		gameState.allocations[dept] = 0;
+	  } else {
+		// 檢查變更後的總分配是否超出總僵尸數
+		const totalAllocated = Object.keys(gameState.allocations).reduce((sum, key) => {
+		  return key === dept ? sum : sum + gameState.allocations[key];
+		}, 0);
+		if (totalAllocated + newVal > gameState.totalZombies) {
+		  addEventLog("沒有足夠的僵尸分配", "warning");
+		  return;
+		}
+		gameState.allocations[dept] = newVal;
+	  }
+	  updateAllDisplays();
+	}
+
   
   // 當觸摸開始時，如果目標位於我們關注的區域內（.modal-content 或 .log），則保存該容器與初始位置。
 	const scrollManager = (() => {
@@ -3972,11 +3983,11 @@
 	  }
 	}
 
-	// 新增：手动重置存档（清空存档和重置游戏状态）
+	/***** (1) 重置存檔時重置所有內容 *****/
 	function confirmResetProgress() {
 	  if (confirm("确定要重置存档吗？此操作不可逆！")) {
 		localStorage.removeItem("gameSave");
-		// 重置全局变量为初始状态
+		// 重置 gameState、collectedItems 並新增重置 productionCollection 與 unlockedAchievements
 		gameState = {
 		  resources: { food: 100, materials: 100, weapons: 50, tech: 20 },
 		  resetCounts: { food: 0, materials: 0, weapons: 0, tech: 0 },
@@ -3989,6 +4000,17 @@
 		  efficiency: { food: 1, materials: 1, weapons: 1, tech: 1, exploration: 1 }
 		};
 		collectedItems = {};
+		productionCollection = {};    // 新增：重置生產日誌內容
+		unlockedAchievements = [];    // 新增：重置稱號（成就）記錄
+		gameState.unlockedAchievements = [];
+		// 同時清空探索、生产日誌區（如果存在）
+		const prodLog = document.getElementById("productionLog");
+		if (prodLog) prodLog.innerHTML = "";
+		const explorationLog = document.getElementById("explorationLog");
+		if (explorationLog) explorationLog.innerHTML = "";
+		// 清空成就頁面
+		const achievementGrid = document.getElementById("achievementGrid");
+		if (achievementGrid) achievementGrid.innerHTML = "";
 		window.startTime = Date.now();
 		updateAllDisplays();
 		showTempMessage("进度已重置");
