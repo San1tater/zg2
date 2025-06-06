@@ -2085,10 +2085,10 @@
 	  const resourceCn = resourceMapping[resource] || resource;
 	  
 	  if (eventType === "production") {
-		const fullMessage = `<span style="white-space: normal; display: inline;">生產: ${itemName} +${amount} ${resourceCn}</span>`;
+		const fullMessage = `<span style="white-space: normal; display: inline;">生產: ${itemName} +${limitedamount} ${resourceCn}</span>`;
 		addEventLog(fullMessage, 'common', eventType);
 	  } else {
-		addEventLog(`生產: ${itemName} +${amount} ${resourceCn}`, 'common', eventType);
+		addEventLog(`生產: ${itemName} +${limitedamount} ${resourceCn}`, 'common', eventType);
 	  }
 	  
 	  if (!productionCollection[itemName]) {
