@@ -2513,7 +2513,7 @@
 		const styledItemName = `<span style="color: ${modColor}; font-weight: bold;">${modifier.name} ${getRandomItemName(resource)}</span>`;
         logResource(resource, styledItemName, modAmount, "production");
 		} else {
-		  logResource(resource, getRandomItemName(resource), amount, "production");
+		  logResource(resource, getRandomItemName(resource), limitedAmount, "production");
 		}
       gameState.resources[resource] += limitedAmount;
 	  
