@@ -2515,7 +2515,7 @@
 		} else {
 		  logResource(resource, getRandomItemName(resource), amount, "production");
 		}
-      gameState.resources[resource] += amount;
+      gameState.resources[resource] += limitedAmount;
 	  
 	  // 新增隨機事件：僵尸損失（僅對種植、回收、科研部門）
 	  if (dept === "farming" || dept === "recycling" || dept === "research") {
