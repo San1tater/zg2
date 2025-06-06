@@ -2221,7 +2221,7 @@
 	  }
 	  
 	  const finalZombieChange = Math.round(baseZombieChange + offset);
-	  let effectiveCap = 10000;
+	  let effectiveCap = 100000;
 	  const zccBuildings = gameState.buildings.filter(b =>
 		b && b.type.toLowerCase() === "zombieCommandCenter"
 	  );
@@ -2407,7 +2407,7 @@
 		}
 	  });
 	  const roundedProduction = Math.round(totalProduction);
-	  const productionCap = 990000;
+	  const productionCap = 9900000;
 	  // 限制武器生產單次上限
 	  const finalProduction = Math.min(roundedProduction, productionCap);
 	  if (roundedProduction > 0) {
@@ -2439,7 +2439,7 @@
 	  let amountAfterMultiplier = Math.floor(result.amount * effectiveMultiplier);
   
 	  // 設定單次資源獲得上限（例如 productionCap 為 990000）
-	  const productionCap = 990000;
+	  const productionCap = 9900000;
 	  amountAfterMultiplier = Math.min(amountAfterMultiplier, productionCap);
 	  
 	  result.amount = amountAfterMultiplier;
@@ -2502,7 +2502,7 @@
       const amount = convertProduction(computed);
 	  
 	  // 設置單次生產上限
-	  const productionCap = 990000;
+	  const productionCap = 9900000;
 	  // 限制原始生產量
 	  const limitedAmount = Math.min(amount, productionCap);
 	  
