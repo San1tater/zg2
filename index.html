@@ -7,14 +7,16 @@
     /* 彈窗系統 */
     .modal-overlay {
 	  position: fixed;
-	  top: 0;
-	  left: 0;
-	  right: 0;
-	  bottom: 0;
+	  top: -50px;
+	  left: -50px;
+	  right: -50px;
+	  bottom: -100px;
 	  background: rgba(0,0,0,0.7);
 	  display: none;
 	  z-index: 1000;
 	  pointer-events: auto;
+	  overscroll-behavior: none;
+	  transform: translateZ(0);
 	}
 
 	.modal-content {
@@ -30,7 +32,7 @@
 	  -webkit-overflow-scrolling: touch; /* 启用弹性滚动 */
 	  position: fixed !important; /* 改用fixed定位 */
 	  left: 50% !important;
-	  top: 20vh !important;
+	  top: 20vh;
 	}
 	.modal-overlay.nested {
 	  overflow: hidden;
@@ -77,10 +79,23 @@
 		text-align: center;
 	}
 	#buildModal .modal-content {
+	  background: #2d2d2d;
+	  padding: 2rem;
+	  border-radius: 12px;
+	  width: 450px;
+	  height: 500px;
 	  overflow-y: hidden;
-	  height: 580px; /* 或根據需要調整 */
+	  position: fixed;
+	  left: 50%;
+	  top: 70%; 
+	  transform: translate(-50%, -60%);
 	}
-	
+	/* 建造彈窗中選項內容區讓其內部滾動 */
+	#buildModal .build-options {
+	  max-height: 400px; /* 根據實際需求調整 */
+	  overflow-y: auto;
+	}
+
 
 
 
@@ -1320,33 +1335,6 @@
 		  </div>
 		</div>
 
-		<!-- 建造彈窗：加上 nested 類 -->
-		<div id="buildModal" class="modal-overlay nested">
-		  <div class="modal-content">
-		    <div id="buildHeaderStatus" style="margin-bottom: 1rem; font-size: 1.1em; color: var(--text-color);">
-			  <div style="display: flex; flex-wrap: wrap;">
-				<div style="width: 50%; text-align: left;">
-				  <span class="resource-label">🍖食物: </span>
-				  <span id="foodCountDisplay">0</span>
-				</div>
-				<div style="width: 50%; text-align: left;">
-				  <span class="resource-label">🔩材料: </span>
-				  <span id="materialsCountDisplay">0</span>
-				</div>
-				<div style="width: 50%; text-align: left;">
-				  <span class="resource-label">🔫武器: </span>
-				  <span id="weaponsCountDisplay">0</span>
-				</div>
-				<div style="width: 50%; text-align: left;">
-				  <span class="resource-label">💾科技: </span>
-				  <span id="techCountDisplay">0</span>
-				</div>
-			  </div>
-			</div>
-			<div class="build-options" id="buildOptions"></div>
-		  </div>
-		</div>
-
 		<!-- 升級彈窗：加上 nested 類 -->
 		<div id="upgradeModal" class="modal-overlay nested">
 		  <div class="modal-content">
@@ -1387,6 +1375,31 @@
     <div class="modal-content">
 		<h3>生產記錄</h3>
 		<div id="productionCollectionContent"></div>
+	  </div>
+	</div>
+	<div id="buildModal" class="modal-overlay">
+	  <div class="modal-content">
+		<div id="buildHeaderStatus" style="margin-bottom: 1rem; font-size: 1.1em; color: var(--text-color);">
+		  <div style="display: flex; flex-wrap: wrap;">
+			<div style="width: 50%; text-align: left;">
+			  <span class="resource-label">🍖食物: </span>
+			  <span id="foodCountDisplay">0</span>
+			</div>
+			<div style="width: 50%; text-align: left;">
+			  <span class="resource-label">🔩材料: </span>
+			  <span id="materialsCountDisplay">0</span>
+			</div>
+			<div style="width: 50%; text-align: left;">
+			  <span class="resource-label">🔫武器: </span>
+			  <span id="weaponsCountDisplay">0</span>
+			</div>
+			<div style="width: 50%; text-align: left;">
+			  <span class="resource-label">💾科技: </span>
+			  <span id="techCountDisplay">0</span>
+			</div>
+		  </div>
+		</div>
+		<div class="build-options" id="buildOptions"></div>
 	  </div>
 	</div>
 
@@ -3030,72 +3043,68 @@
 	let currentBuildIndex = null;
 	function showBuildMenu(index) {
 	  currentBuildIndex = index;
-	  currentBuildPage = 0;
 	  updateBuildMenuContent(index);
-	  
-	  const totalItems = getBuildItems().length; // 此處 getBuildItems() 取可建造項目
-	  const itemsPerPage = 2;
-	  const totalPages = Math.ceil(totalItems / itemsPerPage);
-	  
-	  // 利用 requestAnimationFrame 確保 DOM 更新完成後再設置導航
-	  requestAnimationFrame(() => {
-		updateBuildNavButtons(totalPages);
-		updateBuildHeaderNumbers();
-		showNestedModal("buildModal");
-	  });
-	}
-	
-	// 全局變量：當前建造選單所在頁碼與起始索引（預設頁碼從 0 開始）
-	let currentBuildPage = 0;
-	
-	function updateBuildMenuContent(index) {
-	  currentBuildIndex = index; // 保存當前觸發彈窗的索引
+	  showModal("buildModal");
 
-	  // 取得所有可建造項目，排除中心基地（假設 "center" 表示中心基地）
+	  const modalContent = document.querySelector('#buildModal .modal-content');
+	  const baseTitleElem = document.querySelector('.building-system h2.section-title');
+	  const centerTile = document.querySelector('[data-index="4"]'); // 中心基地
+
+	  if (modalContent && baseTitleElem && centerTile) {
+		const titleRect = baseTitleElem.getBoundingClientRect();
+		const centerRect = centerTile.getBoundingClientRect();
+		
+		// 如果是桌面：
+		if (window.innerWidth >= 768) {
+		  modalContent.style.position = "fixed";
+		  // 將 top 設在基地建設標題的下邊緣：
+		  modalContent.style.top = titleRect.bottom + "px";
+		  // 左側根據中心基地卡片水平居中
+		  const modalWidth = modalContent.offsetWidth;
+		  modalContent.style.left = (centerRect.left + centerRect.width / 2 - modalWidth / 2) + "px";
+		} else {
+		  // 如果是移動端，則用較合理的設置，這裡我們讓彈窗寬度由上面的 CSS 控制，
+		  // 只需要調整 top 為基地建設標題下方一定距離（比如20px）
+		  modalContent.style.position = "absolute";
+		  modalContent.style.top = (titleRect.bottom + 20) + "px";
+		  modalContent.style.left = "50%";
+		  modalContent.style.transform = "translateX(-50%)";
+		}
+	  }
+	}
+
+
+	function updateBuildMenuContent(index) {
 	  const available = Object.entries(BUILDINGS)
 		.filter(([key, cfg]) => cfg.baseCost && key.toLowerCase() !== "center");
 
-	  // 分頁：每頁 2 個項目（垂直排列）
-	  let pages = [];
-	  for (let i = 0; i < available.length; i += 2) {
-		pages.push(available.slice(i, i + 2));
-	  }
-	  if (currentBuildPage < 0) currentBuildPage = 0;
-	  if (currentBuildPage >= pages.length) currentBuildPage = pages.length - 1;
-	  const currentPage = pages[currentBuildPage] || [];
-
-	  // 生成選項卡的 HTML
-	  let boxesHtml = "";
-	  currentPage.forEach(([key, cfg]) => {
+	  let modalContent = available.map(([key, cfg]) => {
 		let bonusInfo = "";
 		if (typeof cfg.getUpgradeInfo === "function") {
 		  const info = cfg.getUpgradeInfo(1);
 		  if (info && info.effect) {
 			bonusInfo = Object.entries(info.effect)
 			  .map(([attr, value]) => {
-				const cnAttr = effectMapping[attr] || attr;
+				const cnAttr = effectMapping[attr] || attr;  // 利用 effectMapping 將英文鍵映射為中文
 				return `${cnAttr}: +${parseFloat(value).toFixed(2)}`;
 			  })
 			  .join("<br>");
 		  }
 		}
 		let costHtml = Object.entries(cfg.baseCost)
-		  .map(([res, val]) => {
-			const cnRes = costMapping[res] || res;
-			return `<span class="cost-item">${cnRes}: ${parseInt(val)}</span>`;
-		  })
-		  .join(" ");
+		  .map(([res, val]) => `<span class="cost-item" style="margin-right: 8px;">${costMapping[res] || res}: ${parseInt(val)}</span>`)
+		  .join(' ');
 		let unmet = "";
 		if (!canAfford(cfg.baseCost)) {
 		  unmet = " （❌）";
 		}
-		boxesHtml += `
+		return `
 		  <div class="build-box" onclick="startBuilding('${key}', ${index})">
 			<div class="build-top-container">
 			  <div class="build-row">
 				<div class="build-left">
 				  <span class="build-icon">${getBuildingIcon(key)}</span>
-				  <span class="build-name">${cfg.name}</span>
+				  <span class="build-name" style="margin-left:5px; font-weight:bold;">${cfg.name}</span>
 				</div>
 				<div class="build-right">
 				  ${bonusInfo}
@@ -3107,118 +3116,49 @@
 			</div>
 		  </div>
 		`;
-	  });
-	  // 如果不足 2 個項目，補齊空白項
-	  const remainder = 2 - currentPage.length;
-	  for (let i = 0; i < remainder; i++) {
-		boxesHtml += `<div class="build-box empty"></div>`;
+	  }).join('');
+	  
+	  document.getElementById('buildOptions').innerHTML = modalContent;
+	}
+
+
+	function closeBuildModal() {
+	  closeNestedModal("buildModal");
+	  // 清除更新計時器
+	  if(buildMenuUpdateTimer) {
+		clearInterval(buildMenuUpdateTimer);
+		buildMenuUpdateTimer = null;
+	  }
+	}
+
+
+	// 每 5 秒檢查一次，如果建造或升級彈窗打開，則刷新其內容
+	setInterval(function() {
+	  // 檢查建造彈窗（buildModal）的狀態
+	  var buildModal = document.getElementById("buildModal");
+	  if (buildModal && buildModal.style.display !== "none" && typeof currentBuildIndex !== "undefined") {
+		updateBuildMenuContent(currentBuildIndex);
+	  }
+	  
+	  // 檢查升級彈窗（upgradeModal）的狀態
+	  var upgradeModal = document.getElementById("upgradeModal");
+	  if (upgradeModal && upgradeModal.style.display !== "none" && typeof currentUpgradeIndex !== "undefined") {
+		updateUpgradeMenuContent(currentUpgradeIndex);
+	  }
+	  
+	  const prodModal = document.getElementById("productionCollectionModal");
+	  if (prodModal && window.getComputedStyle(prodModal).display !== "none") {
+		showProductionCollection();
 	  }
 
-	  // 使用一個容器包裹所有選項（不用額外設置寬度，直接讓 .build-options 貼滿父容器）
-	  const pageContainerHtml = `
-		<div id="buildPageContainer" style="position: relative; height: 480px; overflow: hidden; width: 100%;">
-		  <div id="buildPageContent" style="display: flex; flex-direction: column; align-items: stretch;">
-			${boxesHtml}
-		  </div>
-		</div>
-	  `;
-	  // 將生成的 HTML 填入 buildOptions。注意：buildOptions 的 CSS (width: 100%;) 需與原文件中保持一致。
-	  document.getElementById('buildOptions').innerHTML = pageContainerHtml;
+	  const favModal = document.getElementById("favoritesModal");
+	  if (favModal && window.getComputedStyle(favModal).display !== "none") {
+		showCollection();
+	  }
+	}, 5000);
 
-	  // 更新翻页导航按钮
-	  updateBuildNavButtons(pages.length);
-	}
 	
 
-	// 翻页按钮回调：更新页码后重新刷新内容
-	function changeBuildPage(direction, totalPages) {
-		if (direction < 0 && currentBuildPage === 0) {
-		return;
-	  }
-	  // 更新當前頁碼（方向可以為正數即向後，或負數即向前）
-	  currentBuildPage += direction;
-	  
-	  // 如果超出範圍，進行循環處理：
-	  if (currentBuildPage >= totalPages) {
-		currentBuildPage = 0;
-	  } else if (currentBuildPage < 0) {
-		currentBuildPage = totalPages - 1;
-	  }
-	  
-	  // 更新選項卡內容（需確保 updateBuildMenuContent 依照 currentBuildPage 使用最新頁碼）
-	  updateBuildMenuContent(currentBuildIndex);
-	}
-
-	// 更新导航按钮（放置于 modal-overlay 内部，但不在 modal-content 内部）
-	function updateBuildNavButtons(totalPages) {
-	  const modalOverlay = document.getElementById("buildModal");
-	  const modalContent = modalOverlay.querySelector(".modal-content");
-	  if (!modalOverlay || !modalContent) return;
-	  
-	  // 移除舊的導航容器（如果存在）
-	  let existingNav = modalContent.querySelector(".nav-container");
-	  if (existingNav) {
-		existingNav.parentNode.removeChild(existingNav);
-	  }
-	  
-	  // 創建新的導航容器
-	  const navContainer = document.createElement("div");
-	  navContainer.className = "nav-container";
-	  // 設置為絕對定位，參考 modalContent（父級相對定位）
-	  navContainer.style.position = "absolute";
-	  navContainer.style.left = "0";
-	  navContainer.style.right = "0";
-	  // 設定底部對齊，並將上邊沿向上略移以覆蓋圓角（例如 -10px）
-	  navContainer.style.bottom = "-10px";
-	  navContainer.style.height = "100px";
-	  // 設置背景（半透明遮蓋）以使按鈕區塊更顯眼
-	  navContainer.style.background = "rgba(45,45,45,0.95)";
-	  // 使用 Flexbox 水平排列內部按鈕（左右各一個）
-	  navContainer.style.display = "flex";
-	  navContainer.style.justifyContent = "space-between";
-	  navContainer.style.alignItems = "center";
-	  navContainer.style.padding = "0 20px";
-	  navContainer.style.boxSizing = "border-box";
-	  navContainer.style.zIndex = "100"; // 確保位於頂層
-	  
-	  // 創建左側按鈕（向上箭頭）
-	  const upBtn = document.createElement("button");
-	  upBtn.textContent = "↑";
-	  upBtn.style.fontSize = "1.8em";
-	  upBtn.style.height = "100px";
-	  upBtn.style.width = "250px";
-	  upBtn.style.cursor = "pointer";
-	  // 點擊處理：向上翻頁（此處你可以調整邏輯，比如在第一頁時禁用增加操作）
-	  upBtn.onclick = function(e) {
-		e.stopPropagation();
-		// 若已在第一頁則不操作（或可根據需求提前檢查）
-		if (currentBuildPage === 0) return;
-		changeBuildPage(-1, totalPages);
-		updateBuildNavButtons(totalPages);
-	  };
-	  
-	  // 創建右側按鈕（向下箭頭）
-	  const downBtn = document.createElement("button");
-	  downBtn.textContent = "↓";
-	  downBtn.style.fontSize = "1.8em";
-	  downBtn.style.height = "100px";
-	  downBtn.style.width = "250px";
-	  downBtn.style.cursor = "pointer";
-	  downBtn.onclick = function(e) {
-		e.stopPropagation();
-		changeBuildPage(1, totalPages);
-		updateBuildNavButtons(totalPages);
-	  };
-
-	  // 將按鈕加入導航容器
-	  navContainer.appendChild(upBtn);
-	  navContainer.appendChild(downBtn);
-	  
-	  // 將導航容器加入 modalContent，使其成為彈窗的一部分
-	  modalContent.appendChild(navContainer);
-	  
-	  console.log("更新導航容器：totalPages =", totalPages, "currentBuildPage =", currentBuildPage);
-	}
 
 
 
@@ -3506,15 +3446,15 @@
 	  
 	  let currentInfo = "";
 	  if (typeof config.getUpgradeInfo === "function") {
-		const currentUpgrade = config.getUpgradeInfo(building.level);
-		if (currentUpgrade && currentUpgrade.effect) {
+	    const currentUpgrade = config.getUpgradeInfo(building.level);
+	    if (currentUpgrade && currentUpgrade.effect) {
 		  currentInfo = Object.entries(currentUpgrade.effect)
-			.map(([attr, value]) => {
-			  const cnAttr = effectMapping[attr] || attr;
-			  return `${cnAttr}: +${parseFloat(value).toFixed(2)}`;
-			})
-			.join("，");
-		}
+		    .map(([attr, value]) => {
+		      const cnAttr = effectMapping[attr] || attr;  // 若找不到映射則直接用 attr
+		  	  return `${cnAttr}: +${parseFloat(value).toFixed(2)}`;
+		    })
+		    .join("，");
+	    }
 	  }
 	  
 	  let nextInfo = "";
@@ -3600,11 +3540,11 @@
 	  };
 	  updateEfficiencies();
 	  addEventLog(`🏗️ 成功建造 ${config.name}`, 'uncommon');
-	  closeNestedModal("buildModal");
+	  closeModal("buildModal");  // 改用 closeModal 來關閉建造彈窗
 	  updateAllDisplays();
-	  // 以臨時提示方式告知建造成功（0.3秒後自動消失，不需確認按鍵）
 	  showTempMessage(`成功建造 ${config.name}`);
 	}
+
 
 	// 建築互動（包括拆除、查看資訊等）與拆除建築的邏輯
 
@@ -3708,77 +3648,68 @@
 	  // 用來標記這次觸摸操作是否是垂直手勢（只在第一次 touchmove 時確定）
 	  let isVerticalGesture = null; 
 	  // 垂直角度閾值（單位：度）
-	  const verticalThreshold = 30; 
+	  const verticalThreshold = 60; 
 
 	  // 檢查元素是否具有垂直滾動功能
 	  function isScrollable(el) {
 		return el && el.scrollHeight > el.clientHeight;
 	  }
-
+	  
 	  function handleTouchStart(e) {
-		  if (e.touches.length > 1) {
-			currentContainer = null;
-			isVerticalGesture = null;
-			return;
-		  }
-		  const logContainer = e.target.closest('#explorationLog, #productionLog');
-		  currentContainer = logContainer && isScrollable(logContainer) ? logContainer : null;
-		  
-		  if (currentContainer) {
-			startX = e.touches[0].clientX;
-			startY = e.touches[0].clientY;
-			isVerticalGesture = null;
-		  }
-		  if (e.target.closest('#favoritesModal .modal-content')) {
-			currentContainer = document.querySelector('#favoritesModal .modal-content');
-		  } else if (e.target.closest('#productionCollectionModal.modal-content')) {
-			currentContainer = document.querySelector('#productionCollectionModal .modal-content');
-		  } else if (e.target.closest('#buildModal.modal-content')) {
-			currentContainer = document.querySelector('#buildModal .modal-content');
-		  } else {
-			const container = e.target.closest('.modal-content, .log');
-			currentContainer = container && isScrollable(container) ? container : null;
-		  }
-		  if (currentContainer) {
-			startX = e.touches[0].clientX;
-			startY = e.touches[0].clientY;
-			isVerticalGesture = null;
-		  }
+		if (e.touches.length > 1) {
+		  currentContainer = null;
+		  isVerticalGesture = null;
+		  return;
 		}
-
-
+		
+		// 優先判斷是否點擊到 buildModal 內部的滾動區（.build-options）
+		let buildOptions = e.target.closest('#buildModal .build-options');
+		if (buildOptions && isScrollable(buildOptions)) {
+		  currentContainer = buildOptions;
+		} else if (e.target.closest('#explorationLog, #productionLog')) {
+		  let logContainer = e.target.closest('#explorationLog, #productionLog');
+		  currentContainer = isScrollable(logContainer) ? logContainer : null;
+		} else if (e.target.closest('#favoritesModal .modal-content')) {
+		  currentContainer = document.querySelector('#favoritesModal .modal-content');
+		} else if (e.target.closest('#productionCollectionModal.modal-content')) {
+		  currentContainer = document.querySelector('#productionCollectionModal .modal-content');
+		} else {
+		  const container = e.target.closest('.modal-content, .log');
+		  currentContainer = container && isScrollable(container) ? container : null;
+		}
+		
+		if (currentContainer) {
+		  startX = e.touches[0].clientX;
+		  startY = e.touches[0].clientY;
+		  isVerticalGesture = null;
+		}
+	  }
 
 	  function handleTouchMove(e) {
-		  if (e.target.closest('#buildModal .modal-content')) {
-			// 不阻止事件傳播或預設行為，這樣就讓頁面滾動正常
-			return;
-		  }
-		  if (e.touches.length > 1 || !currentContainer) return;
-		  
-		  const currentX = e.touches[0].clientX;
-		  const currentY = e.touches[0].clientY;
-		  const deltaX = currentX - startX;
-		  const deltaY = currentY - startY;
-		  
-		  if (isVerticalGesture === null) {
-			const angle = Math.atan2(Math.abs(deltaX), Math.abs(deltaY)) * (180 / Math.PI);
-			isVerticalGesture = angle < verticalThreshold;
-		  }
-		  
-		  if (isVerticalGesture) {
-			e.preventDefault();
-			e.stopPropagation();
-			currentContainer.scrollTop -= deltaY;
-		  }
-		  
-		  startX = currentX;
-		  startY = currentY;
+		// 如果多點觸控或未選定容器則直接返回
+		if (e.touches.length > 1 || !currentContainer) return;
+		
+		const currentX = e.touches[0].clientX;
+		const currentY = e.touches[0].clientY;
+		const deltaX = currentX - startX;
+		const deltaY = currentY - startY;
+		
+		if (isVerticalGesture === null) {
+		  const angle = Math.atan2(Math.abs(deltaX), Math.abs(deltaY)) * (180 / Math.PI);
+		  isVerticalGesture = angle < verticalThreshold;
 		}
-
-
+		
+		if (isVerticalGesture) {
+		  e.preventDefault();
+		  e.stopPropagation();
+		  currentContainer.scrollTop -= deltaY;
+		}
+		
+		startX = currentX;
+		startY = currentY;
+	  }
 
 	  function handleTouchEnd(e) {
-		// 清空本次觸摸相關數據
 		currentContainer = null;
 		isVerticalGesture = null;
 	  }
@@ -3793,6 +3724,27 @@
 	})();
 	scrollManager.init();
 
+	document.addEventListener("touchmove", function(e) {
+	  const openModal = document.querySelector('.modal-overlay[style*="display: flex"]');
+	  if (openModal && !e.target.closest('.modal-content')) {
+		// 如果觸控來源並非 modal 內容內，也不是某個允許滾動的特定區域（例如，#buildModal .build-options 可滾動）
+		if (!e.target.closest('#buildModal .build-options')) {
+		  // 允許手勢（例如縮放）照常執行
+		  return;
+		}
+	  }
+	}, { passive: false });
+
+	function globalTouchMoveHandler(e) {
+	  // 如果彈窗遮罩已經打開，並且觸控並非發生在允許滾動的區域內
+	  if (document.body.classList.contains('modal-open') &&
+		  !e.target.closest('#buildModal .build-options')) {
+		e.preventDefault();
+	  }
+	}
+	// 綁定事件
+	document.addEventListener("touchmove", globalTouchMoveHandler, { passive: false });
+
 
 
 	// 弹窗控制函数
@@ -3801,7 +3753,6 @@
 	  if (!modal) return;
 	  modal.style.display = "flex";
 	  modal.offsetHeight;
-	  updateBuildNavButtons();
 	  if (modalId === "buildModal") {
 		let logIds = ["explorationLog", "productionLog"];
 		logIds.forEach(id => {
@@ -3815,9 +3766,12 @@
 	function closeNestedModal(modalId) {
 	  var modal = document.getElementById(modalId);
 	  if (modal) {
-	    console.log(`Closing modal: ${modalId}`);
+		console.log(`Closing modal: ${modalId}`);
 		modal.style.display = "none";
-	  }
+		// 恢復 overflow
+		document.documentElement.style.overflow = '';
+		document.body.style.overflow = '';
+		}
 	}
 
 
@@ -3843,28 +3797,22 @@
 
 
 	function closeModal(modalId) {
-	  document.getElementById(modalId).style.display = 'none';
+	  var modal = document.getElementById(modalId);
+	  if (!modal) return;
+	  modal.style.display = 'none';
+	  document.documentElement.style.overflow = '';
+	  document.body.style.overflow = '';
 	}
 
 	// 视觉视口监听器
 	let currentScale = 1;
 	const viewportHandler = () => {
-	  currentScale = window.visualViewport.scale;
-	  // 如果在移動端，仍然要依據基地建設重新計算定位
-	  if (window.innerWidth < 768) {
-		updateModalPosition();
-	  }
-	  const visualViewport = window.visualViewport;
-	  const modalContent = document.querySelector('.modal-content');
-	  
+	  currentScale = window.visualViewport.scale;	  
 	};
 
 	// 弹窗控制增强
 	const modalController = {
-	  init() {
-		window.visualViewport.addEventListener('scroll', viewportHandler);
-		window.visualViewport.addEventListener('resize', viewportHandler);
-	  },
+	  init() { },
 	  
 	  show(modalId) {
 		const modal = document.getElementById(modalId);
@@ -4074,7 +4022,7 @@
 	  showModal('favoritesModal');
 	}
 	function showModal(modalId) {
-	  var modal = document.getElementById(modalId);
+	  const modal = document.getElementById(modalId);
 	  if (!modal) return;
 	  modal.style.display = 'flex';
 	}
