@@ -2551,11 +2551,11 @@
 		
 		let eventMsg = "";
 		if (dept === "farming") {
-		  eventMsg = `發生食物中毒：種植部門☠️損失 ${lost} 僵尸 (${(lossPercentage * 100).toFixed(1)}%)`;
+		  eventMsg = `集體食物中毒：種植部門☠️損失 ${lost} 僵尸 (${(lossPercentage * 100).toFixed(1)}%)`;
 		} else if (dept === "recycling") {
-		  eventMsg = `發生意外事故：回收部門☠️損失 ${lost} 僵尸 (${(lossPercentage * 100).toFixed(1)}%)`;
+		  eventMsg = `僵尸操作不當：回收部門☠️損失 ${lost} 僵尸 (${(lossPercentage * 100).toFixed(1)}%)`;
 		} else if (dept === "research") {
-		  eventMsg = `發生爆炸事故：科研部門☠️損失 ${lost} 僵尸 (${(lossPercentage * 100).toFixed(1)}%)`;
+		  eventMsg = `試劑連環爆炸：科研部門☠️損失 ${lost} 僵尸 (${(lossPercentage * 100).toFixed(1)}%)`;
 		}
 		addEventLog(eventMsg, "warning", "production", true);
 		triggerProductionAccident(dept);
