@@ -1159,11 +1159,22 @@
 	  background-size: cover;
 	  z-index: 10;
 	}
-		.achievement-header {
+	.achievement-header {
 	  display: inline-flex;
 	  align-items: center;
 	  gap: 10px;
 	}
+	/* 對稱號庫與收藏記錄彈窗內的 .modal-content 取消所有動畫效果 */
+	/* 覆寫稱號庫、收藏記錄、以及生產記錄彈窗內的所有元素動畫與過渡 */
+	#titlesModal *,
+	#favoritesModal *,
+	#productionCollectionModal * {
+	  animation: none !important;
+	  transition: none !important;
+	}
+
+	
+	
   </style>
 </head>
 <body>
