@@ -2450,25 +2450,30 @@
 		  totalProduction += upgradeInfo.effect.weapons * productionBonus;
 		}
 	  });
+	  
 	  const roundedProduction = Math.round(totalProduction);
 	  const productionCap = 9900000;
-	  // 限制武器生產單次上限
+	  // 【問題標記】：此處本來正確計算上限
 	  const finalProduction = Math.min(roundedProduction, productionCap);
-	  if (roundedProduction > 0) {
+	  
+	  // 【重點替換】：使用 finalProduction 而不是 roundedProduction
+	  if (finalProduction > 0) {
 		if (Math.random() < 0.05) {
 		  // 5% 機率觸發特殊產量
 		  const modifier = getRandomModifier('weapons');
-		  const modAmount = Math.round(roundedProduction * modifier.effect);
+		  // 使用 finalProduction 進行修正後的計算
+		  const modAmount = Math.round(finalProduction * modifier.effect);
 		  const itemName = getRandomItemName('weapons');
 		  logResource('weapons', `${modifier.name} ${itemName}`, modAmount, "production");
 		  gameState.resources.weapons += modAmount;
 		} else {
 		  const itemName = getRandomItemName('weapons');
-		  logResource('weapons', itemName, roundedProduction, "production");
-		  gameState.resources.weapons += roundedProduction;
+		  logResource('weapons', itemName, finalProduction, "production");
+		  gameState.resources.weapons += finalProduction;
 		}
 	  }
 	}
+
 
 
     function handleExploration() {
