@@ -2,7 +2,7 @@
 <html lang="zh">
 <head>
   <meta charset="UTF-8" name="viewport" content="width=device-width, initial-scale=0.45"/>
-  <title>末日控制中心 - 正式版v.1.064 saftycenter update</title>
+  <title>末日控制中心 - 正式版v.1.065 altyn update</title>
   <style>
     /* 彈窗系統 */
     .modal-overlay {
@@ -2794,6 +2794,7 @@
       document.getElementById("researchCount").textContent = gameState.allocations.research;
       updateEfficiencyDisplays();
       initBuildingGrid();
+	  updateZombieSearchSprite();
     
     }
 	/***** 成就系統 *****/
@@ -4199,6 +4200,46 @@
 		  container.removeChild(lyingElem);
 		}
 	  }, 20000); // 匹配動畫時長
+	}
+	function updateZombieSearchSprite() {
+	  // 取得探索區域中那個顯示僵尸搜尋動畫的元素（class 為 zombie-search）
+	  const zombieElem = document.querySelector(".zombie-search");
+	  if (!zombieElem) return; // 若尚未創建，則直接返回
+
+	  // 檢查是否存在「拖拉機廠」建築（對應 BUILDINGS 中的 armoredGarage）
+	  const hasTractor = gameState.buildings.some(
+		b => b && b.type.toLowerCase() === "armoredgarage"
+	  );
+	   // 「軍械工坊」對應於 armory
+	  const hasArmory = gameState.buildings.some(
+		b => b && b.type.toLowerCase() === "armory"
+	  );
+	  // 「僵尸指揮中心」對應於 zombiecommandcenter
+	  const hasZombieCommand = gameState.buildings.some(
+		b => b && b.type.toLowerCase() === "zombiecommandcenter"
+	  );
+
+	  // 預設使用原始精靈圖
+	  let newSprite = "images/zombie_search_sprite.png";
+	  
+	  if (hasTractor && hasArmory && hasZombieCommand) {
+		newSprite = "images/zombie_search_sprite_elite.png";
+	  }
+	  // 若同時存在拖拉機廠與軍械工坊 / 僵尸指揮中心，則用 equipped 版
+	  else if (hasTractor && hasArmory || hasZombieCommand) {
+		newSprite = "images/zombie_search_sprite_equipped.png";
+	  }
+	  // 否則若僅有拖拉機廠，則用 btr 版
+	  else if (hasTractor) {
+		newSprite = "images/zombie_search_sprite_btr.png";
+	  }
+	  // 否則若僅有軍械工坊或僵尸指揮中心，則用 helmlet 版
+	  else if (hasArmory || hasZombieCommand) {
+		newSprite = "images/zombie_search_sprite_helmlet.png";
+	  }
+	  
+	  // 更新背景圖：這裡使用 CSS background-image 屬性來替換對應的圖片
+	  zombieElem.style.backgroundImage = "url('" + newSprite + "')";
 	}
 
 	// 初始化生产动画：为生产动画各栏添加前景僵尸动画（常驻循环播放）
