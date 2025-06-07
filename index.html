@@ -2,7 +2,7 @@
 <html lang="zh">
 <head>
   <meta charset="UTF-8" name="viewport" content="width=device-width, initial-scale=0.45"/>
-  <title>末日控制中心 - 正式版v.1.063 modal&data update</title>
+  <title>末日控制中心 - 正式版v.1.064 saftycenter update</title>
   <style>
     /* 彈窗系統 */
     .modal-overlay {
@@ -2014,7 +2014,7 @@
 			accidentReduction: 0.05,        // 1級時降低5%
 			resourceConsumptionRate: 0.05     // 1級時，每秒消耗0.05×總僵尸數的資源
 		  },
-		  effectMultiplier: 1.01,  // 升級時效果乘子，例如每升級一次效果乘以1.1
+		  effectMultiplier: 1.025,  // 升級時效果乘子，例如每升級一次效果乘以1.1
 		  getUpgradeInfo: function(currentLevel) {
 			const accidentReduction = Math.min(this.baseEffect.accidentReduction * Math.pow(this.effectMultiplier, currentLevel - 1), 0.50);
 			const resourceConsumptionRate = Math.min(this.baseEffect.resourceConsumptionRate * Math.pow(this.effectMultiplier, currentLevel - 1), 0.4);
