@@ -1524,7 +1524,7 @@
 	  explorationBoost: "探索提升",
 	  zombieEfficiency: "僵尸效率",
 	  production: "僵尸生產",
-	  zombieBoost: "探索加成",
+	  zombieBoost: "僵尸加成",
 	  zombieLossReduction: "損失控制",
 	  productionBonus: "生產加成",
 	  resourceConsumptionRate: "全資源消耗",
@@ -3262,60 +3262,98 @@
 
   
     function updateEfficiencies() {
-	  // 重置所有效率
-	  Object.keys(gameState.efficiency).forEach(k => gameState.efficiency[k] = 1);
+	  // 如果 gameState.efficiency 尚未定義，則初始化其主要鍵
+	  if (!gameState.efficiency) {
+		gameState.efficiency = {
+		  exploration: 1,
+		  food: 1,
+		  materials: 1,
+		  weapons: 1,
+		  tech: 1
+		};
+	  } else {
+		// 重置所有預定義的效率鍵
+		gameState.efficiency.exploration = 1;
+		gameState.efficiency.food = 1;
+		gameState.efficiency.materials = 1;
+		gameState.efficiency.weapons = 1;
+		gameState.efficiency.tech = 1;
+	  }
 
-	  // 獲取中心基地等級（若不存在則為1）
-	  const centerBuilding = gameState.buildings.find(b => b?.type === "center");
+	  // 取得中心基地（center）的等級，用於作為其它建築等級的上限參考
+	  const centerBuilding = gameState.buildings.find(b => b && b.type === "center");
 	  const centerLevel = centerBuilding ? centerBuilding.level : 1;
 
-	  // 初始化加成變數
-	  let explorationBoost = 0;
-	  let researchBoost = 0;
-	  let zombieEfficiency = 0;
-	  let productionBonus = 0;
+	  // 初始化累計變數
+	  let totalExplorationBoost = 0; // 探索提升，只由中心基地提供
+	  let totalProductionBonus = 0;  // 生產加成，全局應用於 food、materials、weapons、tech
+	  let totalResearchBoost = 0;    // 科研提升
+	  let totalZombieEfficiency = 0; // 僵尸專屬效果
+	  let totalZombieBoost = 0;      // 探索加成（zombieBoost），由僵尸指揮中心提供
 
+	  // 遍歷所有建築，累計效果
 	  gameState.buildings.forEach(b => {
 		if (!b) return; // 跳過空地
 
 		const upgradeInfo = (typeof BUILDINGS[b.type].getUpgradeInfo === "function")
-                      ? BUILDINGS[b.type].getUpgradeInfo(b.level)
-                      : null;
-		const effects = upgradeInfo?.effect || {};
+		  ? BUILDINGS[b.type].getUpgradeInfo(b.level)
+		  : null;
+		const effects = upgradeInfo ? upgradeInfo.effect : {};
 
-
-		// 確保一般效率被更新
+		// 將非特殊鍵（非 explorationBoost, researchBoost, zombieEfficiency, productionBonus, zombieBoost）
+		// 的效果直接累加到 gameState.efficiency（例如某些建築可能直接給 food、materials 等加成）
 		Object.entries(effects).forEach(([key, value]) => {
-		  gameState.efficiency[key] = (gameState.efficiency[key] || 1) + value;
+		  if (['explorationBoost', 'researchBoost', 'zombieEfficiency', 'productionBonus', 'zombieBoost'].includes(key)) {
+			return;
+		  }
+		  if (gameState.efficiency.hasOwnProperty(key)) {
+			gameState.efficiency[key] += value;
+		  } else {
+			gameState.efficiency[key] = 1 + value;
+		  }
 		});
 
-		// 若是中心基地，累積特殊加成
+		// 累計特殊效果：
 		if (b.type === "center") {
-		  explorationBoost += effects.explorationBoost || 0;
-		  researchBoost += effects.researchBoost || 0;
-		  zombieEfficiency += effects.zombieEfficiency || 0;
-		  productionBonus += effects.productionBonus || 0;
+		  // 中心基地提供探索提升（explorationBoost）等
+		  totalExplorationBoost += effects.explorationBoost || 0;
+		  totalResearchBoost += effects.researchBoost || 0;
+		  totalZombieEfficiency += effects.zombieEfficiency || 0;
+		  totalProductionBonus += effects.productionBonus || 0;
+		} else {
+		  // 其他建築如果有生產加成，也累計
+		  if (effects.productionBonus) {
+			totalProductionBonus += effects.productionBonus;
+		  }
 		}
 	  });
 
-	  // 應用中心基地加成
-	  gameState.explorationEfficiency = 1 + explorationBoost;
-	  gameState.researchEfficiency = 1 + researchBoost;
-	  gameState.zombieEfficiency = 1 + zombieEfficiency;
-	  gameState.productionEfficiency = 1 + productionBonus;
-	 
-	 // ★ 將 productionBonus 全局應用到所有資源的效率上 ★
+	  // 將最終探索效率只使用中心基地提供的探索提升來計算
+	  gameState.efficiency.exploration = 1 + totalExplorationBoost;
+	  // 注意：這裡不把 zombieBoost 加入 exploration 效率，以符合你定義的區分
+
+	  // 將生產加成全局應用到所有主要資源上
 	  ['food', 'materials', 'weapons', 'tech'].forEach(res => {
-		gameState.efficiency[res] = (gameState.efficiency[res] || 1) + productionBonus;
+		gameState.efficiency[res] = (gameState.efficiency[res] || 1) + totalProductionBonus;
 	  });
 
-	  // 限制其他建築的最高等級
+	  // 更新其它專用變數，方便後續使用或顯示
+	  gameState.explorationEfficiency = gameState.efficiency.exploration;
+	  gameState.researchEfficiency = 1 + totalResearchBoost;
+	  gameState.zombieEfficiency = 1 + totalZombieEfficiency;
+	  // 如有需要，獨立存儲探索加成（zombieBoost）以供其它用途，但不納入探索效率：
+	  gameState.zombieBoost = 1 + totalZombieBoost;
+	  gameState.productionEfficiency = 1 + totalProductionBonus;
+
+	  // 限制非中心基地的建築等級不得超過中心基地等級
 	  gameState.buildings.forEach(b => {
 		if (b && b.type !== "center" && b.level > centerLevel) {
-		  b.level = centerLevel; // 限制最大等級
+		  b.level = centerLevel;
 		}
 	  });
 	}
+
+
 
   
     function getBuildingIcon(type) {
@@ -3635,6 +3673,7 @@
 	  
 	  gameState.buildings[index] = null;
 	  addEventLog(`🏗️ ${BUILDINGS[building.type].name} 已被拆除`, "warning");
+	  updateEfficiencies();
 	  updateAllDisplays();
 	  showResultModal(`已拆除 ${BUILDINGS[building.type].name}`);
 	}
