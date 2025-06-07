@@ -362,6 +362,11 @@
 	  border-radius: 12px;
 	  padding: 2rem;
 	}
+	#titlesModal .modal-content .collection-table th:first-child,
+	#titlesModal .modal-content .collection-table td:first-child {
+	  width: 40%;
+	}
+
 
 	/* 收藏彈窗 */
 	.collection-table {
@@ -383,6 +388,8 @@
 	  vertical-align: middle;
 	  font-weight: bold;
 	}
+
+
 
 		
     /* 部門管理界面 */
@@ -2891,11 +2898,12 @@
 	}
 
 	// 解鎖建築類成就。參數：title（成就名稱）、details（成就說明）、rarity（成就稀有度標記，例如 "uncommon"、"rare"、"legendary"）
-	function awardBuildingAchievement(title, details, rarity) {
+	function awardBuildingAchievement(title, details, level) {
 	  if (isBuildingAchievementUnlocked(title)) return;
+	  const rarity = getRarityForAchievement(level);
 	  const achievement = {
 		category: "building",
-		level: 1,
+		level: level,
 		title: title,
 		details: details,
 		rarity: rarity,
@@ -2909,19 +2917,22 @@
 	  addEventLog(`成就解鎖：[${title}] (${details})`, rarity, "achievement");
 	  updateAchievementsUI();
 	}
+	// 檢查是否已解鎖過某項建築成就
+	function isBuildingAchievementUnlocked(title) {
+	  return unlockedAchievements.some(a => a.category === "building" && a.title === title);
+	}
 	// 檢查建築成就：如果所有目標成就均已解鎖，則提前返回
 	function checkBuildingAchievements() {
 	  // 若所有建築成就已解鎖，就不再檢查
 	  if (
 		isBuildingAchievementUnlocked("報話機") &&
 		isBuildingAchievementUnlocked("Алтын") &&
+		isBuildingAchievementUnlocked("武裝通信兵") &&
 		isBuildingAchievementUnlocked("全副武裝")
 	  ) {
 		return;
 	  }
-	 }
-	// 檢查建築成就是否達成，並依照規則分別解鎖：
-	function checkBuildingAchievements() {
+	  
 	  // 檢查是否存在【拖拉機廠】（對應 armoredgarage）
 	  const hasTractor = gameState.buildings.some(
 		b => b && b.type.toLowerCase() === "armoredgarage"
@@ -2937,20 +2948,20 @@
 	  
 	  // 成就「報話機」：當拖拉機廠存在時
 	  if (hasTractor && !isBuildingAchievementUnlocked("報話機")) {
-		awardBuildingAchievement("報話機", "建造拖拉機廠", "rare");
+		awardBuildingAchievement("報話機", "建造拖拉機廠", "6");
 	  }
 	  
 	  // 成就「Алтын」：當存在軍械工廠或僵尸指揮中心時
 	  if ((hasArmory || hasZombieCommand) && !isBuildingAchievementUnlocked("Алтын")) {
-		awardBuildingAchievement("Алтын", "建造軍械工廠或僵尸指揮中心", "rare");
+		awardBuildingAchievement("Алтын", "建造軍械工廠或僵尸指揮中心", "6");
 	  }
 	  if (hasTractor &&(hasArmory || hasZombieCommand) && !isBuildingAchievementUnlocked("武裝通信兵")) {
-		awardBuildingAchievement("武裝通信兵", "同時擁有拖拉機廠以及軍械工廠或僵尸指揮中心", "rare");
+		awardBuildingAchievement("武裝通信兵", "同時擁有拖拉機廠以及軍械工廠或僵尸指揮中心", "8");
 	  }
 	  
 	  // 成就「全副武裝」：只有當拖拉機廠、軍械工廠與僵尸指揮中心三者同時存在時
 	  if (hasTractor && hasArmory && hasZombieCommand && !isBuildingAchievementUnlocked("全副武裝")) {
-		awardBuildingAchievement("全副武裝", "同時擁有拖拉機廠、軍械工廠與僵尸指揮中心", "legendary");
+		awardBuildingAchievement("全副武裝", "同時擁有拖拉機廠、軍械工廠與僵尸指揮中心", "10");
 	  }
 	}
 
@@ -4296,16 +4307,16 @@
 		newSprite = "images/zombie_search_sprite_elite.png";
 	  }
 	  // 若同時存在拖拉機廠與軍械工坊 / 僵尸指揮中心，則用 equipped 版
-	  else if (hasTractor && hasArmory || hasZombieCommand) {
+	  else if (hasTractor && (hasArmory || hasZombieCommand)) {
 		newSprite = "images/zombie_search_sprite_equipped.png";
 	  }
 	  // 否則若僅有拖拉機廠，則用 btr 版
 	  else if (hasTractor) {
 		newSprite = "images/zombie_search_sprite_btr.png";
 	  }
-	  // 否則若僅有軍械工坊或僵尸指揮中心，則用 helmlet 版
+	  // 否則若僅有軍械工坊或僵尸指揮中心，則用 helmet 版
 	  else if (hasArmory || hasZombieCommand) {
-		newSprite = "images/zombie_search_sprite_helmlet.png";
+		newSprite = "images/zombie_search_sprite_helmet.png";
 	  }
 	  
 	  // 更新背景圖：這裡使用 CSS background-image 屬性來替換對應的圖片
