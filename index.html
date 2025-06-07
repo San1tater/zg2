@@ -2245,19 +2245,39 @@
 	  }
 	  
 	  const finalZombieChange = Math.round(baseZombieChange + offset);
-	  let effectiveCap = 100000;
+	  // 定義基本上限
+	  let baseCap = 80000;
+
+	  // 累計所有僵尸指揮中心的額外收容值（注意：這裡不混淆其他建築，僅針對type === "zombiecommandcenter"）
 	  const zccBuildings = gameState.buildings.filter(b =>
-		b && b.type.toLowerCase() === "zombieCommandCenter"
+	  b && b.type.toLowerCase() === "zombiecommandcenter"
 	  );
+	  let bonusTotal = 0;
 	  zccBuildings.forEach(b => {
-		const info = BUILDINGS.zombieCommandCenter.getUpgradeInfo(b.level);
-		if (info && info.effect.maxZombieCapBonus) {
-		  effectiveCap += info.effect.maxZombieCapBonus;
-		}
+	    const info = BUILDINGS.zombieCommandCenter.getUpgradeInfo(b.level);
+	    if (info && typeof info.effect.maxZombieCapBonus === 'number') {
+		  bonusTotal += info.effect.maxZombieCapBonus;
+	    }
 	  });
-	  
+	  // 初步上限＝基本上限加上所有加成
+	  let effectiveCap = baseCap + bonusTotal;
+
+	  // 如果 BTR 事件處於激活狀態，則根據拖拉機廠的 btrZombieMaxBonus 比例進一步提升上限
+	  if (isBTRActive) {
+	    const garages = gameState.buildings.filter(b =>
+		  b && b.type.toLowerCase() === "armoredgarage"
+	    );
+	    garages.forEach(b => {
+		  const info = BUILDINGS.armoredGarage.getUpgradeInfo(b.level);
+		  if (info && typeof info.effect.btrZombieMaxBonus === 'number') {
+		    // 此處我們按比例增加上限，例如 bonus 0.10 就增加 10%：
+		    effectiveCap += Math.floor(effectiveCap * info.effect.btrZombieMaxBonus);
+		  }
+	    });
+	  }
+	  // 最後，若最終計算的僵尸增加數量超過 effectiveCap，則返回上限值
 	  if (finalZombieChange > effectiveCap) {
-		return effectiveCap;
+	    return effectiveCap;
 	  }
 	  return finalZombieChange;
 	}
@@ -2463,8 +2483,24 @@
 	  let amountAfterMultiplier = Math.floor(result.amount * effectiveMultiplier);
   
 	  // 設定單次資源獲得上限（例如 productionCap 為 990000）
-	  const productionCap = 9900000;
-	  amountAfterMultiplier = Math.min(amountAfterMultiplier, productionCap);
+	  const normalMultiplier = 2.5;
+	  const baseCapFactor = 9900000 / normalMultiplier; // 3960000
+	  const rarityMultipliers = {
+		  junk: 1,
+		  old: 1.5,
+		  damaged: 2,
+		  common: 2.5,
+		  decent: 3,
+		  sealed: 3.5,
+		  selected: 4,
+		  tested: 5,
+		  rare: 6,
+		  epic: 8,
+		  legendary: 10,
+		  divine: 12
+	  };
+	  const rarityCap = baseCapFactor * (rarityMultipliers[result.rarity] || normalMultiplier);
+      amountAfterMultiplier = Math.min(amountAfterMultiplier, rarityCap);
 	  
 	  result.amount = amountAfterMultiplier;
 	  result.log.text = result.log.text.replace(/\+\d+/, "+" + result.amount);
