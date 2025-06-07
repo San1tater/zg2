@@ -2,7 +2,7 @@
 <html lang="zh">
 <head>
   <meta charset="UTF-8" name="viewport" content="width=device-width, initial-scale=0.45"/>
-  <title>末日控制中心 - 正式版v.1.06 btr-82a update</title>
+  <title>末日控制中心 - 正式版v.1.062 modal&data update</title>
   <style>
     /* 彈窗系統 */
     .modal-overlay {
@@ -3663,29 +3663,47 @@
 	function adjustZombies(dept, amount) {
 	  let current = gameState.allocations[dept] || 0;
 	  let step = 0;
+
 	  if (amount > 0) {
-		// 若目前為0，點加號則至少增加1；否則取 5%（向上取整，最少 1）
+		// 若當前部門為 0，則加 1；否則以當前部門僵尸數的 5%（向上取整，最小 1）
 		step = current > 0 ? Math.max(Math.ceil(current * 0.05), 1) : 1;
 	  } else {
-		// 減少時同理（不得出現負數）
+		// 減少分配時採用相同方式（不得低於 0）
 		step = current > 0 ? -Math.max(Math.ceil(current * 0.05), 1) : 0;
 	  }
-	  const newVal = current + step;
-	  if (newVal < 0) {
-		gameState.allocations[dept] = 0;
-	  } else {
-		// 檢查變更後的總分配是否超出總僵尸數
-		const totalAllocated = Object.keys(gameState.allocations).reduce((sum, key) => {
+
+	  if (amount > 0) {
+		// 計算其它部門已分配僵尸數
+		const totalAllocatedOther = Object.keys(gameState.allocations).reduce((sum, key) => {
 		  return key === dept ? sum : sum + gameState.allocations[key];
 		}, 0);
-		if (totalAllocated + newVal > gameState.totalZombies) {
-		  addEventLog("沒有足夠的僵尸分配", "warning");
-		  return;
+		// 計算當前部門已分配後，總共分配出去的數字：current + totalAllocatedOther
+		// 剩餘僵尸數應為總僵尸數減去已分配的總數
+		const remainingForDept = gameState.totalZombies - (totalAllocatedOther + current);
+
+		// 如果剩餘不足本部門按照 5% 計算應增加的數量，
+		// 則直接將全部剩餘數分配進該部門
+		if (remainingForDept < step && remainingForDept > 0) {
+		  gameState.allocations[dept] = current + remainingForDept;
+		} else {
+		  // 檢查增加後是否超出總僵尸數
+		  if (totalAllocatedOther + (current + step) > gameState.totalZombies) {
+			addEventLog("沒有足夠的僵尸分配", "warning");
+			return;
+		  }
+		  gameState.allocations[dept] = current + step;
 		}
-		gameState.allocations[dept] = newVal;
+	  } else {
+		// 減少分配情況直接更新
+		gameState.allocations[dept] = Math.max(current + step, 0);
 	  }
+
 	  updateAllDisplays();
 	}
+
+
+
+
 
   
   // 當觸摸開始時，如果目標位於我們關注的區域內（.modal-content 或 .log），則保存該容器與初始位置。
