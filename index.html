@@ -2,7 +2,7 @@
 <html lang="zh">
 <head>
   <meta charset="UTF-8" name="viewport" content="width=device-width, initial-scale=0.45"/>
-  <title>末日控制中心 - 正式版v.1.062 modal&data update</title>
+  <title>末日控制中心 - 正式版v.1.063 modal&data update</title>
   <style>
     /* 彈窗系統 */
     .modal-overlay {
@@ -2433,46 +2433,47 @@
 	  let recyclingCount = gameState.allocations.recycling || 0;
 	  let avg = (researchCount + recyclingCount) / 2;
 
-	  // 參考食物生產的加成公式：
-	  //   effectiveMultiplier = Math.pow(count, 0.85) * Math.pow(1.0005, count)
-	  // 這裏用 avg 作為 count 計算加成倍率
+	  // 根據加成公式計算倍率
 	  let baseMultiplier = Math.pow(avg, 0.85);
 	  let bonusMultiplier = Math.pow(1.0005, avg);
 	  let productionBonus = baseMultiplier * bonusMultiplier;
 
-	  // 計算總生產量，遍歷所有軍械工坊
+	  // 遍歷每個軍械工坊累計生產
 	  let totalProduction = 0;
 	  armories.forEach(b => {
 		const config = BUILDINGS.armory;
 		const upgradeInfo = config.getUpgradeInfo(b.level);
 		if (upgradeInfo && upgradeInfo.effect && upgradeInfo.effect.weapons) {
-		  // 基礎產量乘以加成倍率
 		  totalProduction += upgradeInfo.effect.weapons * productionBonus;
 		}
 	  });
-	  
+
 	  const roundedProduction = Math.round(totalProduction);
+	  // 設定單次生產上限：基礎產量上限為 9900000
 	  const productionCap = 9900000;
-	  // 【問題標記】：此處本來正確計算上限
-	  const finalProduction = Math.min(roundedProduction, productionCap);
-	  
-	  // 【重點替換】：使用 finalProduction 而不是 roundedProduction
-	  if (finalProduction > 0) {
+	  const limitedProduction = Math.min(roundedProduction, productionCap);
+
+	  if (limitedProduction > 0) {
+		// 5% 機率觸發特殊（詞條）生產
 		if (Math.random() < 0.05) {
-		  // 5% 機率觸發特殊產量
 		  const modifier = getRandomModifier('weapons');
-		  // 使用 finalProduction 進行修正後的計算
-		  const modAmount = Math.round(finalProduction * modifier.effect);
-		  const itemName = getRandomItemName('weapons');
-		  logResource('weapons', `${modifier.name} ${itemName}`, modAmount, "production");
-		  gameState.resources.weapons += modAmount;
+		  // 以有限制的基礎生產值作為基數，再乘以詞條效果：
+		  const modProduction = Math.round(limitedProduction * modifier.effect);
+		  // 使用顏色根據詞條效果分類
+		  const modColor = (modifier.effect < 1) ? "var(--junk)" : "var(--sealed)";
+		  const styledItemName = `<span style="color: ${modColor}; font-weight: bold;">${modifier.name} ${getRandomItemName('weapons')}</span>`;
+		  
+		  logResource('weapons', styledItemName, modProduction, "production");
+		  gameState.resources.weapons += modProduction;
 		} else {
-		  const itemName = getRandomItemName('weapons');
-		  logResource('weapons', itemName, finalProduction, "production");
-		  gameState.resources.weapons += finalProduction;
+		  logResource('weapons', getRandomItemName('weapons'), limitedProduction, "production");
+		  gameState.resources.weapons += limitedProduction;
 		}
 	  }
+	  
+	  updateResourceDisplays();
 	}
+
 
 
 
@@ -2573,7 +2574,7 @@
 	  
       if (Math.random() < 0.05) {
         const modifier = getRandomModifier(resource);
-        const modAmount = convertProduction(amount * modifier.effect);
+        const modAmount = convertProduction(limitedAmount * modifier.effect);
 		const modColor = (modifier.effect < 1) ? "var(--junk)" : "var(--sealed)";
 		const styledItemName = `<span style="color: ${modColor}; font-weight: bold;">${modifier.name} ${getRandomItemName(resource)}</span>`;
         logResource(resource, styledItemName, modAmount, "production");
