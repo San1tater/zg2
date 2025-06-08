@@ -2,7 +2,7 @@
 <html lang="zh">
 <head>
   <meta charset="UTF-8" name="viewport" content="width=device-width, initial-scale=0.45"/>
-  <title>末日控制中心 - 正式版v.1.066 t-80 update</title>
+  <title>末日控制中心 - 正式版v.1.067 T-80 update</title>
   <style>
     /* 彈窗系統 */
     .modal-overlay {
@@ -1028,11 +1028,23 @@
 	  /* 設置 T‑80 精靈圖總寬度：4 帧 × 480px = 1920px */
 	  background-size: calc(4 * 2 * var(--btr-frame-width)) var(--btr-frame-height);  /* 1920px x 120px */
 	  background-repeat: no-repeat;
-	  animation: t80Frame 1s steps(4, end) infinite;
 	}
-	@keyframes t80Frame {
+	@keyframes t80Idle {
+	  0% { background-position: 0 0; }          
+	  50% { background-position: -1440px 0; }   /* 第4 幀：-3×480 = -1440px */
+	  100% { background-position: 0 0; }
+	}
+	.t80-idle {
+	  animation: t80Idle 1s steps(2, end) infinite;
+	}
+
+	/* Full (開炮) 狀態：完整播放 4 幀一次 */
+	@keyframes t80Full {
 	  from { background-position: 0 0; }
 	  to { background-position: -1920px 0; }
+	}
+	.t80-full {
+	  animation: t80Full 1s steps(4, end) 1;
 	}
 
 	
@@ -3498,39 +3510,53 @@
 	  });
 	}
 	let isBTRActive = false;
+	let t80IdleInterval = null;
+	let t80CannonOnCooldown = false;
+
+
+	function startT80IdleAnimation(sprite) {
+	  // 確保idle定時器不存在
+	  if (t80IdleInterval) clearInterval(t80IdleInterval);
+	  t80IdleToggle = false;
+	  // 初始設為第1 幀
+	  sprite.style.backgroundPosition = "0px 0";
+	  t80IdleInterval = setInterval(() => {
+		// 使用 toggle 變數進行交替
+		t80IdleToggle = !t80IdleToggle;
+		// 第1 幀： "0px 0"；第4 幀： -1440px 0 （因為 3*480 = 1440）
+		sprite.style.backgroundPosition = t80IdleToggle ? "-1440px 0" : "0px 0";
+	  }, 250);
+	}
+
+	// 主入口函數：生成動畫
 	function triggerBTRAnimation() {
 	  const container = document.getElementById("explorationAnim");
 	  if (!container) {
 		console.error("找不到 #explorationAnim 容器");
 		return;
 	  }
-
 	  const containerWidth = container.clientWidth;
 	  const offset = 50;
 	  const rootStyles = getComputedStyle(document.documentElement);
-	  
-	  // 40% 機率使用 T‑80 動畫，否則使用 BTR 動畫
+
+	  // 40%機率使用 T‑80，否則BTR
 	  const useT80 = (Math.random() < 0.4);
-	  
-	  // 根據所用動畫決定單幀寬度
+
 	  let frameWidth;
 	  if (useT80) {
-		// T‑80 每幀寬度 = 2×BTR 的每幀寬度，依據 CSS 變量計算
-		frameWidth = 2 * (parseFloat(rootStyles.getPropertyValue('--btr-frame-width')) || 240); // 約480px
+		// T‑80的單幀寬度固定為480px
+		frameWidth = 480;
 	  } else {
-		frameWidth = parseFloat(rootStyles.getPropertyValue('--btr-frame-width')) || 240; // 約240px
+		frameWidth = parseFloat(rootStyles.getPropertyValue('--btr-frame-width')) || 240;
 	  }
-	  
-	  // 計算水平起始與停止位置：
-	  // 起始位置：container右側外 offset，再加上單幀的一半寬度
+
+	  // 計算水平位置：起始位置、停止位置，依據 frameWidth 計算
 	  const centerStart = containerWidth + offset + 0.5 * frameWidth;
-	  // 停止位置：若為 T‑80，目標位置為 container寬度的 50%，否則 75%
 	  const centerStop = useT80 ? (0.5 * containerWidth) : (0.75 * containerWidth);
-	  
 	  const startLeft = centerStart - 0.5 * frameWidth;
 	  const stopLeft  = centerStop - 0.5 * frameWidth;
-	  
-	  // 生成水平運動 keyframes（控制 wrapper 的左右移動）
+
+	  // 生成水平移動 keyframes（控制 wrapper）
 	  const keyframesText = `
 		@keyframes btrMoveDynamic {
 		  0%   { left: ${startLeft}px; }
@@ -3547,35 +3573,47 @@
 	  }
 	  styleElem.textContent = keyframesText;
 	  console.log("動態 keyframes:", keyframesText);
-	  
-	  // 建立 wrapper 元素（用於水平運動）
+
+	  // 建立 wrapper，注意不要設置 top，依CSS中 bottom:0 保持正確定位
 	  const wrapper = document.createElement("div");
 	  wrapper.className = "btr-wrapper";
 	  wrapper.style.position = "absolute";
-	  wrapper.style.top = "0";
 	  wrapper.style.left = startLeft + "px";
 	  wrapper.style.animation = "btrMoveDynamic 10s ease-in-out forwards";
-	  
-	  // 建立動畫元素，根據 useT80 使用不同 CSS 類
-	  const spriteElem = document.createElement("div");
+
+	  let spriteElem;
 	  if (useT80) {
+		// T‑80 分支：建立裁切容器
+		const frameContainer = document.createElement("div");
+		frameContainer.className = "frameContainer";
+		frameContainer.style.width = frameWidth + "px";
+		frameContainer.style.height = rootStyles.getPropertyValue('--btr-frame-height') || "120px";
+		frameContainer.style.overflow = "hidden";
+
+		spriteElem = document.createElement("div");
 		spriteElem.className = "t80-animation";
+		// 初始 idle：設置 backgroundPosition 為第1 幀
+		spriteElem.style.backgroundPosition = "0px 0";
+
+		frameContainer.appendChild(spriteElem);
+		wrapper.appendChild(frameContainer);
 	  } else {
+		// BTR 分支：直接使用原來的 btr-animation
+		spriteElem = document.createElement("div");
 		spriteElem.className = "btr-animation";
+		wrapper.appendChild(spriteElem);
 	  }
-	  
-	  wrapper.appendChild(spriteElem);
+
 	  container.appendChild(wrapper);
-	  
+
 	  gameState.btrTriggerCount = (gameState.btrTriggerCount || 0) + 1;
-	  
 	  if (useT80) {
 		addEventLog('[T-80]入場，獲得僵尸事件獎勵提升！', 'btr-active', 'exploration');
 	  } else {
 		addEventLog('[BTR-82A]入場，獲得僵尸事件獎勵提升！', 'btr-active', 'exploration');
 	  }
 	  console.log(`動畫啟動：containerWidth=${containerWidth}px, startLeft=${startLeft}px, stopLeft=${stopLeft}px, frameWidth=${frameWidth}px`);
-	  
+
 	  isBTRActive = true;
 	  setTimeout(() => { isBTRActive = false; }, 10000);
 	  setTimeout(() => {
@@ -3583,11 +3621,64 @@
 		  container.removeChild(wrapper);
 		  console.log("動畫 wrapper 已移除");
 		}
+		// 如果 T‑80，清除 idle 定時器
+		if (useT80 && t80IdleInterval) {
+		  clearInterval(t80IdleInterval);
+		  t80IdleInterval = null;
+		}
 	  }, 10000);
+
+	  // 如果是 T‑80 分支，啟動 idle 動作
+	  if (useT80) {
+		startT80IdleAnimation(spriteElem);
+		// 在 idle 模式啟動 1 秒後，自動觸發開炮
+		setTimeout(() => {
+		  triggerT80Cannon();
+		}, 1000);
+	  }
 	}
 
-			  
+	// 觸發 T‑80 開炮事件：這個函數使 T‑80 播放完整 4 幀一次，然後恢復 idle 並進入 6 秒冷卻
+	function triggerT80Cannon() {
+	  if (t80CannonOnCooldown) return;
+	  const sprite = document.querySelector(".t80-animation");
+	  if (!sprite) {
+		console.error("未找到 T-80 動畫元素");
+		return;
+	  }
+	  t80CannonOnCooldown = true;
 	  
+	  // 停止 idle 定時器
+	  if (t80IdleInterval) {
+		clearInterval(t80IdleInterval);
+		t80IdleInterval = null;
+	  }
+	  
+	  console.log("觸發 T-80 開炮：播放完整開炮動畫");
+	  // 使用 setTimeout 模擬完整 4 幀播放：每帧 250ms（總耗時約1秒）
+	  sprite.style.backgroundPosition = "0px 0"; // frame1
+	  setTimeout(() => { sprite.style.backgroundPosition = "-480px 0"; }, 250); // frame2
+	  setTimeout(() => { sprite.style.backgroundPosition = "-960px 0"; }, 500); // frame3
+	  setTimeout(() => { sprite.style.backgroundPosition = "-1440px 0"; }, 750); // frame4
+	  
+	  // 1秒後恢復 idle 模式
+	  setTimeout(() => {
+		sprite.style.backgroundPosition = "0px 0"; // 復原到 frame1
+		// 重新啟動 idle 動畫
+		startT80IdleAnimation(sprite);
+	  }, 1000);
+	  
+	  // 冷卻後允許再次開炮
+	  setTimeout(() => {
+		t80CannonOnCooldown = false;
+		console.log("T-80 開炮冷卻結束");
+	  }, 4000);
+	}
+
+
+
+
+ 
 	function checkBTREvent() {
 	  const garages = gameState.buildings.filter(b => b && b.type.toLowerCase() === "armoredgarage");
 	  if (garages.length > 0) {
@@ -3636,9 +3727,6 @@
 	  showTempMessage("升級成功");
 	  // 注意：此處不自動關閉升級彈窗，便於連續升級
 	}
-
-
-
 
 
 	// 新增：結果提示彈窗函數
