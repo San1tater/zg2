@@ -3670,9 +3670,11 @@
 	  // 冷卻後允許再次開炮
 	  setTimeout(() => {
 		t80CannonOnCooldown = false;
-		console.log("T-80 開炮冷卻結束");
-		triggerT80Cannon();
-	  }, 4000);
+		console.log("T-80 裝填完成");
+		if (isBTRActive) {
+			triggerT80Cannon();
+		  }
+	  }, 4250);
 	}
 
 
