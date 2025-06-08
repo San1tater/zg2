@@ -1018,6 +1018,22 @@
 	  padding: 5px;
 	  text-shadow: 0 0 5px orange;
 	}
+	
+	/* T-80 Animation CSS */
+	.t80-animation {
+	  /* 以與 BTR 相同高度，計算寬度：480px */
+	  width: calc(2 * var(--btr-frame-width));       /* 480px */
+	  height: var(--btr-frame-height);                /* 120px */
+	  background-image: url('images/t-80_sprite.png');
+	  /* 設置 T‑80 精靈圖總寬度：4 帧 × 480px = 1920px */
+	  background-size: calc(4 * 2 * var(--btr-frame-width)) var(--btr-frame-height);  /* 1920px x 120px */
+	  background-repeat: no-repeat;
+	  animation: t80Frame 1s steps(4, end) infinite;
+	}
+	@keyframes t80Frame {
+	  from { background-position: 0 0; }
+	  to { background-position: -1920px 0; }
+	}
 
 	
 	/* 以下為示例，根據需要擴展 production、exploration 動畫 CSS */
@@ -3488,17 +3504,33 @@
 		console.error("找不到 #explorationAnim 容器");
 		return;
 	  }
-	  
+
 	  const containerWidth = container.clientWidth;
-	  const rootStyles = getComputedStyle(document.documentElement);
-	  const btrFrameWidth = parseFloat(rootStyles.getPropertyValue('--btr-frame-width')) || 240;
-	  
 	  const offset = 50;
-	  const centerStart = containerWidth + offset + 0.5 * btrFrameWidth;
-	  const centerStop = 0.75 * containerWidth;
-	  const startLeft = centerStart - 0.5 * btrFrameWidth;
-	  const stopLeft = centerStop - 0.5 * btrFrameWidth;
+	  const rootStyles = getComputedStyle(document.documentElement);
 	  
+	  // 40% 機率使用 T‑80 動畫，否則使用 BTR 動畫
+	  const useT80 = (Math.random() < 0.4);
+	  
+	  // 根據所用動畫決定單幀寬度
+	  let frameWidth;
+	  if (useT80) {
+		// T‑80 每幀寬度 = 2×BTR 的每幀寬度，依據 CSS 變量計算
+		frameWidth = 2 * (parseFloat(rootStyles.getPropertyValue('--btr-frame-width')) || 240); // 約480px
+	  } else {
+		frameWidth = parseFloat(rootStyles.getPropertyValue('--btr-frame-width')) || 240; // 約240px
+	  }
+	  
+	  // 計算水平起始與停止位置：
+	  // 起始位置：container右側外 offset，再加上單幀的一半寬度
+	  const centerStart = containerWidth + offset + 0.5 * frameWidth;
+	  // 停止位置：若為 T‑80，目標位置為 container寬度的 50%，否則 75%
+	  const centerStop = useT80 ? (0.5 * containerWidth) : (0.75 * containerWidth);
+	  
+	  const startLeft = centerStart - 0.5 * frameWidth;
+	  const stopLeft  = centerStop - 0.5 * frameWidth;
+	  
+	  // 生成水平運動 keyframes（控制 wrapper 的左右移動）
 	  const keyframesText = `
 		@keyframes btrMoveDynamic {
 		  0%   { left: ${startLeft}px; }
@@ -3507,7 +3539,6 @@
 		  100% { left: ${startLeft}px; }
 		}
 	  `;
-	  
 	  let styleElem = document.getElementById("btrKeyframes");
 	  if (!styleElem) {
 		styleElem = document.createElement("style");
@@ -3517,6 +3548,7 @@
 	  styleElem.textContent = keyframesText;
 	  console.log("動態 keyframes:", keyframesText);
 	  
+	  // 建立 wrapper 元素（用於水平運動）
 	  const wrapper = document.createElement("div");
 	  wrapper.className = "btr-wrapper";
 	  wrapper.style.position = "absolute";
@@ -3524,27 +3556,36 @@
 	  wrapper.style.left = startLeft + "px";
 	  wrapper.style.animation = "btrMoveDynamic 10s ease-in-out forwards";
 	  
-	  const btrElem = document.createElement("div");
-	  btrElem.className = "btr-animation";
+	  // 建立動畫元素，根據 useT80 使用不同 CSS 類
+	  const spriteElem = document.createElement("div");
+	  if (useT80) {
+		spriteElem.className = "t80-animation";
+	  } else {
+		spriteElem.className = "btr-animation";
+	  }
 	  
-	  wrapper.appendChild(btrElem);
+	  wrapper.appendChild(spriteElem);
 	  container.appendChild(wrapper);
 	  
 	  gameState.btrTriggerCount = (gameState.btrTriggerCount || 0) + 1;
 	  
-	  addEventLog('[BTR-82A]入場，獲得僵尸事件獎勵提升！', 'btr-active', 'exploration');
-	  console.log(`BTR動畫啟動：containerWidth = ${containerWidth}px, startLeft = ${startLeft}px, stopLeft = ${stopLeft}px`);
+	  if (useT80) {
+		addEventLog('[T-80]入場，獲得僵尸事件獎勵提升！', 'btr-active', 'exploration');
+	  } else {
+		addEventLog('[BTR-82A]入場，獲得僵尸事件獎勵提升！', 'btr-active', 'exploration');
+	  }
+	  console.log(`動畫啟動：containerWidth=${containerWidth}px, startLeft=${startLeft}px, stopLeft=${stopLeft}px, frameWidth=${frameWidth}px`);
 	  
 	  isBTRActive = true;
 	  setTimeout(() => { isBTRActive = false; }, 10000);
-	  
 	  setTimeout(() => {
 		if (container.contains(wrapper)) {
 		  container.removeChild(wrapper);
-		  console.log("BTR動畫 wrapper 已移除");
+		  console.log("動畫 wrapper 已移除");
 		}
 	  }, 10000);
 	}
+
 			  
 	  
 	function checkBTREvent() {
