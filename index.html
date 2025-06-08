@@ -3631,7 +3631,6 @@
 	  // 如果是 T‑80 分支，啟動 idle 動作
 	  if (useT80) {
 		startT80IdleAnimation(spriteElem);
-		// 在 idle 模式啟動 1 秒後，自動觸發開炮
 		setTimeout(() => {
 		  triggerT80Cannon();
 		}, 1000);
@@ -3672,6 +3671,7 @@
 	  setTimeout(() => {
 		t80CannonOnCooldown = false;
 		console.log("T-80 開炮冷卻結束");
+		triggerT80Cannon();
 	  }, 4000);
 	}
 
