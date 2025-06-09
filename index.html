@@ -121,7 +121,7 @@
 
     :root {
 	  --btr-frame-height: 120px;
-	  --btr-frame-width: calc(1000 * var(--btr-frame-height) / 500);  /* 1000 * 120/500 = 240px */
+	  --btr-frame-width: calc(2000 * var(--btr-frame-height) / 500);  /* 1000 * 120/500 = 240px */
 	  --btr-sprite-total-width: calc(4 * var(--btr-frame-width));
 	
 	  --exploration-height: 120px;
@@ -992,22 +992,22 @@
 	  background-image: url('images/btr_sprite.png');
 	  background-size: var(--btr-sprite-total-width) var(--btr-frame-height); /* 960px x 120px */
 	  background-repeat: no-repeat;   /* 不重複 */
-	  /* 精靈圖幀動畫，每2秒循環一次，共4帧 */
+	  /* 精靈圖幀動畫，每1秒循環一次，共4帧 */
 	  animation: btrFrame 1s steps(4) infinite;
 	}
 
 	/* 移動動畫：使用百分比，相對於父容器寬度 */
 	@keyframes btrMove {
 	  0%   { transform: translateX(100%); }   /* 開始完全在右側外 */
-	  20%  { transform: translateX(75%); }    /* 2秒內移動到父容器右側位置75% */
-	  60%  { transform: translateX(75%); }    /* 保持位置 */
+	  20%  { transform: translateX(50%); }    /* 2秒內移動到父容器右側位置75% */
+	  60%  { transform: translateX(50%); }    /* 保持位置 */
 	  100% { transform: translateX(100%); }   /* 10秒內退回右側外 */
 	}
 
 	/* 精靈圖幀動畫，從0移動到 -960px */
 	@keyframes btrFrame {
 	  from { background-position: 0 0; }
-	  to { background-position: -960px 0; }
+	  to { background-position: -1920px 0; }
 	}
 
 	.log-entry.btr-active {
@@ -1022,11 +1022,11 @@
 	/* T-80 Animation CSS */
 	.t80-animation {
 	  /* 以與 BTR 相同高度，計算寬度：480px */
-	  width: calc(2 * var(--btr-frame-width));       /* 480px */
+	  width: var(--btr-frame-width);       /* 480px */
 	  height: var(--btr-frame-height);                /* 120px */
 	  background-image: url('images/t-80_sprite.png');
 	  /* 設置 T‑80 精靈圖總寬度：4 帧 × 480px = 1920px */
-	  background-size: calc(4 * 2 * var(--btr-frame-width)) var(--btr-frame-height);  /* 1920px x 120px */
+	  background-size: var(--btr-sprite-total-width) var(--btr-frame-height);  /* 1920px x 120px */
 	  background-repeat: no-repeat;
 	}
 	@keyframes t80Idle {
@@ -3552,7 +3552,7 @@
 
 	  // 計算水平位置：起始位置、停止位置，依據 frameWidth 計算
 	  const centerStart = containerWidth + offset + 0.5 * frameWidth;
-	  const centerStop = useT80 ? (0.5 * containerWidth) : (0.75 * containerWidth);
+	  const centerStop = 0.5 * containerWidth;
 	  const startLeft = centerStart - 0.5 * frameWidth;
 	  const stopLeft  = centerStop - 0.5 * frameWidth;
 
@@ -3610,7 +3610,7 @@
 	  if (useT80) {
 		addEventLog('[T-80]入場，獲得僵尸事件獎勵提升！', 'btr-active', 'exploration');
 	  } else {
-		addEventLog('[BTR-82A]入場，獲得僵尸事件獎勵提升！', 'btr-active', 'exploration');
+		addEventLog('[BTR-80A]入場，獲得僵尸事件獎勵提升！', 'btr-active', 'exploration');
 	  }
 	  console.log(`動畫啟動：containerWidth=${containerWidth}px, startLeft=${startLeft}px, stopLeft=${stopLeft}px, frameWidth=${frameWidth}px`);
 
