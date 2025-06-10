@@ -2,7 +2,7 @@
 <html lang="zh">
 <head>
   <meta charset="UTF-8" name="viewport" content="width=device-width, initial-scale=0.45"/>
-  <title>末日控制中心 - 正式版v.1.067 T-80 update</title>
+  <title>末日控制中心 - 正式版v.1.069 T-80 update</title>
   <style>
     /* 彈窗系統 */
     .modal-overlay {
@@ -845,6 +845,16 @@
 	  background-position: 0 0;
 	  /* 使用明确的像素（pt）值，让背景从 0 滚动到 432pt，即一个完整平铺单元 */
 	  animation: scrollBgRight 30s linear infinite;
+	}
+	#explorationAnim.fullscreen {
+	  position: fixed;
+	  left: 0;
+	  top: 50%;
+	  transform: translateY(-50%);
+	  z-index: 1000;
+	  transition: width 0.3s ease;
+	  /* 注意：不改變 height，也不調整 top 的百分比定位，
+		 這樣內部使用百分比定位的精靈圖（例如 top:50%）仍然按照原有比例顯示 */
 	}
 
 	@keyframes scrollBgRight {
@@ -4646,6 +4656,103 @@
 		  });
 		});
 	});
+	
+	
+	// 假定動畫窗口元素 id 為 "explorationAnim"
+	const animWindow = document.getElementById("explorationAnim");
+
+	// 保存頁面加載時的原始動畫區高度與精靈圖的尺寸（假如原始 animWindow.height 與 --zombie-size 如下）
+	const originalAnimHeight = animWindow.offsetHeight || 120;  // 如 120px
+	const originalZombieSize = parseFloat(getComputedStyle(animWindow).getPropertyValue("--zombie-size")) || 90;
+
+	// 全局狀態標記：是否處於全屏模式
+	let isFullScreen = false;
+
+	// 當動畫窗口高度變動時，根據比例更新自訂 CSS 變量（以便精靈圖尺寸也等比改變）
+	function updateSpriteScalingVariables() {
+	  const currentHeight = animWindow.offsetHeight;
+	  const scaleFactor = currentHeight / originalAnimHeight;
+	  const newZombieSize = originalZombieSize * scaleFactor;
+	  
+	  // 如果需要調整其它依賴高度的變量，也可類似計算，比如 BTR 精靈圖高度：
+	  const originalBTRHeight = parseFloat(getComputedStyle(animWindow).getPropertyValue("--btr-frame-height")) || 120;
+	  const newBTRHeight = originalBTRHeight * scaleFactor;
+	  const newBTRWidth = (2000 * newBTRHeight) / 500; // 如原來計算方式
+	  // 更新 CSS 變量（此處我們在 animWindow 上設置，這樣局部覆蓋全局設定）
+	  animWindow.style.setProperty("--zombie-size", newZombieSize + "px");
+	  animWindow.style.setProperty("--zombie-sprite-total-width", (4 * newZombieSize) + "px");
+	  
+	  animWindow.style.setProperty("--btr-frame-height", newBTRHeight + "px");
+	  animWindow.style.setProperty("--btr-frame-width", newBTRWidth + "px");
+	  animWindow.style.setProperty("--btr-sprite-total-width", (4 * newBTRWidth) + "px");
+	}
+
+	// 切換全屏狀態的函數（通過添加或移除一個 CSS 類來觸發樣式變化）
+	function toggleFullScreen() {
+	  if (!isFullScreen) {
+		enterFullScreen();
+	  } else {
+		exitFullScreen();
+	  }
+	}
+	  
+	// 進入全屏：僅調整動畫窗口寬度至視口寬度，保持原有高度與內部百分比定位不變，並更新 CSS 自訂變量
+	function enterFullScreen() {
+	  // 創建全屏遮罩，覆蓋整個視口並阻擋操作穿透
+	  let overlay = document.getElementById("fullscreenOverlay");
+	  if (!overlay) {
+		overlay = document.createElement("div");
+		overlay.id = "fullscreenOverlay";
+		overlay.style.position = "fixed";
+		overlay.style.top = "0";
+		overlay.style.left = "0";
+		overlay.style.width = "100vw";
+		overlay.style.height = "100vh";
+		overlay.style.backgroundColor = "rgba(0,0,0,0.5)";
+		overlay.style.zIndex = "999";
+		overlay.style.cursor = "pointer";
+		// 雙擊遮罩退出全屏
+		overlay.addEventListener("dblclick", exitFullScreen);
+		document.body.appendChild(overlay);
+	  }
+	  // 為動畫窗口添加一個 fullscreen 類，該類僅修改定位與寬度
+	  animWindow.classList.add("fullscreen");
+	  // 更新寬度設成視口寬度（高度保持不變）
+	  animWindow.style.width = window.innerWidth + "px";
+	  // 更新內部 CSS 變量以按比例調整精靈圖尺寸
+	  updateSpriteScalingVariables();
+	  
+	  isFullScreen = true;
+	}
+	  
+	// 退出全屏：移除 fullscreen 類，恢復原狀
+	function exitFullScreen() {
+	  let overlay = document.getElementById("fullscreenOverlay");
+	  if (overlay) {
+		overlay.parentNode.removeChild(overlay);
+	  }
+	  animWindow.classList.remove("fullscreen");
+	  // 恢復寬度至預設（可將 width 的 inline 樣式清空）
+	  animWindow.style.width = "";
+	  updateSpriteScalingVariables();
+	  isFullScreen = false;
+	}
+	  
+	// 為動畫窗口添加雙擊事件切換全屏狀態
+	if (animWindow) {
+	  animWindow.addEventListener("dblclick", function() {
+		toggleFullScreen();
+	  });
+	}
+	  
+	// 當窗口尺寸改變時，若處於全屏狀態則只更新寬度及重新計算 CSS 變量；否則也更新數值
+	window.addEventListener("resize", function() {
+	  if (isFullScreen) {
+		animWindow.style.width = window.innerWidth + "px";
+	  }
+	  updateSpriteScalingVariables();
+	});
+
 	
 	
 	</script>
