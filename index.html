@@ -1462,8 +1462,7 @@
 
   
   <script>
-	let achievements = [];  // 儲存稱號對象，每個稱號包含 category, title, rarity, unlockedTime 等屬性
-	// 【新增】在全局範圍定義稀有度映射，確保所有函數均可訪問
+	let achievements = [];
 	var rarityMapping = {
 	  junk: "[破爛的]",
 	  old: "[陳舊的]",
@@ -1551,12 +1550,10 @@
     
 	let productionCollection = {};
 	
-	// 新定義池：增加事件時，僵尸遇到的對象
 	const ZOMBIE_ENCOUNTER_POOL = [
 	  "流浪的僵尸","孤獨的旅行者","天真的倖存者","迷途的行者","受傷的退伍軍人","帶著染血筆記的科學家","狂熱的末日教徒","改造機車的暴徒","囤藥藥劑師","失語戰地記者","黑市地圖商人","叛逃研究員","免疫體流浪兒","焦慮直升機工程師", "瘋癲尸體畫家", "項圈實驗體", "樂器盒狙擊手", "訊號塔廣播員", "急診室焚尸醫","被感染的護林員", "變異流浪犬", "腐爛救護員", "寄生藤宿主", "嘶吼路燈吊尸"  // 可擴充更多選項
 	];
 
-	// 新定義池：減少事件時，僵尸遭遇的不利事件
 	const ZOMBIE_DISASTER_POOL = [
 	  "暴走的變異獸","大規模的坍塌", "強雷雨天氣","突如其來的颶風","被感染的警犬群","巨型腐爛烏鴉王","寄生藤蔓僵尸樹","成群尸鼠遷徙","黏菌覆蓋的腐化熊","食尸禿鷲群襲擊","軍方燃燒彈地毯轟炸","自動哨戒機槍陣列啟動","地下瓦斯管線大爆炸","高壓電網意外過載","致命抗體空氣傳播","智能無人機群掃蕩","生化溶尸酸雨雲團","精神干擾波無差別攻擊","反僵尸真菌快速蔓延","異種捕食者集團狩獵" // 可擴充更多選項
 	];
@@ -1604,9 +1601,8 @@
 	function getTotalRarityLevels() {
 	  return RARITIES.length;
 	}
-	// 更新重置循環記錄的顯示
 	function updateResetCycleDisplay() {
-	  const totalRarityLevels = getTotalRarityLevels();  // 動態獲取總數
+	  const totalRarityLevels = getTotalRarityLevels();  
 	  const cycleCount = Math.floor(gameState.resetCounter / totalRarityLevels);
 	  const displayElem = document.getElementById("resetCycleDisplay");
 	  if (displayElem) {
@@ -1614,30 +1610,24 @@
 	  }
 	}
 	function updateResourceCardsBorder() {
-	  // 定義稀有度列表，順序從低到高
 	  const rarityList = [
 		"junk", "old", "damaged", "common",
 		"decent", "sealed", "selected", "tested",
 		"rare", "epic", "legendary", "divine"
 	  ];
-	  
-	  // 根據 gameState.resetCounts，分別為各資源計算重置次數對應的索引
 	  const foodRarity = rarityList[ gameState.resetCounts.food % rarityList.length ];
 	  const materialsRarity = rarityList[ gameState.resetCounts.materials % rarityList.length ];
 	  const weaponsRarity = rarityList[ gameState.resetCounts.weapons % rarityList.length ];
 	  const techRarity = rarityList[ gameState.resetCounts.tech % rarityList.length ];
 	  
-	   // 取得資源卡的 DOM 元素（假設資源數字元素的父元素為選項卡容器）
 	  const foodCard = document.getElementById("foodCount")?.parentElement;
 	  const materialsCard = document.getElementById("materialsCount")?.parentElement;
 	  const weaponsCard = document.getElementById("weaponsCount")?.parentElement;
 	  const techCard = document.getElementById("techCount")?.parentElement;
 	  
-	  // 更新為只修改 box-shadow 顏色，並確保圓角完整顯示
 	  if (foodCard) {
 		const colorVal = "var(--" + foodRarity + ")";
 		foodCard.style.border = "1px solid " + colorVal;
-		// 確保圓角、內邊距等設定不受干擾
 		foodCard.style.borderRadius = "8px";
 	  }
 	  if (materialsCard) {
@@ -1657,9 +1647,6 @@
 	  }
 	}
 
-
-	
-	// 固定稀有度數組（共 12 個等級）
 	const RARITIES = [
 	  "junk", "old", "damaged", "common", "decent",
 	  "sealed", "selected", "tested", "rare", "epic",
@@ -1668,17 +1655,12 @@
 
 	function calculateTotalCombinations() {
 	  let total = 0;
-	  // 遍歷 ITEM_DATA 中所有資源類型
 	  for (let res in ITEM_DATA) {
 		if (ITEM_DATA.hasOwnProperty(res)) {
 		  const data = ITEM_DATA[res];
-		  // 物品名稱數量
 		  const namesCount = Array.isArray(data.names) ? data.names.length : 0;
-		  // 詞綴數量，如果 modifiers 不存在則默認為 0
 		  const modifiersCount = Array.isArray(data.modifiers) ? data.modifiers.length : 0;
-		  const rarityCount = RARITIES.length; // 固定為12
-
-		  // 計算：物品名+稀有度 與 物品名+詞綴+稀有度
+		  const rarityCount = RARITIES.length; 
 		  const countNameRarity = namesCount * rarityCount;
 		  const countNameModifierRarity = namesCount * modifiersCount * rarityCount;
 
@@ -1691,53 +1673,40 @@
 	  return total;
 	}
 
-	// 從 ITEM_DATA 中動態計算所有可能的收藏組合數
 	let ALL_COMBINATIONS = calculateTotalCombinations();
 	console.log(`ITEM_DATA 全部收藏組合數 = ${ALL_COMBINATIONS}`);
 
-
-	// 更新收藏記錄完成度的函數
 	function updateCollectionCompletion() {
-	  // 已收藏項目數量：以 collectedItems 的鍵數量作為計數
 	  const obtained = Object.keys(collectedItems).length;
-	  // 計算收藏完成率（百分比），避免除數為 0 的情況
 	  const total = ALL_COMBINATIONS || 1;
 	  const percentage = (obtained / total) * 100;
 
 	  const completionElem = document.getElementById("collectionCompletion");
 	  if (completionElem) {
-		// 即使數值為 0，也顯示0/總數: 0.0%
 		completionElem.textContent = `${obtained}/${total}(${percentage.toFixed(3)}%)`;
 	  }
 	}
 
 	
 	function showTempMessage(message) {
-	  // 找到基地建設容器（必須確保該容器設置 position: relative）
 	  let buildingContainer = document.getElementById("buildingSystem");
 	  if (!buildingContainer) {
-		// 若不存在則退回 body
 		buildingContainer = document.body;
 	  }
 
-	  // 創建提示元素
 	  let tempDiv = document.createElement("div");
-	  tempDiv.style.position = "absolute";  // 絕對定位相對於父容器
-	  tempDiv.style.top = "0";                // 上緣貼齊父容器頂部
-	  tempDiv.style.left = "50%";             // 水平居中
+	  tempDiv.style.position = "absolute"; 
+	  tempDiv.style.top = "0";
+	  tempDiv.style.left = "50%";
 	  tempDiv.style.transform = "translateX(-50%)";
 	  tempDiv.style.background = "#333";
 	  tempDiv.style.color = "#FFF";
 	  tempDiv.style.padding = "1em 2em";
 	  tempDiv.style.borderRadius = "12px";
-	  tempDiv.style.zIndex = "1100";          // 確保提示層級高於其它內容
+	  tempDiv.style.zIndex = "1100";
 	  tempDiv.style.boxShadow = "0 4px 12px rgba(0,0,0,0.3)";
 	  tempDiv.textContent = message;
-
-	  // 將提示添加到基地建設容器中
 	  buildingContainer.appendChild(tempDiv);
-
-	  // 300 毫秒後自動移除提示
 	  setTimeout(function() {
 		if (tempDiv.parentNode) {
 		  tempDiv.parentNode.removeChild(tempDiv);
@@ -1745,19 +1714,14 @@
 	  }, 300);
 	}
 
-
-
-	
-	//生產收藏彈窗
 	function showProductionCollection() {
-	  // 將 productionCollection 轉換為陣列後排序（如依獲取次數從高到低排序）
 	  let prodItems = Object.keys(productionCollection).map(key => ({
 		name: key,
 		count: productionCollection[key]
 	  }));
 	  
 	  prodItems.sort((a, b) => b.count - a.count);
-	  prodItems = prodItems.slice(0, 100); // 只取前100條
+	  prodItems = prodItems.slice(0, 100);
 	  
 	  let html = `<table class="collection-table">
 		<thead>
@@ -1777,25 +1741,19 @@
 
 	  });
 	  html += `</tbody></table>`;
-	  
-	  // 將生成的 HTML 填入生產收藏頁面的內容區域中
 	  document.getElementById("productionCollectionContent").innerHTML = html;
-	  
-	  // 顯示生產收藏彈窗
 	  showModal("productionCollectionModal");
 	}
 
 	
 
 
-	const RESOURCE_CAP = 900000000000;  // 所有資源達到此值即認為“達到上限”
-	const RESET_VALUE = 100000;     // 重置後每項資源量
+	const RESOURCE_CAP = 900000000000;  
+	const RESET_VALUE = 100000; 
 	let collectedItems = {};
 	let gameState = {
 	  resources: { food: 100, materials: 100, weapons: 50, tech: 20 },
-	  // 新增：重置次數記錄，初始值為 0
 	  resetCounts: { food: 0, materials: 0, weapons: 0, tech: 0 },
-	  // 新增統一的資源重置循環記數器
 	  resetCounter: 0,
 	  totalZombies: 10,
 	  allocations: { exploration: 4, farming: 4, recycling: 1, research: 1 },
@@ -1811,11 +1769,10 @@
 		name: '中心基地',
 		buildable: false,
 		baseCost: { materials: 200, tech: 50 },
-		costMultiplier: 1.5,      // 每升級一次，成本乘以1.5
+		costMultiplier: 1.5,
 		baseEffect: { resourceBonus: 0.02, explorationBoost: 0.05 },
-		effectMultiplier: 1.2,    // 每升級一次，效果乘以1.2
+		effectMultiplier: 1.2, 
 		getUpgradeInfo: function(currentLevel) {
-		  // currentLevel 代表目標升級後的等級
 		  return {
 			cost: {
 			  materials: Math.floor(this.baseCost.materials * Math.pow(this.costMultiplier, currentLevel - 1)),
@@ -1834,13 +1791,11 @@
 		baseCost: { food: 300, materials: 200 },
 		costMultiplier: 1.5,
 		baseEffect: { production: 2 },
-		// 新增：1级时每秒消耗武器资源比例 (例如 0.05)
 		baseWeaponConsumptionRate: 0.01,
 		effectMultiplier: 1.2,
 		getUpgradeInfo: function(currentLevel) {
 		  const center = gameState.buildings.find(b => b && b.type === "center");
 		  const centerLevel = center ? center.level : 1;
-		  // 如果目標等級超過中心基地等級則返回 null 表示無法升級
 		  if (currentLevel > centerLevel) return null;
 		  return {
 			cost: {
@@ -1849,7 +1804,6 @@
 			},
 			effect: {
 			  production: this.baseEffect.production * Math.pow(this.effectMultiplier, currentLevel - 1),
-			  // 計算等級調整後的武器資源消耗率（例如 1 级时为 baseWeaponConsumptionRate, 后续以 effectMultiplier 指數增長）
 			  weaponConsumptionRate: this.baseWeaponConsumptionRate * Math.pow(this.effectMultiplier, currentLevel - 1)
 			}
 		  };
@@ -1880,15 +1834,13 @@
 	  },
 	  recyclingFactory: {
 	    name: '回收工廠',
-	    baseCost: { materials: 150, tech: 50 }, // 與溫室大棚相似的成本
-	    costMultiplier: 1.5,                   // 每次升級成本乘以1.5
-	    baseEffect: { materials: 0.1 },         // 初始效果：為材料產量加成10%
-	    effectMultiplier: 1.2,                 // 每升級一次效果乘以1.2
+	    baseCost: { materials: 150, tech: 50 }, 
+	    costMultiplier: 1.5,
+	    baseEffect: { materials: 0.1 },   
+	    effectMultiplier: 1.2,
 	    getUpgradeInfo: function(currentLevel) {
-		  // 取得中心基地的等級，作為其他建築升級上限的參考
 		  const center = gameState.buildings.find(b => b && b.type === "center");
 		  const centerLevel = center ? center.level : 1;
-		  // 如果目標等級超過中心基地等級，則返回 null 表示無法升級
 		  if (currentLevel > centerLevel) return null;
 		  return {
 		    cost: {
@@ -1896,7 +1848,6 @@
 			  tech: Math.floor(this.baseCost.tech * Math.pow(this.costMultiplier, currentLevel - 1))
 	        },
 		    effect: {
-			  // 效果轉為影響材料產量加成
 			  materials: this.baseEffect.materials * Math.pow(this.effectMultiplier, currentLevel - 1)
 		    }
 		  };
@@ -1947,15 +1898,14 @@
 		}
 	  },
 
-	  // 新增：資源增幅站，增加所有資源的產量加成
+
 	  resourceAmplifier: {
 		name: '資源增幅站',
 		baseCost: { materials: 250, tech: 75, weapons: 250 },
 		costMultiplier: 1.6,
-		baseEffect: { resourceBonus: 0.05 },  // 初始 +5%
+		baseEffect: { resourceBonus: 0.05 },
 		effectMultiplier: 1.2,
 		getUpgradeInfo: function(currentLevel) {
-		  // 對於這類建築，可以不受中心基地等級的限制（或另外設定限制）
 		  return {
 			cost: {
 			  materials: Math.floor(this.baseCost.materials * Math.pow(this.costMultiplier, currentLevel - 1)),
@@ -1967,9 +1917,6 @@
 		  };
 		}
 	  },
-
-	  // 新增：僵尸指揮中心，提高獲得僵尸的機率與數量，同時減少損失
-	  // 並增加武器資源消耗：1級時每秒消耗0.5%，隨等級提升，消耗率按 effectMultiplier 增長
 	  zombieCommandCenter: {
 	    name: '僵尸指揮中心',
 	    baseCost: { materials: 250, weapons: 250, tech: 100 },
@@ -1979,7 +1926,6 @@
 		  zombieLossReduction: 0.1,
 		  maxZombieCapBonus: 525
 	    },
-	    // 新增：1級時每秒消耗武器資源 0.5%（即 0.005）
 	    baseWeaponConsumptionRate: 0.02,
 	    effectMultiplier: 1.015,
 	    getUpgradeInfo: function(currentLevel) {
@@ -1994,7 +1940,6 @@
 		    effect: {
 			  zombieBoost: this.baseEffect.zombieBoost * Math.pow(this.effectMultiplier, currentLevel - 1),
 			  zombieLossReduction: this.baseEffect.zombieLossReduction * Math.pow(this.effectMultiplier, currentLevel - 1),
-			  // 動態計算武器資源消耗率：1級為 baseWeaponConsumptionRate，之後按 effectMultiplier 指數增長
 			  weaponConsumptionRate: this.baseWeaponConsumptionRate * Math.pow(this.effectMultiplier, currentLevel - 1),
 			  maxZombieCapBonus: this.baseEffect.maxZombieCapBonus * currentLevel  
 		    }
@@ -2002,8 +1947,6 @@
 	    }
 	  },
 
-
-	  // 新增：珍稀庫，提高高稀有度物品獲得率
 	  rareVault: {
 		name: '珍稀庫',
 		baseCost: { tech: 500, materials: 150, weapons: 150 },
@@ -2027,7 +1970,6 @@
 		}
 	  },
 
-	  // 新增：警衛室，給予強力生產加成，但持續消耗武器資源
 	  guardFacility: {
 		name: '警衛室',
 		baseCost: { weapons: 350, materials: 150, tech: 150 },
@@ -2052,14 +1994,13 @@
 	  },
 	  safetyCenter: {
 		  name: '安全中心',
-		  // 可根據需求自訂成本，這裡僅提供一個示例
 		  baseCost: { materials: 400, tech: 150, weapons: 500 },
 		  costMultiplier: 1.6,
 		  baseEffect: {
-			accidentReduction: 0.05,        // 1級時降低5%
-			resourceConsumptionRate: 0.05     // 1級時，每秒消耗0.05×總僵尸數的資源
+			accidentReduction: 0.05,
+			resourceConsumptionRate: 0.05 
 		  },
-		  effectMultiplier: 1.025,  // 升級時效果乘子，例如每升級一次效果乘以1.1
+		  effectMultiplier: 1.025,
 		  getUpgradeInfo: function(currentLevel) {
 			const accidentReduction = Math.min(this.baseEffect.accidentReduction * Math.pow(this.effectMultiplier, currentLevel - 1), 0.50);
 			const resourceConsumptionRate = Math.min(this.baseEffect.resourceConsumptionRate * Math.pow(this.effectMultiplier, currentLevel - 1), 0.4);
@@ -2081,11 +2022,11 @@
 		  baseCost: { weapons: 400, materials: 300, tech: 200 },
 		  costMultiplier: 1.6,
 		  baseEffect: { 
-			foodConsumption: 1000,               // 每一輪（或每次 gameLoop）消耗的食物量
-			btrChance: 0.50,                   // 每 30 秒 50% 觸發 BTR 事件
-			btrZombieEventChanceBonus: 0.20,   // 在 BTR 效果期間，增加 20% 僵尸事件觸發機率
-			btrZombieMaxBonus: 0.10,           // 同時提高最大僵尸獲得比例 10%
-			btrRareItemBonus: 0.20             // 增加高稀有度物品機率 20%
+			foodConsumption: 1000,
+			btrChance: 0.50,
+			btrZombieEventChanceBonus: 0.20,
+			btrZombieMaxBonus: 0.10,
+			btrRareItemBonus: 0.20
 		  },
 		  effectMultiplier: 1.05,
 		  getUpgradeInfo: function(currentLevel) {
@@ -2125,21 +2066,15 @@
 		  removedHeight += first.offsetHeight;
 		  logElem.removeChild(first);
 		}
-		// 定義稀有度映射對象
-		// 創建新的日誌元素
+
 		const div = document.createElement("div");
 		div.className = `log-entry ${rarity}`;
-		// 當事件類型為 "zombie" 或要求使用 zombie 樣式時添加對應class
 		if (eventType === "zombie" || applyZombieStyle) {
 		  div.className += " zombie-event";
 		}
-		// 根據事件類型決定使用 innerHTML 還是 textContent
 		div.innerHTML = message;
-		
-		// 添加到日誌容器中
 		logElem.appendChild(div);
 		
-		// 更新滾動：如果用戶在底部，則滾動到底部；如果不在底部，則調整 scrollTop，以讓原有數據上移被刪除訊息的高度
 		if (isAtBottom) {
 		  logElem.scrollTop = logElem.scrollHeight;
 		} else {
@@ -2150,7 +2085,6 @@
 	}
 
 	function logResource(resource, itemName, amount, eventType = "production") {
-	  // 使用映射表將英文資源名轉為中文
 	  const resourceCn = resourceMapping[resource] || resource;
 	  
 	  if (eventType === "production") {
@@ -2165,7 +2099,6 @@
 	  }
 	  productionCollection[itemName] += 1;
 	  
-	  // 更新收藏記錄（這裡如果需要中文化，也可同步用中文顯示）
 	  if (!collectedItems[itemName]) {
 		collectedItems[itemName] = { count: 1, rarity: 'common' };
 	  } else {
@@ -2179,13 +2112,12 @@
 	  const centerLevel = centerBuilding ? centerBuilding.level : 1;
 
 	  if (type === "center") {
-		return true; // 讓中心基地無限制升級
+		return true; 
 	  } else {
-		return level < centerLevel; // 其他建築等級不能超過中心基地
+		return level < centerLevel; 
 	  }
 	}
 
-	// 根據稀有度權重隨機選取一個稀有度
 	function weightedRandomRarity(teamSize) {
 	  const weights = {
 		junk: 25,
@@ -2201,14 +2133,10 @@
 		legendary: 0.3,
 		divine: 0.2
 	  };
-	   // 例如：當 teamSize 過 10 時，給高稀有度加上額外獎勵
-	  // 下面這個 bonus 使用對數函數產生一個隨著 teamSize 增長但邊際效益遞減的加成
 	  let bonus = 0;
 	  if (teamSize > 10) {
-		bonus = 0.2 * Math.log(teamSize); // 你可以根據需求微調這裡的係數
+		bonus = 0.2 * Math.log(teamSize); 
 	  }
-	  
-	  // 將 bonus 加到高稀有度項目上（也可以針對不同稀有度設置不同增幅）
 	  weights.rare += bonus;
 	  weights.epic += bonus * 0.8;
 	  weights.legendary += bonus * 0.5;
@@ -2225,7 +2153,6 @@
 	  return Object.keys(weights).find(key => (rand -= weights[key]) < 0);
 	}
 
-	// 根據稀有度倍率計算最終數值
 	function applyRarityMultiplier(base, rarity) {
 	  const multipliers = {
 		junk: 1,
@@ -2245,10 +2172,10 @@
 	}
 
 	function generateZombieChange(teamSize) {
-	  // 如果存在 armoredGarage，則閱讀它的加成效果
-	  let bonusPositive = 0;      // 正向事件概率加成
-	  let gainBonus = 0; // 新增：专门处理增益的变量
-	  let lossReduction = 0;      // 負向事件損失折扣（例如 0.25 表示損失降低 25%）
+	  
+	  let bonusPositive = 0; 
+	  let gainBonus = 0; 
+	  let lossReduction = 0;
 	  if (isBTRActive) {
 		const garages = gameState.buildings.filter(b =>
 		  b && 
@@ -2263,25 +2190,16 @@
 		  lossReduction = garageInfo.effect.btrZombieMaxBonus || 0;
 		}
 	  }
-	  // 若總僵尸數為 0，直接返回 0
 	  if (gameState.totalZombies <= 0) return 0;
 	  
 	  let baseZombieChange = 0;
-	  // 正向事件機率：原本 40%，加上 armoredGarage 的 bonusPositive
 	  if (Math.random() < (0.4 + bonusPositive)) {
-		// 增加僵尸：正向事件
 		baseZombieChange = Math.floor(teamSize * (0.001 + Math.random() * 1.9));
 	  } else {
-		// 負向事件：損失僵尸
-		// 降低負向事件的損失量：乘以 (1 - lossReduction)
 		baseZombieChange = -Math.floor(teamSize * (0.001 + Math.random() * 0.7) * (1 - lossReduction));
 	  }
-
-	  // 利用探索部門與總僵尸數計算當前比例
 	  let explorationRatio = (gameState.totalZombies > 0) ? (teamSize / gameState.totalZombies) : 0;
-	  const targetRatio = 0.4; // 目標比例 40%
-
-	  // 依比例計算一個偏移量
+	  const targetRatio = 0.4; 
 	  let offset = 0;
 	  if (explorationRatio < targetRatio) {
 		offset = 0.05 * gameState.totalZombies * (targetRatio - explorationRatio);
@@ -2290,10 +2208,7 @@
 	  }
 	  
 	  const finalZombieChange = Math.round(baseZombieChange + offset);
-	  // 定義基本上限
 	  let baseCap = 80000;
-
-	  // 累計所有僵尸指揮中心的額外收容值（注意：這裡不混淆其他建築，僅針對type === "zombiecommandcenter"）
 	  const zccBuildings = gameState.buildings.filter(b =>
 	  b && b.type.toLowerCase() === "zombiecommandcenter"
 	  );
@@ -2304,10 +2219,7 @@
 		  bonusTotal += info.effect.maxZombieCapBonus;
 	    }
 	  });
-	  // 初步上限＝基本上限加上所有加成
 	  let effectiveCap = baseCap + bonusTotal;
-
-	  // 如果 BTR 事件處於激活狀態，則根據拖拉機廠的 btrZombieMaxBonus 比例進一步提升上限
 	  if (isBTRActive) {
 	    const garages = gameState.buildings.filter(b =>
 		  b && b.type.toLowerCase() === "armoredgarage"
@@ -2315,12 +2227,10 @@
 	    garages.forEach(b => {
 		  const info = BUILDINGS.armoredGarage.getUpgradeInfo(b.level);
 		  if (info && typeof info.effect.btrZombieMaxBonus === 'number') {
-		    // 此處我們按比例增加上限，例如 bonus 0.10 就增加 10%：
 		    effectiveCap += Math.floor(effectiveCap * info.effect.btrZombieMaxBonus);
 		  }
 	    });
 	  }
-	  // 最後，若最終計算的僵尸增加數量超過 effectiveCap，則返回上限值
 	  if (finalZombieChange > effectiveCap) {
 	    return effectiveCap;
 	  }
@@ -2329,10 +2239,7 @@
 
 
 
-	// 定義資源名稱的中文映射對象
-
 	function generateExplorationResult(teamSize) {
-	  // 原有隨機生成部分
 	  const location = LOCATIONS[Math.floor(Math.random() * LOCATIONS.length)];
 	  const resourceTypes = ['food', 'materials', 'weapons', 'tech'];
 	  const resource = resourceTypes[Math.floor(Math.random() * resourceTypes.length)];
@@ -2340,19 +2247,12 @@
 	  const baseAmount = Math.floor(Math.random() * 5) + 5;
 	  
 	  const randFactor = 0.95 + Math.random() * 0.1;
-	  // 原來使用對數增長：
-	  // const multiplier = 1 + 0.3 * Math.log(teamSize + 1);
-	  // const computed = applyRarityMultiplier(baseAmount, rarity) * multiplier;
-	  // const amount = convertProduction(computed);
 	  const computed = applyRarityMultiplier(baseAmount, rarity);
 	  const amount = convertProduction(computed);
 	  const itemName = getRandomItemName(resource);
 	  const modifier = getRandomModifier(resource);
-	  
-	  // 調用 generateZombieChange 定義，計算探索可能導致的僵尸增加或損失
 	  const adjustedZombieChange = generateZombieChange(teamSize);
 	  
-	  // 返回結果時，利用 resourceMapping 將英文資源名稱轉為中文顯示，但內部仍保持 resource 為英文
 	  return {
 		resource,
 		amount,
@@ -2467,23 +2367,15 @@
       updateResourceDisplays();
     }
   
-	   // 军械工坊生产武器
 	function produceWeaponsFromArmories() {
-	  // 取得所有軍械工坊
 	  const armories = gameState.buildings.filter(b => b && b.type === 'armory');
 	  if (armories.length === 0) return;
-
-	  // 計算科研和回收部門的人數平均值
 	  let researchCount = gameState.allocations.research || 0;
 	  let recyclingCount = gameState.allocations.recycling || 0;
 	  let avg = (researchCount + recyclingCount) / 2;
-
-	  // 根據加成公式計算倍率
 	  let baseMultiplier = Math.pow(avg, 0.85);
 	  let bonusMultiplier = Math.pow(1.0005, avg);
 	  let productionBonus = baseMultiplier * bonusMultiplier;
-
-	  // 遍歷每個軍械工坊累計生產
 	  let totalProduction = 0;
 	  armories.forEach(b => {
 		const config = BUILDINGS.armory;
@@ -2494,17 +2386,13 @@
 	  });
 
 	  const roundedProduction = Math.round(totalProduction);
-	  // 設定單次生產上限：基礎產量上限為 9900000
 	  const productionCap = 9900000;
 	  const limitedProduction = Math.min(roundedProduction, productionCap);
 
 	  if (limitedProduction > 0) {
-		// 5% 機率觸發特殊（詞條）生產
 		if (Math.random() < 0.05) {
 		  const modifier = getRandomModifier('weapons');
-		  // 以有限制的基礎生產值作為基數，再乘以詞條效果：
 		  const modProduction = Math.round(limitedProduction * modifier.effect);
-		  // 使用顏色根據詞條效果分類
 		  const modColor = (modifier.effect < 1) ? "var(--junk)" : "var(--sealed)";
 		  const styledItemName = `<span style="color: ${modColor}; font-weight: bold;">${modifier.name} ${getRandomItemName('weapons')}</span>`;
 		  
@@ -2532,10 +2420,8 @@
 
 	  const result = generateExplorationResult(teamSize);
 	  let amountAfterMultiplier = Math.floor(result.amount * effectiveMultiplier);
-  
-	  // 設定單次資源獲得上限（例如 productionCap 為 990000）
 	  const normalMultiplier = 2.5;
-	  const baseCapFactor = 9900000 / normalMultiplier; // 3960000
+	  const baseCapFactor = 9900000 / normalMultiplier; 
 	  const rarityMultipliers = {
 		  junk: 1,
 		  old: 1.5,
@@ -2555,12 +2441,8 @@
 	  
 	  result.amount = amountAfterMultiplier;
 	  result.log.text = result.log.text.replace(/\+\d+/, "+" + result.amount);
-	  
-	  // 將獲得數量累加到對應資源上;
 	  gameState.resources[result.resource] += result.amount;
 	  addEventLog(result.log.text, result.rarity, "exploration");
-	  
-	  // 更新收藏記錄
 	  if (result.item) {
 		const key = `${result.item}_${result.rarity}`;
 	    if (collectedItems[key]) {
@@ -2569,8 +2451,7 @@
 	      collectedItems[key] = { count: 1, rarity: result.rarity, name: result.item };
 	    }
       }
-	  
-	  // 處理僵尸變化描述（即使結果可能為0也會生成 log）
+
 	  if (result.zombieChange !== 0) {
 		let desc = "";
 		if (result.zombieChange > 0) {
@@ -2612,9 +2493,7 @@
       const computed = baseRate * effectiveMultiplier * gameState.efficiency[resource];
       const amount = convertProduction(computed);
 	  
-	  // 設置單次生產上限
 	  const productionCap = 9900000;
-	  // 限制原始生產量
 	  const limitedAmount = Math.min(amount, productionCap);
 	  
       if (Math.random() < 0.05) {
@@ -2628,18 +2507,13 @@
 		}
       gameState.resources[resource] += limitedAmount;
 	  
-	  // 新增隨機事件：僵尸損失（僅對種植、回收、科研部門）
 	  if (dept === "farming" || dept === "recycling" || dept === "research") {
-	  const baseEventProbability = 0.005; // 基礎事故觸發機率
-	  // 根据部門僵尸數量，在基礎概率上加成，假設每隻僵尸增加 0.01 的概率
+	  const baseEventProbability = 0.005; 
 	  const deptZombies = gameState.allocations[dept] || 0;
 	  let eventProbability = baseEventProbability + (deptZombies * 0.001);
-	  // 防止機率超過 100%
 	  eventProbability = Math.min(eventProbability, 0.8);
 
 	  let lossMultiplier = 1;
-	  
-	  // 如安全中心存在，則按其效果降低事故觸發機率
 	  const safety = gameState.buildings.find(b => b && b.type.toLowerCase() === "safetycenter");
 	  if (safety) {
 		const safetyInfo = BUILDINGS.safetyCenter.getUpgradeInfo(safety.level);
@@ -2649,11 +2523,8 @@
 	  }
 	  
 	  if (Math.random() < eventProbability) {
-		// 隨機損失比例介於 5% 到 80%
 		const lossPercentage = 0.01 + Math.random() * 0.8;
-		// 根據該部門僵尸數計算損失量（lossMultiplier 可在未來用於進一步調整損失量）
 		let lost = Math.floor(gameState.allocations[dept] * lossPercentage * lossMultiplier);
-		// 若計算後的損失為 0，但部門中仍有僵尸，最低可以考慮損失 0（或保持 0 視具體需求而定）
 		if (lost < 1 && gameState.allocations[dept] > 0) {
 		  lost = 0;
 		}
@@ -2677,7 +2548,6 @@
 	
 	function updateTechConsumptionFromRareVault() {
 	  let totalTechRate = 0;
-	  // 選取所有珍稀庫
 	  const rareVaultBuildings = gameState.buildings.filter(b => b && b.type.toLowerCase() === "rarevault");
 	  rareVaultBuildings.forEach(b => {
 		const info = BUILDINGS.rarevault.getUpgradeInfo(b.level);
@@ -2685,11 +2555,7 @@
 		  totalTechRate += info.effect.techConsumptionRate;
 		}
 	  });
-	  
-	  // 消耗量 = 累計的tech消耗率 * 遊戲中總僵尸數
 	  const consumption = totalTechRate * gameState.totalZombies;
-	  
-	  // 從科技資源中扣除，並保持不小於0
 	  gameState.resources.tech = Math.max(0, gameState.resources.tech - consumption);
 	  
 	  updateResourceDisplays();
@@ -2697,17 +2563,13 @@
 
 
 	function updateSafetyCenterConsumption() {
-	  // 檢查安全中心是否存在
 	  const safety = gameState.buildings.find(b => b && b.type.toLowerCase() === "safetycenter");
 	  if (!safety) return;
 	  
 	  const safetyInfo = BUILDINGS.safetyCenter.getUpgradeInfo(safety.level);
-	  const consumptionRate = safetyInfo.effect.resourceConsumptionRate; // 每秒消耗百分比，如基礎 0.05，最高 0.4
-	  
-	  // 根據僵尸總數，對四種資源計算消耗量
+	  const consumptionRate = safetyInfo.effect.resourceConsumptionRate; 
 	  const resourceList = ["food", "materials", "weapons", "tech"];
 	  resourceList.forEach(res => {
-		// 消耗量 = consumptionRate * totalZombies
 		const toConsume = consumptionRate * gameState.totalZombies;
 		gameState.resources[res] = Math.max(0, gameState.resources[res] - toConsume);
 	  });
@@ -2715,15 +2577,11 @@
 	  updateResourceDisplays();
 	}
 	function updateBarracksWeaponConsumption() {
-	  // 篩選出所有“barracks”建築
 	  const barracksBuildings = gameState.buildings.filter(b => b && b.type.toLowerCase() === "barracks");
 	  if (barracksBuildings.length === 0) return;
 	  
 	  let totalConsumption = 0;
-	  
-	  // 對每棟僵尸兵營依據其等級計算消耗率（取 getUpgradeInfo 計算的消耗率）
 	  barracksBuildings.forEach(b => {
-		// 若僵尸兵營的升級資訊可求得，則讀取該棟建築的武器資源消耗率
 		const upgradeInfo = (typeof BUILDINGS[b.type].getUpgradeInfo === "function") 
 							 ? BUILDINGS[b.type].getUpgradeInfo(b.level)
 							 : null;
@@ -2732,41 +2590,28 @@
 		}
 	  });
 	  
-	  // 以總僵尸數為基礎，計算累計的武器資源消耗量
-	  // 例如：總消耗 = totalConsumption * gameState.totalZombies
 	  const consumption = totalConsumption * gameState.totalZombies;
-	  
-	  // 從玩家的武器資源中扣除
 	  gameState.resources.weapons = Math.max(0, gameState.resources.weapons - consumption);
-	  
-	  // 更新資源顯示
 	  updateResourceDisplays();
 	}
 
 
     function checkResourceCap() {
-	// 檢查所有資源是否均達到 RESOURCE_CAP
 	  if (
 		gameState.resources.food >= RESOURCE_CAP &&
 		gameState.resources.materials >= RESOURCE_CAP &&
 		gameState.resources.weapons >= RESOURCE_CAP &&
 		gameState.resources.tech >= RESOURCE_CAP
 	  ) {
-		// 重置所有資源為 RESET_VALUE
 		gameState.resources.food = RESET_VALUE;
 		gameState.resources.materials = RESET_VALUE;
 		gameState.resources.weapons = RESET_VALUE;
 		gameState.resources.tech = RESET_VALUE;
-		
-		// 累加每一項資源的重置次數
 		gameState.resetCounts.food++;
 		gameState.resetCounts.materials++;
 		gameState.resetCounts.weapons++;
 		gameState.resetCounts.tech++;
-		
-		gameState.resetCounter++; // 增加一次重置計數
-
-		// 更新資源卡的邊框樣式
+		gameState.resetCounter++; 
 		updateResourceCardsBorder();
 		updateResetCycleDisplay()
 	  }
@@ -2820,7 +2665,6 @@
                              gameState.allocations.research;
       document.getElementById("pendingZombies").textContent = formatNumber(gameState.totalZombies - totalAllocated);
     
-	// 檢查並（如有必要）重置資源
 	checkResourceCap();
 	}
   
@@ -2955,13 +2799,10 @@
 	  addEventLog(`成就解鎖：[${title}] (${details})`, rarity, "achievement");
 	  updateAchievementsUI();
 	}
-	// 檢查是否已解鎖過某項建築成就
 	function isBuildingAchievementUnlocked(title) {
 	  return unlockedAchievements.some(a => a.category === "building" && a.title === title);
 	}
-	// 檢查建築成就：如果所有目標成就均已解鎖，則提前返回
 	function checkBuildingAchievements() {
-	  // 若所有建築成就已解鎖，就不再檢查
 	  if (
 		isBuildingAchievementUnlocked("報話機") &&
 		isBuildingAchievementUnlocked("Алтын") &&
@@ -2971,33 +2812,26 @@
 		return;
 	  }
 	  
-	  // 檢查是否存在【拖拉機廠】（對應 armoredgarage）
 	  const hasTractor = gameState.buildings.some(
 		b => b && b.type.toLowerCase() === "armoredgarage"
 	  );
-	  // 檢查是否存在【軍械工廠】（armory）
 	  const hasArmory = gameState.buildings.some(
 		b => b && b.type.toLowerCase() === "armory"
 	  );
-	  // 檢查是否存在【僵尸指揮中心】（zombiecommandcenter）
 	  const hasZombieCommand = gameState.buildings.some(
 		b => b && b.type.toLowerCase() === "zombiecommandcenter"
 	  );
 	  
-	  // 成就「報話機」：當拖拉機廠存在時
 	  if (hasTractor && !isBuildingAchievementUnlocked("報話機")) {
-		awardBuildingAchievement("報話機", "建造拖拉機廠", "6");
+		awardBuildingAchievement("步話機", "建造拖拉機廠", "6");
 	  }
 	  
-	  // 成就「Алтын」：當存在軍械工廠或僵尸指揮中心時
 	  if ((hasArmory || hasZombieCommand) && !isBuildingAchievementUnlocked("Алтын")) {
 		awardBuildingAchievement("Алтын", "建造軍械工廠或僵尸指揮中心", "6");
 	  }
 	  if (hasTractor &&(hasArmory || hasZombieCommand) && !isBuildingAchievementUnlocked("武裝通信兵")) {
 		awardBuildingAchievement("武裝通信兵", "同時擁有拖拉機廠以及軍械工廠或僵尸指揮中心", "8");
 	  }
-	  
-	  // 成就「全副武裝」：只有當拖拉機廠、軍械工廠與僵尸指揮中心三者同時存在時
 	  if (hasTractor && hasArmory && hasZombieCommand && !isBuildingAchievementUnlocked("全副武裝")) {
 		awardBuildingAchievement("全副武裝", "同時擁有拖拉機廠、軍械工廠與僵尸指揮中心", "10");
 	  }
@@ -3010,7 +2844,6 @@
 
 	function awardAchievement(category, rule) {
 	  if (isAchievementUnlocked(category, rule.level)) {
-		// 如果已解鎖，直接返回，不重複添加
 		console.log(`成就 [${rule.title}] (分類：${category}，等級：${rule.level}) 已經解鎖過了，跳過。`);
 		return;
 	  }
@@ -3024,7 +2857,6 @@
 		details,
 		unlockedTime: Date.now()
 	  };
-	  // 永久保存到 gameState
 	  if (!gameState.unlockedAchievements) {
 		gameState.unlockedAchievements = [];
 	  }
@@ -3035,7 +2867,6 @@
 	}
 	
 	/***** (2) 修正神聖物品成就統計 *****/
-	// 每次檢查成就前調用，統計 collectedItems 中神聖物品的總數
 	function updateDivineItemsCount() {
 	  let count = 0;
 	  for (let key in collectedItems) {
@@ -3047,7 +2878,7 @@
 	}
 
 	function checkAchievements() {
-	  updateDivineItemsCount();  // 調整神聖物品數量
+	  updateDivineItemsCount(); 
 	  let collValue = getCollectionCompletion();
 	  achievementRules.collectionCompleteness.forEach(rule => {
 		if (collValue >= rule.threshold && !isAchievementUnlocked("collectionCompleteness", rule.level)) {
@@ -3079,7 +2910,6 @@
 	function updateAchievementsUI() {
 	  const grid = document.getElementById("achievementGrid");
 	  if (!grid) return;
-	  // 以解鎖時間倒序排序，取最新6個
 	  let sorted = unlockedAchievements.slice().sort((a, b) => b.unlockedTime - a.unlockedTime);
 	  let latest6 = sorted.slice(0, 6);
 	  grid.innerHTML = "";
@@ -3117,32 +2947,24 @@
 	  showModal('titlesModal');
 	}
 
-	// 模擬定義 getCollectionCompletion()，請根據實際數據修改
 	function getCollectionCompletion() {
-	  // 例如使用 collectedItems 和 ALL_COMBINATIONS
 	  const obtained = Object.keys(collectedItems || {}).length;
 	  const total = ALL_COMBINATIONS || 1;
 	  return (obtained / total) * 100;
 	}
 
 	function removeDuplicateAchievements() {
-	  // 使用一個 Map 以 "category_title" 為鍵，保證每個稱號只保留一筆
 	  const dedupMap = new Map();
-	  // 遍歷 unlockedAchievements，若重複則只保留第一筆
 	  unlockedAchievements = unlockedAchievements.filter(achievement => {
-		// 定義鍵值（你也可以使用 category+level 作為區分依據）
 		const key = achievement.category + "_" + achievement.title;
 		if (dedupMap.has(key)) {
-		  // 已存在則跳過
 		  return false;
 		} else {
 		  dedupMap.set(key, true);
 		  return true;
 		}
 	  });
-	  // 同步存入 gameState 中（如果你需要統一存放）
 	  gameState.unlockedAchievements = unlockedAchievements.slice();
-	  // 更新成就界面
 	  updateAchievementsUI();
 	}
 	 
@@ -3167,7 +2989,6 @@
 
 		if (building) {
 		  const config = BUILDINGS[building.type];
-		  // 判斷是否可以升級：如果建築標記可升級且資源足夠進行下一級升級
 		  let canUpgrade = false;
 		  if (building.upgradable) {
 			const upgradeInfo = config.getUpgradeInfo(building.level + 1);
@@ -3175,8 +2996,6 @@
 			  canUpgrade = true;
 			}
 		  }
-		  
-		  // 組合建築資訊的 HTML，如果可升級則增加一個箭頭元素，並且如果可升級則附加 "upgrade-available" class
 		  tile.innerHTML = `
 			<div class="building-icon">${getBuildingIcon(building.type)}</div>
 			<div class="building-info">
@@ -3304,16 +3123,12 @@
 	  }
 	}
 
-
-	// 每 5 秒檢查一次，如果建造或升級彈窗打開，則刷新其內容
 	setInterval(function() {
-	  // 檢查建造彈窗（buildModal）的狀態
 	  var buildModal = document.getElementById("buildModal");
 	  if (buildModal && buildModal.style.display !== "none" && typeof currentBuildIndex !== "undefined") {
 		updateBuildMenuContent(currentBuildIndex);
 	  }
 	  
-	  // 檢查升級彈窗（upgradeModal）的狀態
 	  var upgradeModal = document.getElementById("upgradeModal");
 	  if (upgradeModal && upgradeModal.style.display !== "none" && typeof currentUpgradeIndex !== "undefined") {
 		updateUpgradeMenuContent(currentUpgradeIndex);
@@ -3336,29 +3151,23 @@
 
 
 	function getBuildItems() {
-	  // 從 BUILDINGS 過濾出具建造成本且非中心基地的項目
+
 	  return Object.entries(BUILDINGS)
 		.filter(([key, cfg]) => cfg.baseCost && key.toLowerCase() !== "center");
 	}
 	function calculateTotalPages() {
-	  const itemsPerPage = 2;  // 每頁2個項目（根據你的 updateBuildMenuContent() 設定）
+	  const itemsPerPage = 2;  
 	  const totalItems = getBuildItems().length;
 	  return Math.ceil(totalItems / itemsPerPage);
 	}
 	
-
-
-	// 每 5 秒檢查一次，如果建造或升級彈窗打開，則刷新其內容
 	setInterval(function() {
 	  updateBuildMenuContent(currentBuildIndex);
 	  updateBuildHeaderNumbers();
-	  // 檢查建造彈窗（buildModal）的狀態
 	  var buildModal = document.getElementById("buildModal");
 	  if (buildModal && buildModal.style.display !== "none" && typeof currentBuildIndex !== "undefined") {
 		updateBuildMenuContent(currentBuildIndex);
 	  }
-	  
-	  // 檢查升級彈窗（upgradeModal）的狀態
 	  var upgradeModal = document.getElementById("upgradeModal");
 	  if (upgradeModal && upgradeModal.style.display !== "none" && typeof currentUpgradeIndex !== "undefined") {
 		updateUpgradeMenuContent(currentUpgradeIndex);
@@ -3388,7 +3197,6 @@
 
   
     function updateEfficiencies() {
-	  // 如果 gameState.efficiency 尚未定義，則初始化其主要鍵
 	  if (!gameState.efficiency) {
 		gameState.efficiency = {
 		  exploration: 1,
@@ -3398,7 +3206,6 @@
 		  tech: 1
 		};
 	  } else {
-		// 重置所有預定義的效率鍵
 		gameState.efficiency.exploration = 1;
 		gameState.efficiency.food = 1;
 		gameState.efficiency.materials = 1;
@@ -3406,28 +3213,23 @@
 		gameState.efficiency.tech = 1;
 	  }
 
-	  // 取得中心基地（center）的等級，用於作為其它建築等級的上限參考
 	  const centerBuilding = gameState.buildings.find(b => b && b.type === "center");
 	  const centerLevel = centerBuilding ? centerBuilding.level : 1;
 
-	  // 初始化累計變數
 	  let totalExplorationBoost = 0; // 探索提升，只由中心基地提供
 	  let totalProductionBonus = 0;  // 生產加成，全局應用於 food、materials、weapons、tech
 	  let totalResearchBoost = 0;    // 科研提升
 	  let totalZombieEfficiency = 0; // 僵尸專屬效果
 	  let totalZombieBoost = 0;      // 探索加成（zombieBoost），由僵尸指揮中心提供
 
-	  // 遍歷所有建築，累計效果
 	  gameState.buildings.forEach(b => {
-		if (!b) return; // 跳過空地
+		if (!b) return;
 
 		const upgradeInfo = (typeof BUILDINGS[b.type].getUpgradeInfo === "function")
 		  ? BUILDINGS[b.type].getUpgradeInfo(b.level)
 		  : null;
 		const effects = upgradeInfo ? upgradeInfo.effect : {};
 
-		// 將非特殊鍵（非 explorationBoost, researchBoost, zombieEfficiency, productionBonus, zombieBoost）
-		// 的效果直接累加到 gameState.efficiency（例如某些建築可能直接給 food、materials 等加成）
 		Object.entries(effects).forEach(([key, value]) => {
 		  if (['explorationBoost', 'researchBoost', 'zombieEfficiency', 'productionBonus', 'zombieBoost'].includes(key)) {
 			return;
@@ -3439,39 +3241,29 @@
 		  }
 		});
 
-		// 累計特殊效果：
 		if (b.type === "center") {
-		  // 中心基地提供探索提升（explorationBoost）等
 		  totalExplorationBoost += effects.explorationBoost || 0;
 		  totalResearchBoost += effects.researchBoost || 0;
 		  totalZombieEfficiency += effects.zombieEfficiency || 0;
 		  totalProductionBonus += effects.productionBonus || 0;
 		} else {
-		  // 其他建築如果有生產加成，也累計
 		  if (effects.productionBonus) {
 			totalProductionBonus += effects.productionBonus;
 		  }
 		}
 	  });
-
-	  // 將最終探索效率只使用中心基地提供的探索提升來計算
 	  gameState.efficiency.exploration = 1 + totalExplorationBoost;
-	  // 注意：這裡不把 zombieBoost 加入 exploration 效率，以符合你定義的區分
-
-	  // 將生產加成全局應用到所有主要資源上
+	 
 	  ['food', 'materials', 'weapons', 'tech'].forEach(res => {
 		gameState.efficiency[res] = (gameState.efficiency[res] || 1) + totalProductionBonus;
 	  });
 
-	  // 更新其它專用變數，方便後續使用或顯示
+	  
 	  gameState.explorationEfficiency = gameState.efficiency.exploration;
 	  gameState.researchEfficiency = 1 + totalResearchBoost;
 	  gameState.zombieEfficiency = 1 + totalZombieEfficiency;
-	  // 如有需要，獨立存儲探索加成（zombieBoost）以供其它用途，但不納入探索效率：
 	  gameState.zombieBoost = 1 + totalZombieBoost;
 	  gameState.productionEfficiency = 1 + totalProductionBonus;
-
-	  // 限制非中心基地的建築等級不得超過中心基地等級
 	  gameState.buildings.forEach(b => {
 		if (b && b.type !== "center" && b.level > centerLevel) {
 		  b.level = centerLevel;
@@ -3502,13 +3294,11 @@
 
 
 	
-	// 更新所有建築的升級狀態，根據主基地當前等級來決定
+
 	function updateBuildingsAfterMainBaseUpgrade() {
-	  // 找出主基地並獲取當前等級（不區分大小寫）
 	  const centerBuilding = gameState.buildings.find(b => b && b.type.toLowerCase() === "center");
 	  const centerLevel = centerBuilding ? centerBuilding.level : 1;
 
-	  // 遍歷所有建築，非主基地的 upgradable 狀態由自身等級與主基地等級決定
 	  gameState.buildings.forEach(b => {
 		if (b && b.type.toLowerCase() !== "center") {
 		  b.upgradable = (b.level < centerLevel);
@@ -3525,15 +3315,11 @@
 
 
 	function startT80IdleAnimation(sprite) {
-	  // 確保idle定時器不存在
 	  if (t80IdleInterval) clearInterval(t80IdleInterval);
 	  t80IdleToggle = false;
-	  // 初始設為第1 幀
 	  sprite.style.backgroundPosition = "0px 0";
 	  t80IdleInterval = setInterval(() => {
-		// 使用 toggle 變數進行交替
 		t80IdleToggle = !t80IdleToggle;
-		// 第1 幀： "0px 0"；第4 幀： -1440px 0 （因為 3*480 = 1440）
 		sprite.style.backgroundPosition = t80IdleToggle ? "-1440px 0" : "0px 0";
 	  }, 250);
 	}
@@ -3548,25 +3334,19 @@
 	  const containerWidth = container.clientWidth;
 	  const offset = 50;
 	  const rootStyles = getComputedStyle(document.documentElement);
-
-	  // 40%機率使用 T‑80，否則BTR
 	  const useT80 = (Math.random() < 0.4);
 
 	  let frameWidth;
 	  if (useT80) {
-		// T‑80的單幀寬度固定為480px
 		frameWidth = 480;
 	  } else {
 		frameWidth = parseFloat(rootStyles.getPropertyValue('--btr-frame-width')) || 240;
 	  }
 
-	  // 計算水平位置：起始位置、停止位置，依據 frameWidth 計算
 	  const centerStart = containerWidth + offset + 0.5 * frameWidth;
 	  const centerStop = 0.5 * containerWidth;
 	  const startLeft = centerStart - 0.5 * frameWidth;
 	  const stopLeft  = centerStop - 0.5 * frameWidth;
-
-	  // 生成水平移動 keyframes（控制 wrapper）
 	  const keyframesText = `
 		@keyframes btrMoveDynamic {
 		  0%   { left: ${startLeft}px; }
@@ -3583,8 +3363,6 @@
 	  }
 	  styleElem.textContent = keyframesText;
 	  console.log("動態 keyframes:", keyframesText);
-
-	  // 建立 wrapper，注意不要設置 top，依CSS中 bottom:0 保持正確定位
 	  const wrapper = document.createElement("div");
 	  wrapper.className = "btr-wrapper";
 	  wrapper.style.position = "absolute";
@@ -3593,7 +3371,6 @@
 
 	  let spriteElem;
 	  if (useT80) {
-		// T‑80 分支：建立裁切容器
 		const frameContainer = document.createElement("div");
 		frameContainer.className = "frameContainer";
 		frameContainer.style.width = frameWidth + "px";
@@ -3602,13 +3379,11 @@
 
 		spriteElem = document.createElement("div");
 		spriteElem.className = "t80-animation";
-		// 初始 idle：設置 backgroundPosition 為第1 幀
 		spriteElem.style.backgroundPosition = "0px 0";
 
 		frameContainer.appendChild(spriteElem);
 		wrapper.appendChild(frameContainer);
 	  } else {
-		// BTR 分支：直接使用原來的 btr-animation
 		spriteElem = document.createElement("div");
 		spriteElem.className = "btr-animation";
 		wrapper.appendChild(spriteElem);
@@ -3631,14 +3406,12 @@
 		  container.removeChild(wrapper);
 		  console.log("動畫 wrapper 已移除");
 		}
-		// 如果 T‑80，清除 idle 定時器
 		if (useT80 && t80IdleInterval) {
 		  clearInterval(t80IdleInterval);
 		  t80IdleInterval = null;
 		}
 	  }, 10000);
 
-	  // 如果是 T‑80 分支，啟動 idle 動作
 	  if (useT80) {
 		startT80IdleAnimation(spriteElem);
 		setTimeout(() => {
@@ -3647,7 +3420,6 @@
 	  }
 	}
 
-	// 觸發 T‑80 開炮事件：這個函數使 T‑80 播放完整 4 幀一次，然後恢復 idle 並進入 6 秒冷卻
 	function triggerT80Cannon() {
 	  if (t80CannonOnCooldown) return;
 	  const sprite = document.querySelector(".t80-animation");
@@ -3657,27 +3429,22 @@
 	  }
 	  t80CannonOnCooldown = true;
 	  
-	  // 停止 idle 定時器
 	  if (t80IdleInterval) {
 		clearInterval(t80IdleInterval);
 		t80IdleInterval = null;
 	  }
 	  
 	  console.log("觸發 T-80 開炮：播放完整開炮動畫");
-	  // 使用 setTimeout 模擬完整 4 幀播放：每帧 250ms（總耗時約1秒）
 	  sprite.style.backgroundPosition = "0px 0"; // frame1
 	  setTimeout(() => { sprite.style.backgroundPosition = "-480px 0"; }, 250); // frame2
 	  setTimeout(() => { sprite.style.backgroundPosition = "-960px 0"; }, 500); // frame3
 	  setTimeout(() => { sprite.style.backgroundPosition = "-1440px 0"; }, 750); // frame4
 	  
-	  // 1秒後恢復 idle 模式
 	  setTimeout(() => {
 		sprite.style.backgroundPosition = "0px 0"; // 復原到 frame1
-		// 重新啟動 idle 動畫
 		startT80IdleAnimation(sprite);
 	  }, 1000);
 	  
-	  // 冷卻後允許再次開炮
 	  setTimeout(() => {
 		t80CannonOnCooldown = false;
 		console.log("T-80 裝填完成");
@@ -3700,7 +3467,7 @@
 		}
 	   }
 	 }
-	setInterval(checkBTREvent, 30000); // 每 30 秒檢查一次
+	setInterval(checkBTREvent, 30000);
 
 	
 	function confirmUpgrade() {
@@ -3714,7 +3481,6 @@
 							: null;
 							
 	  if (!nextUpgrade || !nextUpgrade.cost) {
-		// 無法升級（可能已達頂級）
 		showTempMessage("升級失敗");
 		return;
 	  }
@@ -3732,16 +3498,10 @@
 	  }
 	  updateEfficiencies();
 	  updateAllDisplays();
-	  
-	  // **更新升級彈窗內容**
       showUpgradeMenu(index);
-	  
 	  showTempMessage("升級成功");
-	  // 注意：此處不自動關閉升級彈窗，便於連續升級
 	}
 
-
-	// 新增：結果提示彈窗函數
 	function showResultModal(message) {
 	  document.getElementById("resultMessage").textContent = message;
 	  showNestedModal("resultModal");
@@ -3752,7 +3512,6 @@
 	  closeNestedModal("resultModal");
 	}
 
-	// 原有的升級菜單函數（修改後使用動態升級資訊）
 	function updateUpgradeMenuContent(index) {
 	  const building = gameState.buildings[index];
 	  if (!building) return;
@@ -3806,28 +3565,17 @@
 	  currentUpgradeIndex = index;
 	  const building = gameState.buildings[index];
 	  if (!building) return;
-	  // 初次更新升級彈窗內容
 	  updateUpgradeMenuContent(index);
-	  
-	  // 顯示升級彈窗
 	  showNestedModal("upgradeModal");
-	  // 此處不再啟動獨立定時器
 	  const modalContent = document.querySelector('#upgradeModal .modal-content');
 	  const baseTitleElem = document.querySelector('.building-system h2.section-title');
 	  const centerTile = document.querySelector('[data-index="4"]'); // 假設中心基地所在格子索引為 4
 	  
 	  if (modalContent && baseTitleElem && centerTile) {
-		// 取得基地建設標題區域的矩形信息
 		const titleRect = baseTitleElem.getBoundingClientRect();
-		// 取得中心基地 tile 的矩形信息
 		const centerRect = centerTile.getBoundingClientRect();
-		
-		// 固定定位（必須設定為 fixed 或 absolute）
 		modalContent.style.position = "fixed";
-		// 將升級彈窗頂部設置到基地建設標題的上邊緣（與建造彈窗保持一致）
 		modalContent.style.top = titleRect.top + "px";
-		
-		// 計算 modal-content 寬度並使其水平居中於中心基地
 		const modalWidth = modalContent.offsetWidth;
 		modalContent.style.left = (centerRect.left + centerRect.width / 2) + "px";
 	  }
@@ -3866,26 +3614,18 @@
 	  const building = gameState.buildings[index];
 	  if (!building) return;
 	  const config = BUILDINGS[building.type];
-
-	  // 生成顯示基本資訊的字串
 	  const infoStr = `<div class="building-info-popup">
 							<p><strong>${config.name}</strong></p>
 							<p>目前等級：Lv.${building.level}</p>
 						</div>`;
-
-	  // 如果建築可升級，則添加升級按鈕
 	  let buttonContent = "";
 	  if (building.upgradable) {
 		buttonContent += `<button class="modal-btn" onclick="showUpgradeMenu(${index})">升級建築</button>`;
 	  }
-	  // 僅當該建築不是中心基地時才顯示拆除按鈕
 	  if (building.type.toLowerCase() !== "center") {
 		buttonContent += `<button class="modal-btn danger" onclick="confirmBuildingRemoval(${index})">拆除建築</button>`;
 	  }
-
-	  // 拼接最終的互動內容
 	  const interactionContent = infoStr + buttonContent;
-
 	  document.getElementById("interactionContent").innerHTML = interactionContent;
 	  document.getElementById("interactionTitle").textContent = config.name;
 	  showModal("interactionModal");
@@ -3933,28 +3673,19 @@
 	  let step = 0;
 
 	  if (amount > 0) {
-		// 若當前部門為 0，則加 1；否則以當前部門僵尸數的 5%（向上取整，最小 1）
 		step = current > 0 ? Math.max(Math.ceil(current * 0.05), 1) : 1;
 	  } else {
-		// 減少分配時採用相同方式（不得低於 0）
 		step = current > 0 ? -Math.max(Math.ceil(current * 0.05), 1) : 0;
 	  }
 
 	  if (amount > 0) {
-		// 計算其它部門已分配僵尸數
 		const totalAllocatedOther = Object.keys(gameState.allocations).reduce((sum, key) => {
 		  return key === dept ? sum : sum + gameState.allocations[key];
 		}, 0);
-		// 計算當前部門已分配後，總共分配出去的數字：current + totalAllocatedOther
-		// 剩餘僵尸數應為總僵尸數減去已分配的總數
 		const remainingForDept = gameState.totalZombies - (totalAllocatedOther + current);
-
-		// 如果剩餘不足本部門按照 5% 計算應增加的數量，
-		// 則直接將全部剩餘數分配進該部門
 		if (remainingForDept < step && remainingForDept > 0) {
 		  gameState.allocations[dept] = current + remainingForDept;
 		} else {
-		  // 檢查增加後是否超出總僵尸數
 		  if (totalAllocatedOther + (current + step) > gameState.totalZombies) {
 			addEventLog("沒有足夠的僵尸分配", "warning");
 			return;
@@ -3962,7 +3693,6 @@
 		  gameState.allocations[dept] = current + step;
 		}
 	  } else {
-		// 減少分配情況直接更新
 		gameState.allocations[dept] = Math.max(current + step, 0);
 	  }
 
@@ -3978,12 +3708,8 @@
 	const scrollManager = (() => {
 	  let startX = 0, startY = 0;
 	  let currentContainer = null;
-	  // 用來標記這次觸摸操作是否是垂直手勢（只在第一次 touchmove 時確定）
 	  let isVerticalGesture = null; 
-	  // 垂直角度閾值（單位：度）
 	  const verticalThreshold = 60; 
-
-	  // 檢查元素是否具有垂直滾動功能
 	  function isScrollable(el) {
 		return el && el.scrollHeight > el.clientHeight;
 	  }
@@ -3995,7 +3721,6 @@
 		  return;
 		}
 		
-		// 優先判斷是否點擊到 buildModal 內部的滾動區（.build-options）
 		let buildOptions = e.target.closest('#buildModal .build-options');
 		if (buildOptions && isScrollable(buildOptions)) {
 		  currentContainer = buildOptions;
@@ -4019,7 +3744,6 @@
 	  }
 
 	  function handleTouchMove(e) {
-		// 如果多點觸控或未選定容器則直接返回
 		if (e.touches.length > 1 || !currentContainer) return;
 		
 		const currentX = e.touches[0].clientX;
@@ -4069,13 +3793,11 @@
 	}, { passive: false });
 
 	function globalTouchMoveHandler(e) {
-	  // 如果彈窗遮罩已經打開，並且觸控並非發生在允許滾動的區域內
 	  if (document.body.classList.contains('modal-open') &&
 		  !e.target.closest('#buildModal .build-options')) {
 		e.preventDefault();
 	  }
 	}
-	// 綁定事件
 	document.addEventListener("touchmove", globalTouchMoveHandler, { passive: false });
 
 
@@ -4658,36 +4380,39 @@
 	});
 	
 	
-	// 假定動畫窗口元素 id 為 "explorationAnim"
 	const animWindow = document.getElementById("explorationAnim");
-
-	// 保存頁面加載時的原始動畫區高度與精靈圖的尺寸（假如原始 animWindow.height 與 --zombie-size 如下）
 	const originalAnimHeight = animWindow.offsetHeight || 120;  // 如 120px
 	const originalZombieSize = parseFloat(getComputedStyle(animWindow).getPropertyValue("--zombie-size")) || 90;
 
-	// 全局狀態標記：是否處於全屏模式
 	let isFullScreen = false;
 
-	// 當動畫窗口高度變動時，根據比例更新自訂 CSS 變量（以便精靈圖尺寸也等比改變）
+	const viewportMeta = document.querySelector('meta[name="viewport"]');
+	const originalViewportContent = viewportMeta ? viewportMeta.getAttribute("content") : "";
+	const defaultScale = 0.45;
+	let originalScale = defaultScale;
+	if (originalViewportContent) {
+	  const match = originalViewportContent.match(/initial-scale=([\d.]+)/);
+	  if (match) {
+		originalScale = parseFloat(match[1]);
+	  }
+	}
+
 	function updateSpriteScalingVariables() {
 	  const currentHeight = animWindow.offsetHeight;
 	  const scaleFactor = currentHeight / originalAnimHeight;
 	  const newZombieSize = originalZombieSize * scaleFactor;
-	  
-	  // 如果需要調整其它依賴高度的變量，也可類似計算，比如 BTR 精靈圖高度：
+
 	  const originalBTRHeight = parseFloat(getComputedStyle(animWindow).getPropertyValue("--btr-frame-height")) || 120;
 	  const newBTRHeight = originalBTRHeight * scaleFactor;
-	  const newBTRWidth = (2000 * newBTRHeight) / 500; // 如原來計算方式
-	  // 更新 CSS 變量（此處我們在 animWindow 上設置，這樣局部覆蓋全局設定）
+	  const newBTRWidth = (2000 * newBTRHeight) / 500;
+	  
 	  animWindow.style.setProperty("--zombie-size", newZombieSize + "px");
 	  animWindow.style.setProperty("--zombie-sprite-total-width", (4 * newZombieSize) + "px");
-	  
 	  animWindow.style.setProperty("--btr-frame-height", newBTRHeight + "px");
 	  animWindow.style.setProperty("--btr-frame-width", newBTRWidth + "px");
 	  animWindow.style.setProperty("--btr-sprite-total-width", (4 * newBTRWidth) + "px");
 	}
 
-	// 切換全屏狀態的函數（通過添加或移除一個 CSS 類來觸發樣式變化）
 	function toggleFullScreen() {
 	  if (!isFullScreen) {
 		enterFullScreen();
@@ -4695,10 +4420,8 @@
 		exitFullScreen();
 	  }
 	}
-	  
-	// 進入全屏：僅調整動畫窗口寬度至視口寬度，保持原有高度與內部百分比定位不變，並更新 CSS 自訂變量
+
 	function enterFullScreen() {
-	  // 創建全屏遮罩，覆蓋整個視口並阻擋操作穿透
 	  let overlay = document.getElementById("fullscreenOverlay");
 	  if (!overlay) {
 		overlay = document.createElement("div");
@@ -4711,47 +4434,63 @@
 		overlay.style.backgroundColor = "rgba(0,0,0,0.5)";
 		overlay.style.zIndex = "999";
 		overlay.style.cursor = "pointer";
-		// 雙擊遮罩退出全屏
-		overlay.addEventListener("dblclick", exitFullScreen);
+		// 設置 touchAction 為 auto，允許覆蓋層內的手勢操作（雙指縮放、單指滑動）
+		overlay.style.touchAction = "auto";
+		// ※ 不再添加會呼叫 e.preventDefault() 的 touchmove 事件監聽器
 		document.body.appendChild(overlay);
 	  }
-	  // 為動畫窗口添加一個 fullscreen 類，該類僅修改定位與寬度
-	  animWindow.classList.add("fullscreen");
-	  // 更新寬度設成視口寬度（高度保持不變）
-	  animWindow.style.width = window.innerWidth + "px";
-	  // 更新內部 CSS 變量以按比例調整精靈圖尺寸
-	  updateSpriteScalingVariables();
 	  
+	  if (!animWindow) return;
+
+	 if (viewportMeta) {
+		const newScale = "1";
+		// 保留 width=device-width 保證頁面寬度與視窗一致
+		viewportMeta.setAttribute("content", `width=device-width, initial-scale=${newScale}, user-scalable=yes`);
+		console.log("進入全屏模式，設定 initial-scale 為", newScale);
+	  }
+	  
+	  animWindow.classList.add("fullscreen");
+	  animWindow.style.position = "fixed";
+	  animWindow.style.top = "50%";
+	  animWindow.style.left = "50%";
+	  animWindow.style.transform = "translate(-50%, -50%)";
+	  animWindow.style.zIndex = "1000"; 
+	  
+	  animWindow.style.touchAction = "manipulation";
+
+	  document.body.style.overflow = "hidden";
+	  
+	  updateSpriteScalingVariables();
 	  isFullScreen = true;
 	}
-	  
-	// 退出全屏：移除 fullscreen 類，恢復原狀
+
 	function exitFullScreen() {
-	  let overlay = document.getElementById("fullscreenOverlay");
+	  const overlay = document.getElementById("fullscreenOverlay");
 	  if (overlay) {
 		overlay.parentNode.removeChild(overlay);
 	  }
+	  
+	  if (!animWindow) return;
 	  animWindow.classList.remove("fullscreen");
-	  // 恢復寬度至預設（可將 width 的 inline 樣式清空）
-	  animWindow.style.width = "";
+	  animWindow.style.position = "";
+	  animWindow.style.top = "";
+	  animWindow.style.left = "";
+	  animWindow.style.transform = "";
+	  animWindow.style.zIndex = "";
+	  animWindow.style.touchAction = "";
+	  
+	  if (viewportMeta) {
+		viewportMeta.setAttribute("content", originalViewportContent);
+		console.log("退出全屏模式，viewport 還原為", originalViewportContent);
+	  }
+	  document.body.style.overflow = "";
 	  updateSpriteScalingVariables();
 	  isFullScreen = false;
 	}
-	  
-	// 為動畫窗口添加雙擊事件切換全屏狀態
+
 	if (animWindow) {
-	  animWindow.addEventListener("dblclick", function() {
-		toggleFullScreen();
-	  });
+	  animWindow.addEventListener("dblclick", toggleFullScreen);
 	}
-	  
-	// 當窗口尺寸改變時，若處於全屏狀態則只更新寬度及重新計算 CSS 變量；否則也更新數值
-	window.addEventListener("resize", function() {
-	  if (isFullScreen) {
-		animWindow.style.width = window.innerWidth + "px";
-	  }
-	  updateSpriteScalingVariables();
-	});
 
 	
 	
