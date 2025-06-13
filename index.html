@@ -4956,16 +4956,17 @@ function triggerT80Cannon() {
 
 	// 戰鬥日誌輔助函數：根據傳入 side 參數決定使用何種樣式以及是否顯示暱稱標記
 	function appendBattleLogEntry(side, message) {
+	  if (typeof message !== "string") {
+	    message = String(message);
+	  }
 	  if (typeof side !== "string" || (side !== "enemy" && side !== "self")) {
 		if (message.indexOf("enemy:") === 0) {
 		  side = "enemy";
-		  // 可選：去除前綴
 		  message = message.substring(6);
 		} else if (message.indexOf("self:") === 0) {
 		  side = "self";
 		  message = message.substring(5);
 		} else {
-		  // 默認視為己方
 		  side = "msg";
 		}
 	  }
@@ -4983,16 +4984,18 @@ function triggerT80Cannon() {
 	  
 	  // 僅依據傳入的 side 區分
 	  if (side === "self") {
-		entry.className = "log-entry battle-self-entry";
-		let nickname = document.getElementById("battleNickname").value || "A";
-		entry.textContent = nickname + "派遣的" + message;
-	  } else if (side === "enemy") {
-		entry.className = "log-entry battle-enemy-entry";
-		entry.textContent = "B派遣的" + message;
-	  } else {
-		entry.className = "log-entry battle-msg-entry";
-		entry.textContent = message;
-	  }
+	  entry.className = "log-entry battle-self-entry";
+	  let nickname = document.getElementById("battleNickname").value || "A";
+	  entry.textContent = nickname + "派遣的" + message;
+	} else if (side === "enemy") {
+	  entry.className = "log-entry battle-enemy-entry";
+	  // 如果全局保存了敵手的暱稱，就用該暱稱，否則默認 "B"
+	  let enemyNickname = window.enemyNickname || "B";
+	  entry.textContent = enemyNickname + "派遣的" + message;
+	} else {
+	  entry.className = "log-entry battle-msg-entry";
+	  entry.textContent = message;
+	}
 	  
 	  logContent.appendChild(entry);
 	  logContent.scrollTop = logContent.scrollHeight;
@@ -5070,10 +5073,8 @@ function triggerT80Cannon() {
 	function joinBattleRoom(battleId, role) {
 	  console.log("加入戰局房間", battleId, "身份為", role);
 	  window.currentBattleRoom = battleId;
-	  // 將本設備的角色設置為 role（"userA" 或 "userB"）
-	  window.myRole = role;
-	  // 根據本設備角色，自動算出對手角色：如果我是 userA，則對手為 userB；反之亦然
-	  window.enemyRole = (role === "userA") ? "userB" : "userA";
+	  window.battleRole = role;
+	  
 	  
 	  // 建立房間參考
 	  let roomRef = firebase.database().ref("battles").child(battleId);
@@ -5091,10 +5092,6 @@ function triggerT80Cannon() {
 			if (battleSpecialTimer) clearInterval(battleSpecialTimer);
 			battleSpecialTimer = setInterval(checkBattleBTREvent, 30000);
 		  }
-		  // 更新右側動畫窗口，顯示對手的暱稱
-		  if (data[window.enemyRole] && data[window.enemyRole].uid) {
-			updateEnemyAnimation(data[window.enemyRole].uid);
-		  }
 		} else {
 		  if (battleMatched) {
 			battleMatched = false;
@@ -5103,21 +5100,16 @@ function triggerT80Cannon() {
 		}
 	  });
 	  
+	  // 清除並監聽房間中 "log" 子節點的更新
 	  let logRef = roomRef.child("log");
 	  logRef.off("child_added");
 	  logRef.on("child_added", function(snapshot) {
 		let data = snapshot.val();
-		if (data && data.sender && data.message) {
-		  let side = (data.sender === window.myUid) ? "self" : "enemy";
-		  appendBattleLogEntry(side, data.message);
-		  if (side === "enemy") {
-			if (data.message.indexOf("T-80") !== -1) {
-			  playEnemyAnimation("T-80", data.message);
-			} else if (data.message.indexOf("BTR") !== -1) {
-			  playEnemyAnimation("BTR", data.message);
-			}
-		  }
+		// 如果 data 為對象且包含 side 與 message 屬性，就根據這兩個屬性顯示
+		if (data && data.side && data.message) {
+		  appendBattleLogEntry(data.side, data.message);
 		} else {
+		  // 否則當作系統提示
 		  appendBattleLogEntry("system", data);
 		}
 	  });
