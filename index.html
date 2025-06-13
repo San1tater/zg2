@@ -2,7 +2,7 @@
 <html lang="zh">
 <head>
   <meta charset="UTF-8" name="viewport" content="width=device-width, initial-scale=0.45"/>
-  <title>末日控制中心 - 正式版v.1.070 btr-anim update</title>
+  <title>末日控制中心 - 正式版v.1.080 conflict update</title>
   <style>
     /* 彈窗系統 */
     .modal-overlay {
@@ -846,16 +846,7 @@
 	  /* 使用明确的像素（pt）值，让背景从 0 滚动到 432pt，即一个完整平铺单元 */
 	  animation: scrollBgRight 30s linear infinite;
 	}
-	#explorationAnim.fullscreen {
-	  position: fixed;
-	  left: 0;
-	  top: 50%;
-	  transform: translateY(-50%);
-	  z-index: 1000;
-	  transition: width 0.3s ease;
-	  /* 注意：不改變 height，也不調整 top 的百分比定位，
-		 這樣內部使用百分比定位的精靈圖（例如 top:50%）仍然按照原有比例顯示 */
-	}
+
 
 	@keyframes scrollBgRight {
 	  from {
@@ -1217,11 +1208,127 @@
 	  animation: none !important;
 	  transition: none !important;
 	}
+	/* ===== 新增：對戰模式 CSS ===== */
+	.battle-overlay {
+	  position: fixed;
+	  top: 0;
+	  left: 0;
+	  right: 0;
+	  bottom: 0;
+	  background: rgba(0,0,0,0.8);
+	  z-index: 2000;
+	  display: none; /* 初始隱藏 */
+	}
 
+	.battle-container {
+	  position: fixed;
+	  top: 0%; 
+	  left: 50%;
+	  transform: translateX(-50%);
+	  width: 100vw;
+	  height: 220px;
+	  z-index: 2100;
+	}
+
+	.battle-header {
+	  padding: 10px;
+	  background: #333;
+	  display: flex;
+	  justify-content: center;
+	  align-items: center;
+	  gap: 10px;
+	}
+
+	.battle-header input[type="text"] {
+	  padding: 5px;
+	  font-size: 1rem;
+	}
+
+	.battle-header button {
+	  padding: 5px 10px;
+	  font-size: 1rem;
+	  cursor: pointer;
+	}
+
+	.battle-content {
+	  height: 180px;
+	  width: 100vw;
+	  display: flex;
+	  margin: 10px auto;
+	}
+
+	.battle-half {
+	  width: 50vw;
+	  height: 180px;
+	  overflow: hidden;
+	  position: relative;
+	  background: #000; /* 預設黑屏 */
+	}
+
+	.battle-half.left .battle-inner {
+	  transform: scaleX(-1); /* 左邊內容水平翻轉 */
+	}
+
+	.battle-inner {
+	  width: 100%;
+	  height: 100%;
+	  position: relative;
+	}
+
+	/* 戰鬥日誌 */
+	/* 新增：戰鬥日誌標題 */
+	.battle-log-title {
+	  margin: 0;
+	  padding: 5px 10px;
+	  background: #444;
+	  border-bottom: 1px solid #666;
+	  font-family: 'Microsoft YaHei', sans-serif;
+	  font-size: 1.1rem;
+	}
+
+	.battle-log {
+	  position: fixed;
+	  top: 220px;      /* 戰鬥日誌頂部緊貼 battle-container 底部 */
+	  left: 0;
+	  width: 100%;
+	  height: calc(100vh - 220px);  /* 占滿剩餘高度 */
+	  background: #1f1f1f;         /* 與探索日誌一致 */
+	  color: #fff;
+	  overflow-y: auto;
+	  z-index: 2200;
+	  padding: 5px 10px;
+	  box-sizing: border-box;
+	  border-top: 1px solid #4a4a4a;
+	}
+	.log-entry.battle-self-entry {
+	  color: white;
+	  font-weight: bold;
+	  margin: 4px 0;
+	}
+
+	.log-entry.battle-enemy-entry {
+	  color: #ff5e00;
+	  font-weight: bold;
+	  margin: 4px 0;
+	}
 	
+	.log-entry.battle-msg-entry {
+	  color: #ffd700;
+	  font-weight: bold;
+	  margin: 4px 0;
+	}
+
 	
   </style>
 </head>
+<!-- Firebase App (核心) SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<!-- Firebase Realtime Database SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+<!-- Firebase Authentication SDK (compat) -->
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+
+
 <body>
   <div class="main-grid-container">
    <!-- 上排：左 - 末日指揮中心；右 - 尸群指揮系統 -->
@@ -1458,10 +1565,64 @@
 		<div class="build-options" id="buildOptions"></div>
 	  </div>
 	</div>
+	<!-- ===== 新增：對戰模式遮罩與面板 ===== -->
+	<div id="battleOverlay" class="battle-overlay">
+	  <div class="battle-container">
+		<div class="battle-header">
+		  <!-- 新增：暱稱輸入框（雙方連線前可任意修改） -->
+		  <input type="text" id="battleNickname" placeholder="輸入暱稱">
+		  <!-- 新增：PIN 輸入框，用以匹配對戰 -->
+		  <input type="text" id="battlePin" placeholder="輸入PIN碼">
+		  <button id="battleStartBtn">遭遇戰</button>
+		</div>
+		<div class="battle-content">
+		  <!-- 左半邊：己方動畫區，所有動畫元素透過 CSS 翻轉水平顯示 -->
+		  <div class="battle-half left">
+			<div class="battle-inner" id="battleSelfAnim">
+			  <!-- （此區將在 JS 中動態複製原探索動畫視窗內容） -->
+			</div>
+		  </div>
+		  <!-- 右半邊：對方動畫區，動畫保持原有方向 -->
+		  <div class="battle-half right">
+			<div class="battle-inner" id="battleEnemyAnim">
+			  <!-- （此區預留，同步顯示對方動畫內容） -->
+			</div>
+		  </div>
+		</div>
+	  </div>
+	  <!-- 戰鬥日誌窗口 -->
+	  <div class="battle-log" id="battleLog">
+	  <h3 class="battle-log-title">戰鬥日誌</h3>
+	  <div class="log" id="battleLogContent">
+		<!-- 戰鬥事件將在此播放 -->
+	  </div>
+	</div>
+
 
 
   
   <script>
+  
+    // 替換以下配置為你自己的 Firebase 配置
+	var firebaseConfig = {
+	  apiKey: "AIzaSyDKXgDOWZnTF9cBTCCOc6kgMSnJLZplFiY",
+	  authDomain: "san1tater-gz2.firebaseapp.com",
+	  databaseURL: "https://san1tater-gz2-default-rtdb.asia-southeast1.firebasedatabase.app",
+	  projectId: "san1tater-gz2",
+	  storageBucket: "san1tater-gz2.firebasestorage.app",
+	  messagingSenderId: "554205994483",
+	  appId: "1:554205994483:web:1389f62227f078f00ac686"
+	};
+
+	// 初始化 Firebase
+	firebase.initializeApp(firebaseConfig);
+	var currentUid = firebase.auth().currentUser ? firebase.auth().currentUser.uid : "userPlaceholder";
+	console.log("當前 user uid:", currentUid);
+	
+	var enemyTotalZombies = 0;
+    var enemyAllocations = { exploration: 0, farming: 0, recycling: 0, research: 0 };
+
+
 	let achievements = [];  // 儲存稱號對象，每個稱號包含 category, title, rarity, unlockedTime 等屬性
 	// 【新增】在全局範圍定義稀有度映射，確保所有函數均可訪問
 	var rarityMapping = {
@@ -3647,8 +3808,7 @@
 	  }
 	}
 
-	// 觸發 T‑80 開炮事件：這個函數使 T‑80 播放完整 4 幀一次，然後恢復 idle 並進入 6 秒冷卻
-	function triggerT80Cannon() {
+function triggerT80Cannon() {
 	  if (t80CannonOnCooldown) return;
 	  const sprite = document.querySelector(".t80-animation");
 	  if (!sprite) {
@@ -4657,103 +4817,640 @@
 		});
 	});
 	
+
+
+	/***** 新增：對戰模式相關 JS 代碼 *****/
+	let battleModeActive = false;
+	let battleMatched = false;
+	let battleInterval = null;
+	let battleSpecialTimer = null; 
+	let battleSpecialLogTimer = null;
+	let btrSpecialActive = false;
+	let totalEnemyDamage = 0;
+	let totalSelfDamage = 0;
+	const battleDuration = 180; // 戰鬥時長 180 秒（3 分鐘）
+
+	// 修改後：進入對戰模式只初始化獨立對戰動畫
+	function enterBattleMode() {
+	  if (battleModeActive) return;
+	  battleModeActive = true;
+	  battleMatched = false; // 初始狀態設定為未匹配
+	  document.getElementById("battleOverlay").style.display = "block";
+	  document.body.style.overflow = "hidden";
+	  
+	  // 初始化對戰動畫，match=false時只生成己方 zombie-search 並設定隨機背景
+	  initBattleAnimation(false);
+	  
+	  // 為 battleOverlay 綁定雙擊事件以退出對戰模式
+	  document.getElementById("battleOverlay").addEventListener("dblclick", exitBattleMode);
+	}
+
+
+	function exitBattleMode() {
+	  battleModeActive = false;
+	  battleMatched = false;
+	  document.getElementById("battleOverlay").style.display = "none";
+	  document.body.style.overflow = "";
+	  if (battleInterval) {
+		clearInterval(battleInterval);
+		battleInterval = null;
+	  }
+	  if (battleSpecialTimer) {
+		clearInterval(battleSpecialTimer);
+		battleSpecialTimer = null;
+	  }
+	  if (battleSpecialLogTimer) {
+		clearInterval(battleSpecialLogTimer);
+		battleSpecialLogTimer = null;
+	  }
+	}
+
+
+
+	// 在探索動畫視窗上建立雙擊事件，觸發對戰模式
+	document.getElementById("explorationAnim").addEventListener("dblclick", function(e) {
+	  enterBattleMode();
+	});
 	
-	// 假定動畫窗口元素 id 為 "explorationAnim"
-	const animWindow = document.getElementById("explorationAnim");
-
-	// 保存頁面加載時的原始動畫區高度與精靈圖的尺寸（假如原始 animWindow.height 與 --zombie-size 如下）
-	const originalAnimHeight = animWindow.offsetHeight || 120;  // 如 120px
-	const originalZombieSize = parseFloat(getComputedStyle(animWindow).getPropertyValue("--zombie-size")) || 90;
-
-	// 全局狀態標記：是否處於全屏模式
-	let isFullScreen = false;
-
-	// 當動畫窗口高度變動時，根據比例更新自訂 CSS 變量（以便精靈圖尺寸也等比改變）
-	function updateSpriteScalingVariables() {
-	  const currentHeight = animWindow.offsetHeight;
-	  const scaleFactor = currentHeight / originalAnimHeight;
-	  const newZombieSize = originalZombieSize * scaleFactor;
+	function updateBattleZombieSearchSprite() {
+	  // 尋找對戰模式己方動畫區內的 zombie-search 元素
+	  var battleZombieElem = document.querySelector("#battleSelfAnim .zombie-search");
+	  if (!battleZombieElem) return;
 	  
-	  // 如果需要調整其它依賴高度的變量，也可類似計算，比如 BTR 精靈圖高度：
-	  const originalBTRHeight = parseFloat(getComputedStyle(animWindow).getPropertyValue("--btr-frame-height")) || 120;
-	  const newBTRHeight = originalBTRHeight * scaleFactor;
-	  const newBTRWidth = (2000 * newBTRHeight) / 500; // 如原來計算方式
-	  // 更新 CSS 變量（此處我們在 animWindow 上設置，這樣局部覆蓋全局設定）
-	  animWindow.style.setProperty("--zombie-size", newZombieSize + "px");
-	  animWindow.style.setProperty("--zombie-sprite-total-width", (4 * newZombieSize) + "px");
+	  // 根據原先代碼中 updateZombieSearchSprite() 的判斷邏輯：
+	  var hasTractor = gameState.buildings.some(function(b) {
+		return b && b.type.toLowerCase() === "armoredgarage";
+	  });
+	  var hasArmory = gameState.buildings.some(function(b) {
+		return b && b.type.toLowerCase() === "armory";
+	  });
+	  var hasZombieCommand = gameState.buildings.some(function(b) {
+		return b && b.type.toLowerCase() === "zombiecommandcenter";
+	  });
 	  
-	  animWindow.style.setProperty("--btr-frame-height", newBTRHeight + "px");
-	  animWindow.style.setProperty("--btr-frame-width", newBTRWidth + "px");
-	  animWindow.style.setProperty("--btr-sprite-total-width", (4 * newBTRWidth) + "px");
+	  var newSprite = "images/zombie_search_sprite.png"; //預設
+	  if (hasTractor && hasArmory && hasZombieCommand) {
+		newSprite = "images/zombie_search_sprite_elite.png";
+	  } else if (hasTractor && (hasArmory || hasZombieCommand)) {
+		newSprite = "images/zombie_search_sprite_equipped.png";
+	  } else if (hasTractor) {
+		newSprite = "images/zombie_search_sprite_btr.png";
+	  } else if (hasArmory || hasZombieCommand) {
+		newSprite = "images/zombie_search_sprite_helmet.png";
+	  }
+	  
+	  battleZombieElem.style.backgroundImage = "url('" + newSprite + "')";
 	}
 
-	// 切換全屏狀態的函數（通過添加或移除一個 CSS 類來觸發樣式變化）
-	function toggleFullScreen() {
-	  if (!isFullScreen) {
-		enterFullScreen();
+	function initBattleAnimation(match) {
+	  const selfAnim = document.getElementById("battleSelfAnim");
+	  const enemyAnim = document.getElementById("battleEnemyAnim");
+	  // 清空兩邊動畫區內容
+	  selfAnim.innerHTML = "";
+	  enemyAnim.innerHTML = "";
+	  selfAnim.style.position = "relative";
+	  selfAnim.style.height = "100%";
+	  
+	  // 背景圖片來源（隨機選取，邏輯與探索一致）
+	  const backgrounds = [
+		"images/location_day_1.png",
+		"images/location_day_2.png",
+		"images/location_day_3.png",
+		"images/location_night_1.png",
+		"images/location_night_2.png",
+		"images/location_night_3.png"
+	  ];
+	  let bg = backgrounds[Math.floor(Math.random() * backgrounds.length)];
+	  
+	  // 為己方動畫區設定滾動背景
+	  selfAnim.style.backgroundImage = "url('" + bg + "')";
+	  selfAnim.style.backgroundRepeat = "repeat-x";
+	  selfAnim.style.backgroundSize = "auto 100%";
+	  selfAnim.style.backgroundPosition = "center top";
+	  selfAnim.style.animation = "scrollBgRight 30s linear infinite";
+	  
+	  // 如果匹配成功，則右側動畫區也使用相同背景；否則保持黑屏
+	  if (match) {
+		enemyAnim.style.backgroundImage = "url('" + bg + "')";
+		enemyAnim.style.backgroundRepeat = "repeat-x";
+		enemyAnim.style.backgroundSize = "auto 100%";
+		enemyAnim.style.backgroundPosition = "center top";
+		enemyAnim.style.animation = "scrollBgRight 30s linear infinite";
 	  } else {
-		exitFullScreen();
+		enemyAnim.style.backgroundColor = "#000";
+		enemyAnim.style.backgroundImage = "";
+		enemyAnim.style.animation = "";
 	  }
-	}
 	  
-	// 進入全屏：僅調整動畫窗口寬度至視口寬度，保持原有高度與內部百分比定位不變，並更新 CSS 自訂變量
-	function enterFullScreen() {
-	  // 創建全屏遮罩，覆蓋整個視口並阻擋操作穿透
-	  let overlay = document.getElementById("fullscreenOverlay");
-	  if (!overlay) {
-		overlay = document.createElement("div");
-		overlay.id = "fullscreenOverlay";
-		overlay.style.position = "fixed";
-		overlay.style.top = "0";
-		overlay.style.left = "0";
-		overlay.style.width = "100vw";
-		overlay.style.height = "100vh";
-		overlay.style.backgroundColor = "rgba(0,0,0,0.5)";
-		overlay.style.zIndex = "999";
-		overlay.style.cursor = "pointer";
-		// 雙擊遮罩退出全屏
-		overlay.addEventListener("dblclick", exitFullScreen);
-		document.body.appendChild(overlay);
+	  // 生成 zombie-search 效果
+	  let zombieSearch = document.createElement("div");
+	  zombieSearch.className = "zombie-search";
+	  selfAnim.appendChild(zombieSearch);
+	  
+	  // 呼叫新函數：根據遊戲建築決定對戰模式中 zombie-search 的 sprite
+	  updateBattleZombieSearchSprite();
+	  
+	}
+
+
+
+	// 戰鬥日誌輔助函數：根據傳入 side 參數決定使用何種樣式以及是否顯示暱稱標記
+	function appendBattleLogEntry(side, message) {
+	  if (typeof side !== "string" || (side !== "enemy" && side !== "self")) {
+		if (message.indexOf("enemy:") === 0) {
+		  side = "enemy";
+		  // 可選：去除前綴
+		  message = message.substring(6);
+		} else if (message.indexOf("self:") === 0) {
+		  side = "self";
+		  message = message.substring(5);
+		} else {
+		  // 默認視為己方
+		  side = "msg";
+		}
 	  }
-	  // 為動畫窗口添加一個 fullscreen 類，該類僅修改定位與寬度
-	  animWindow.classList.add("fullscreen");
-	  // 更新寬度設成視口寬度（高度保持不變）
-	  animWindow.style.width = window.innerWidth + "px";
-	  // 更新內部 CSS 變量以按比例調整精靈圖尺寸
-	  updateSpriteScalingVariables();
-	  
-	  isFullScreen = true;
-	}
-	  
-	// 退出全屏：移除 fullscreen 類，恢復原狀
-	function exitFullScreen() {
-	  let overlay = document.getElementById("fullscreenOverlay");
-	  if (overlay) {
-		overlay.parentNode.removeChild(overlay);
+	  const logContent = document.getElementById("battleLogContent");
+	  if (!logContent) {
+		console.error("未找到對戰日誌內容容器");
+		return;
 	  }
-	  animWindow.classList.remove("fullscreen");
-	  // 恢復寬度至預設（可將 width 的 inline 樣式清空）
-	  animWindow.style.width = "";
-	  updateSpriteScalingVariables();
-	  isFullScreen = false;
-	}
 	  
-	// 為動畫窗口添加雙擊事件切換全屏狀態
-	if (animWindow) {
-	  animWindow.addEventListener("dblclick", function() {
-		toggleFullScreen();
+	  const maxLogs = 50;
+	  while (logContent.childElementCount >= maxLogs) {
+		logContent.removeChild(logContent.firstChild);
+	  }
+	  const entry = document.createElement("div");
+	  
+	  // 僅依據傳入的 side 區分
+	  if (side === "self") {
+		entry.className = "log-entry battle-self-entry";
+		let nickname = document.getElementById("battleNickname").value || "A";
+		entry.textContent = nickname + "派遣的" + message;
+	  } else if (side === "enemy") {
+		entry.className = "log-entry battle-enemy-entry";
+		entry.textContent = "B派遣的" + message;
+	  } else {
+		entry.className = "log-entry battle-msg-entry";
+		entry.textContent = message;
+	  }
+	  
+	  logContent.appendChild(entry);
+	  logContent.scrollTop = logContent.scrollHeight;
+	}
+
+
+	
+	function startBattleModeFirebase() {
+	  let pin = document.getElementById("battlePin").value.trim();
+	  if (pin === "") {
+		alert("請輸入有效的 PIN 碼");
+		return;
+	  }
+	  
+	  // 若輸入 "000"，啟用本地模擬模式（本地模擬有獨立觸發邏輯）
+	  if (pin === "000") {
+		battleMatched = true;
+		initBattleAnimation(true);
+		pushBattleLog("本地模擬對戰開始！");
+		startBattleTimer();
+		if (battleSpecialTimer) clearInterval(battleSpecialTimer);
+		battleSpecialTimer = setInterval(checkBattleBTREvent, 30000);
+		return;
+	  }
+	  
+	  let battleRoomRef = firebase.database().ref("battles").child(pin);
+	  let currentUid = firebase.auth().currentUser ? firebase.auth().currentUser.uid : "userPlaceholder";
+	  
+	  battleRoomRef.once("value").then(function(snapshot) {
+		let battleData = snapshot.val();
+		// 如果房間不存在，建立房間並設定 userA，但不啟動對戰
+		if (battleData === null) {
+		  battleRoomRef.set({
+			userA: { uid: currentUid },
+			log: []
+		  }).then(function() {
+			pushBattleLog("等待對戰對手加入...");
+			// 持續監聽直到 userB 加入
+			battleRoomRef.on("value", function(snap) {
+			  let data = snap.val();
+			  if (data && data.userB) {
+				battleRoomRef.off("value");
+				joinBattleRoom(pin, "userA");
+			  }
+			});
+		  });
+		} else {
+		  // 房間存在
+		  if (battleData.userA && battleData.userA.uid === currentUid) {
+			joinBattleRoom(pin, "userA");
+		  } else if (battleData.userB && battleData.userB.uid === currentUid) {
+			joinBattleRoom(pin, "userB");
+		  } else if (!battleData.userB) {
+			battleRoomRef.child("userB").set({ uid: currentUid }).then(function() {
+			  joinBattleRoom(pin, "userB");
+			});
+		  } else {
+			alert("此戰局已滿！");
+		  }
+		}
+	  }).catch(function(err) {
+		console.error(err);
 	  });
 	}
+
+	function joinBattleRoom(battleId, role) {
+	  console.log("加入戰局房間", battleId, "身份為", role);
+	  window.currentBattleRoom = battleId;
+	  window.battleRole = role;
+	  // 清除日誌監聽器以避免重複
+	  let logRef = firebase.database().ref("battles").child(battleId).child("log");
+	  logRef.off("child_added");
+	  logRef.on("child_added", function(snapshot) {
+		let logMsg = snapshot.val();
+		appendBattleLogEntry("system", logMsg);
+	  });
 	  
-	// 當窗口尺寸改變時，若處於全屏狀態則只更新寬度及重新計算 CSS 變量；否則也更新數值
-	window.addEventListener("resize", function() {
-	  if (isFullScreen) {
-		animWindow.style.width = window.innerWidth + "px";
+	  // 檢查該房間是否已同時存在 userA 與 userB
+	  firebase.database().ref("battles").child(battleId).once("value").then(function(snap) {
+		let data = snap.val();
+		if (data && data.userA && data.userB) {
+		  battleMatched = true;
+		  initBattleAnimation(true);
+		  pushBattleLog("雙方連線成功，對戰開始！");
+		  startBattleTimer();
+		  if (battleSpecialTimer) clearInterval(battleSpecialTimer);
+		  battleSpecialTimer = setInterval(checkBattleBTREvent, 30000);
+		} else {
+		  battleMatched = false;
+		  pushBattleLog("等待對戰對手加入...");
+		}
+	  });
+	}
+
+	function pushBattleLog(message) {
+	  if (window.currentBattleRoom) {
+		let logRef = firebase.database().ref("battles")
+						  .child(window.currentBattleRoom)
+						  .child("log");
+		logRef.push(message);
 	  }
-	  updateSpriteScalingVariables();
+	}
+
+	// 修改“開始對戰”按鈕事件，令其調用 Firebase 對戰流程
+	document.getElementById("battleStartBtn").addEventListener("click", function(){
+	  startBattleModeFirebase();
 	});
 
+	// 使用 Firebase 同步對戰日誌信息的對戰事件
+	function triggerBattleEventFirebase() {
+	  // 根據中央基地等級與隨機數計算命中率（基礎 40%，每級加 0.5%，上限 85%）
+	  const centerBuilding = gameState.buildings.find(b => b && b.type.toLowerCase() === "center");
+	  const centerLevel = centerBuilding ? centerBuilding.level : 1;
+	  const baseHitChance = 40;
+	  const hitChanceVal = Math.min(baseHitChance + centerLevel * 0.5, 85);
+	  let ourHit = (Math.random() * 100 < hitChanceVal);
+	  let ourDamage = ourHit ? (Math.floor(Math.random() * 10) + 1) : 0;
+	  if (ourHit) {
+		pushBattleLog("self: 僵尸 進行了長點射(命中)，對方僵尸-" + ourDamage);
+		totalEnemyDamage += ourDamage;
+	  } else {
+		pushBattleLog("self: 僵尸 進行了長點射（未命中）");
+	  }
+
+	  let enemyHit = (Math.random() * 100 < hitChanceVal);
+	  let enemyDamage = enemyHit ? (Math.floor(Math.random() * 10) + 1) : 0;
+	  if (enemyHit) {
+		pushBattleLog("enemy: 僵尸 進行了長點射(命中)，對方僵尸-" + enemyDamage);
+		totalSelfDamage += enemyDamage;
+	  } else {
+		pushBattleLog("enemy: 僵尸 進行了長點射（未命中）");
+	  }
+	}
+
+	// 修改戰鬥計時器函數，每 5 秒呼叫 triggerBattleEventFirebase 並判定對戰是否結束
+	function startBattleTimerFirebase() {
+	  let remaining = battleDuration;
+	  battleInterval = setInterval(function(){
+		if (remaining <= 0) {
+		  clearInterval(battleInterval);
+		  battleInterval = null;
+		  adjustBattleOutcome();
+		  endBattleFirebase();
+		} else {
+		  triggerBattleEventFirebase();
+		  remaining -= 5;
+		}
+	  }, 5000);
+	}
+
+	// 當對戰結束時，關閉 Firebase 日誌監聽並退出對戰模式
+	function endBattleFirebase() {
+	  if (window.currentBattleRoom) {
+		firebase.database().ref("battles")
+		  .child(window.currentBattleRoom)
+		  .child("log")
+		  .off();
+	  }
+	  exitBattleMode();
+	}
 	
+	
+	function checkBattleBTREvent() {
+	  if (!battleModeActive) return;
+	  
+	  const garages = gameState.buildings.filter(b =>
+		b && b.type.toLowerCase() === "armoredgarage"
+	  );
+	  if (garages.length > 0) {
+		const garageInfo = BUILDINGS.armoredGarage.getUpgradeInfo(garages[0].level);
+		if (Math.random() < garageInfo.effect.btrChance) {
+		  // 只呼叫後者的動畫與命中邏輯，不再重複日誌產生部分
+		  triggerTractorBattleAnimation();
+		}
+	  }
+	}
+
+	function triggerTractorBattleAnimation() {
+	  const hasTractor = gameState.buildings.some(function(b) {
+		return b && b.type.toLowerCase() === "armoredgarage";
+	  });
+	  if (!hasTractor) return;
+	  
+	  const container = document.getElementById("battleSelfAnim");
+	  if (!container) {
+		console.error("找不到 #battleSelfAnim 容器");
+		return;
+	  }
+	  
+	  const containerWidth = container.clientWidth;
+	  const offset = 50;
+	  const rootStyles = getComputedStyle(document.documentElement);
+	  
+	  const useT80 = (Math.random() < 0.4);
+	  let frameWidth;
+	  if (useT80) {
+		frameWidth = 480;
+	  } else {
+		frameWidth = parseFloat(rootStyles.getPropertyValue('--btr-frame-width')) || 240;
+	  }
+	  
+	  const centerStart = containerWidth + offset + 0.5 * frameWidth;
+	  const centerStop = 0.5 * containerWidth;
+	  const startLeft = centerStart - 0.5 * frameWidth;
+	  const stopLeft  = centerStop - 0.5 * frameWidth;
+	  
+	  const keyframesText = `
+		@keyframes btrMoveDynamicBattle {
+		  0%   { left: ${startLeft}px; }
+		  20%  { left: ${stopLeft}px; }
+		  60%  { left: ${stopLeft}px; }
+		  100% { left: ${startLeft}px; }
+		}
+	  `;
+	  let styleElem = document.getElementById("btrKeyframesBattle");
+	  if (!styleElem) {
+		styleElem = document.createElement("style");
+		styleElem.id = "btrKeyframesBattle";
+		document.head.appendChild(styleElem);
+	  }
+	  styleElem.textContent = keyframesText;
+	  console.log("Battle dynamic keyframes:", keyframesText);
+	  
+	  const wrapper = document.createElement("div");
+	  wrapper.className = "btr-wrapper";
+	  wrapper.style.position = "absolute";
+	  wrapper.style.top = "25%";
+	  wrapper.style.left = startLeft + "px";
+	  wrapper.style.animation = "btrMoveDynamicBattle 10s ease-in-out forwards";
+	  
+	  let spriteElem;
+	  if (useT80) {
+		const frameContainer = document.createElement("div");
+		frameContainer.className = "frameContainer";
+		frameContainer.style.width = frameWidth + "px";
+		frameContainer.style.height = rootStyles.getPropertyValue('--btr-frame-height') || "120px";
+		frameContainer.style.overflow = "hidden";
+		
+		spriteElem = document.createElement("div");
+		spriteElem.className = "t80-animation";
+		spriteElem.style.backgroundPosition = "0px 0";
+		
+		frameContainer.appendChild(spriteElem);
+		wrapper.appendChild(frameContainer);
+	  } else {
+		spriteElem = document.createElement("div");
+		spriteElem.className = "btr-animation";
+		wrapper.appendChild(spriteElem);
+	  }
+	  
+	  container.appendChild(wrapper);
+	  
+	  if (useT80) {
+		pushBattleLog("self: T-80進場，開始火力支援判定。");
+	  } else {
+		pushBattleLog("self: BTR-80A進場，開始掩護射擊判定。");
+	  }
+	  
+	  const centerBuilding = gameState.buildings.find(b => b && b.type.toLowerCase() === "center");
+	  const centerLevel = centerBuilding ? centerBuilding.level : 1;
+	  const baseHitChance = 40;
+	  const hitChanceVal = Math.min(baseHitChance + centerLevel * 0.5, 85);
+	  
+	  let hitRoll = Math.random() * 100;
+	  let damage = Math.floor(Math.random() * 20) + 1;
+	  let hitSuccess = hitRoll < hitChanceVal;
+	  
+	  if (hitSuccess) {
+		if (useT80) {
+		  pushBattleLog("self: T-80 實施火力支援（命中），對方僵尸-" + damage);
+		} else {
+		  pushBattleLog("self: BTR-80A 實施掩護射擊（命中），對方僵尸-" + damage);
+		}
+	  } else {
+		if (useT80) {
+		  pushBattleLog("self: T-80 實施火力支援（未命中）");
+		} else {
+		  pushBattleLog("self: BTR-80A 實施掩護射擊（未命中）");
+		}
+	  }
+	  
+	  isBTRActive = true;
+	  setTimeout(() => { isBTRActive = false; }, 10000);
+	  setTimeout(() => {
+		if (container.contains(wrapper)) {
+		  container.removeChild(wrapper);
+		  console.log("Battle animation wrapper 已移除");
+		}
+		if (useT80 && t80IdleInterval) {
+		  clearInterval(t80IdleInterval);
+		  t80IdleInterval = null;
+		}
+	  }, 10000);
+	  
+	  if (useT80) {
+		startT80IdleAnimation(spriteElem);
+		setTimeout(() => { triggerT80Cannon(); }, 1000);
+	  }
+	}
+
+	function triggerBattleEvent() {
+	  if (!battleMatched) return;
+	  
+	  const centerBuilding = gameState.buildings.find(b => b && b.type.toLowerCase() === "center");
+	  const centerLevel = centerBuilding ? centerBuilding.level : 1;
+	  const hitChance = Math.min(40 + centerLevel * 0.5, 85);
+
+	  const ourHit = (Math.random() * 100 < hitChance);
+	  const ourDamage = ourHit ? (Math.floor(Math.random() * 10) + 1) : 0;
+	  if (ourHit) {
+		pushBattleLog("self: 僵尸 進行了長點射(命中)，對方僵尸-" + ourDamage);
+		totalEnemyDamage += ourDamage;
+	  } else {
+		pushBattleLog("self: 僵尸 進行了長點射（未命中）");
+	  }
+
+	  const enemyHit = (Math.random() * 100 < hitChance);
+	  const enemyDamage = enemyHit ? (Math.floor(Math.random() * 10) + 1) : 0;
+	  if (enemyHit) {
+		pushBattleLog("enemy: 僵尸 進行了長點射(命中)，對方僵尸-" + enemyDamage);
+		totalSelfDamage += enemyDamage;
+	  } else {
+		pushBattleLog("enemy: 僵尸 進行了長點射（未命中）");
+	  }
+	}
+
+	function startBattleTimer() {
+	  let remaining = battleDuration;
+	  battleInterval = setInterval(function(){
+		if (remaining <= 0) {
+		  clearInterval(battleInterval);
+		  battleInterval = null;
+		  adjustBattleOutcome();
+		  endBattle();
+		} else {
+		  triggerBattleEvent();
+		  remaining -= 5;
+		}
+	  }, 5000);
+	}
+
+	function endBattle() {
+	  exitBattleMode();
+	}
+
+	function adjustBattleOutcome() {
+	  // 1. 顯示對戰總結訊息
+	  appendBattleLogEntry("system", 
+		`對戰結束：己方僵尸損失 ${totalSelfDamage} 名，對方僵尸損失 ${totalEnemyDamage} 名。`);
+
+	  // 判定勝負：損失較大的一方輸
+	  let outcome; // "win" 表示己方勝， "loss" 表示己方輸，"draw" 表示平手
+	  if (totalSelfDamage < totalEnemyDamage) {
+		outcome = "win";
+	  } else if (totalSelfDamage > totalEnemyDamage) {
+		outcome = "loss";
+	  } else {
+		outcome = "draw";
+	  }
+	  
+	  appendBattleLogEntry("system", `最終結果：${outcome === "win" ? "勝利" : outcome === "loss" ? "失敗" : "平手"}`);
+	  
+	  // 2. 若為平手，則不進一步進行數值調整
+	  if (outcome === "draw") return;
+	  
+	  // 3. 確定哪一方為輸家（損失較大者）和贏家（損失較小者）
+	  // 此處我們假定己方存於 gameState，對方存於 enemy***
+	  let loser, winner;
+	  if (outcome === "loss") { // 己方輸
+		loser = {
+		  total: gameState.totalZombies,
+		  allocations: Object.assign({}, gameState.allocations)
+		};
+		winner = {
+		  total: enemyTotalZombies,
+		  allocations: Object.assign({}, enemyAllocations)
+		};
+	  } else { // 己方勝，對方輸
+		loser = {
+		  total: enemyTotalZombies,
+		  allocations: Object.assign({}, enemyAllocations)
+		};
+		winner = {
+		  total: gameState.totalZombies,
+		  allocations: Object.assign({}, gameState.allocations)
+		};
+	  }
+	  
+	  // 4. 從輸家中扣除一定比例的僵尸，比例隨機在 10%～30%之間
+	  let fraction = 0.1 + Math.random() * 0.2; // 0.1 到 0.3
+	  let deduction = Math.floor(loser.total * fraction);
+	  
+	  // 扣除邏輯：優先扣除待分配（pending = total - allocations總和）
+	  let allocatedSum = 0;
+	  for (let key in loser.allocations) {
+		allocatedSum += loser.allocations[key];
+	  }
+	  let pending = loser.total - allocatedSum;
+	  let remainingDeduction = deduction;
+	  
+	  if (pending >= remainingDeduction) {
+		// 全部扣自待分配
+		loser.total -= remainingDeduction;
+		pending -= remainingDeduction;
+		remainingDeduction = 0;
+	  } else {
+		// 扣完待分配
+		loser.total -= pending;
+		remainingDeduction -= pending;
+		pending = 0;
+		
+		// 接下來按 4:4:1:1 比例從各部門扣除
+		let ratios = { exploration: 4, farming: 4, recycling: 1, research: 1 };
+		let totalRatio = 10; // 4+4+1+1
+		for (let key in loser.allocations) {
+		  let deduc = Math.floor(remainingDeduction * (ratios[key] / totalRatio));
+		  // 不超過該部門現有數量
+		  deduc = Math.min(deduc, loser.allocations[key]);
+		  loser.allocations[key] -= deduc;
+		  loser.total -= deduc;
+		}
+	  }
+	  
+	  // 5. 將扣出的數目加到贏家那邊，按 4:4:1:1 分配到各部門
+	  let ratios = { exploration: 4, farming: 4, recycling: 1, research: 1 };
+	  let totalRatio = 10;
+	  for (let key in winner.allocations) {
+		let addVal = Math.floor(deduction * (ratios[key] / totalRatio));
+		winner.allocations[key] += addVal;
+		winner.total += addVal;
+	  }
+	  
+	  // 6. 更新全局數據
+	  if (outcome === "loss") {
+		gameState.totalZombies = loser.total;
+		gameState.allocations = loser.allocations;
+		enemyTotalZombies = winner.total;
+		enemyAllocations = winner.allocations;
+	  } else {
+		enemyTotalZombies = loser.total;
+		enemyAllocations = loser.allocations;
+		gameState.totalZombies = winner.total;
+		gameState.allocations = winner.allocations;
+	  }
+	  
+	  // 7. 播報調整結果
+	  appendBattleLogEntry("system",
+		`調整後：輸家扣除 ${deduction} 隻僵尸，贏家增加 ${deduction} 隻僵尸。`);
+	  
+	  
+	  // 重置累計損失數，便於下次對戰
+	  totalSelfDamage = 0;
+	  totalEnemyDamage = 0;
+	}
+
+
+
+
 	
 	</script>
 </body>
