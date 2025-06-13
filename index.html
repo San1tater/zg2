@@ -5003,18 +5003,13 @@ function triggerT80Cannon() {
 	function initializeUser() {
 	  let nickname = document.getElementById("battleNickname").value.trim();
 	  if (!nickname) {
-		nickname = "userPlaceholder";
+		alert("請先輸入有效的暱稱");
+		return false;
 	  }
-	  window.currentUid = nickname;
-	  console.log("使用者 UID 已設置為：", window.currentUid);
+	  window.myUid = nickname; // 將暱稱作為唯一標識
+	  console.log("使用者 UID 已設置為：", window.myUid);
+	  return true;
 	}
-
-	// 建議在用戶點擊「進入房間」之前先呼叫 initializeUser()
-	// 例如：
-	// document.getElementById("enterRoomBtn").addEventListener("click", function() {
-	//   initializeUser();
-	//   startBattleModeFirebase();
-	// });
 
 	function startBattleModeFirebase() {
 	  let pin = document.getElementById("battlePin").value.trim();
@@ -5029,7 +5024,11 @@ function triggerT80Cannon() {
 		alert("請先輸入有效的暱稱");
 		return;
 	  }
-	  console.log("當前使用者 UID:", currentUid);
+	  let currentStyle = "";
+	  if (document.getElementById("battleStyle")) {
+		currentStyle = document.getElementById("battleStyle").value.trim();
+	  }
+	  console.log("當前使用者 UID:", currentUid, "款式:", currentStyle);
 	  
 	  if (pin === "000") {
 		// 本地模擬模式
@@ -5042,28 +5041,27 @@ function triggerT80Cannon() {
 		return;
 	  }
 	  
-	  let battleRoomRef = firebase.database().ref("battles").child(pin);
-	  // 檢查該房間是否存在
+	 let battleRoomRef = firebase.database().ref("battles").child(pin);
+  
+	  // 檢查房間是否存在
 	  battleRoomRef.once("value").then(function(snapshot) {
 		let battleData = snapshot.val();
 		if (battleData === null) {
-		  // 房間不存在 → 設置 userA
+		  // 房間不存在 → 設置 userA，同時寫入當前款式
 		  battleRoomRef.set({
-			userA: { uid: currentUid },
+			userA: { uid: currentUid, style: currentStyle },
 			log: {}
 		  }).then(function() {
 			joinBattleRoom(pin, "userA");
 		  });
 		} else if (battleData.userA && battleData.userA.uid === currentUid) {
-		  // 當前設備已經是 userA
 		  joinBattleRoom(pin, "userA");
 		} else if (!battleData.userB) {
-		  // 房間存在但沒有 userB → 加入成為 userB
-		  battleRoomRef.child("userB").set({ uid: currentUid }).then(function() {
+		  // 房間存在但沒有 userB → 加入成為 userB，同時寫入當前款式
+		  battleRoomRef.child("userB").set({ uid: currentUid, style: currentStyle }).then(function() {
 			joinBattleRoom(pin, "userB");
 		  });
 		} else if (battleData.userB && battleData.userB.uid === currentUid) {
-		  // 當前設備已經是 userB
 		  joinBattleRoom(pin, "userB");
 		} else {
 		  alert("此戰局已滿！");
@@ -5074,12 +5072,12 @@ function triggerT80Cannon() {
 	function joinBattleRoom(battleId, role) {
 	  console.log("加入戰局房間", battleId, "身份為", role);
 	  window.currentBattleRoom = battleId;
-	  window.battleRole = role;
+	  window.myRole = role;
+	  window.enemyRole = (role === "userA") ? "userB" : "userA";
 	  
-	  // 建立房間參考
 	  let roomRef = firebase.database().ref("battles").child(battleId);
 	  
-	  // 清除並持續監聽房間狀態
+	  // 持續監聽房間狀態，並根據對手資料更新右側動畫窗口
 	  roomRef.off("value");
 	  roomRef.on("value", function(snapshot) {
 		let data = snapshot.val();
@@ -5092,6 +5090,10 @@ function triggerT80Cannon() {
 			if (battleSpecialTimer) clearInterval(battleSpecialTimer);
 			battleSpecialTimer = setInterval(checkBattleBTREvent, 30000);
 		  }
+		  // 若對手存在且帶有款式資訊，更新右側動畫窗口
+		  if (data[window.enemyRole] && data[window.enemyRole].style) {
+			updateEnemyAnimation(data[window.enemyRole].style);
+		  }
 		} else {
 		  if (battleMatched) {
 			battleMatched = false;
@@ -5100,16 +5102,24 @@ function triggerT80Cannon() {
 		}
 	  });
 	  
-	  // 清除並監聽房間中 "log" 子節點的更新
+	 // 監聽房間中 "log" 子節點的新日誌
 	  let logRef = roomRef.child("log");
 	  logRef.off("child_added");
 	  logRef.on("child_added", function(snapshot) {
 		let data = snapshot.val();
-		// 如果 data 為對象且包含 side 與 message 屬性，就根據這兩個屬性顯示
-		if (data && data.side && data.message) {
-		  appendBattleLogEntry(data.side, data.message);
+		if (data && data.sender && data.message) {
+		  let side = (data.sender === window.myUid) ? "self" : "enemy";
+		  appendBattleLogEntry(side, data.message);
+		  
+		  // 若對手觸發了事件並發送特定訊息，播放對手動畫
+		  if (side === "enemy") {
+			if (data.message.indexOf("T-80") !== -1) {
+			  playEnemyAnimation("T-80", data.message);
+			} else if (data.message.indexOf("BTR") !== -1) {
+			  playEnemyAnimation("BTR", data.message);
+			}
+		  }
 		} else {
-		  // 否則當作系統提示
 		  appendBattleLogEntry("system", data);
 		}
 	  });
@@ -5117,13 +5127,54 @@ function triggerT80Cannon() {
 
 
 
-	function pushBattleLog(message) {
-	  if (window.currentBattleRoom) {
-		let logRef = firebase.database().ref("battles")
-						  .child(window.currentBattleRoom)
-						  .child("log");
-		logRef.push(message);
+	function pushBattleLog(sender, message) {
+	  let logRef = firebase.database().ref("battles").child(window.currentBattleRoom).child("log");
+	  let senderValue = (sender === "system") ? "system" : document.getElementById("battleNickname").value.trim();
+	  logRef.push({ sender: senderValue, message: message });
+	}
+
+	// 根據對手款式來更新右側動畫窗口，顯示對應的 zombie_search 精靈圖
+	function updateEnemyAnimation(enemyStyle) {
+	  let enemyAnimContainer = document.getElementById("battleEnemyAnim");
+	  if (!enemyAnimContainer) return;
+	  
+	  let spriteImage;
+	  if (enemyStyle === "T-80") {
+		spriteImage = "images/zombie_search_t80.png";
+	  } else if (enemyStyle === "BTR") {
+		spriteImage = "images/zombie_search_btr.png";
+	  } else {
+		spriteImage = "images/zombie_search_default.png";
 	  }
+	  
+	  enemyAnimContainer.innerHTML = `<img src="${spriteImage}" alt="對手僵尸" style="max-width:100%;">`;
+	}
+	// 播放對手動畫效果，根據事件類型選擇對應動畫
+	function playEnemyAnimation(eventType, message) {
+	  let enemyAnimContainer = document.getElementById("battleEnemyAnim");
+	  if (!enemyAnimContainer) return;
+	  
+	  enemyAnimContainer.innerHTML = "";
+	  let animElem = document.createElement("div");
+	  
+	  if (eventType === "T-80") {
+		animElem.className = "enemy-animation t80-animation";
+	  } else if (eventType === "BTR") {
+		animElem.className = "enemy-animation btr-animation";
+	  }
+	  
+	  animElem.textContent = message;
+	  enemyAnimContainer.appendChild(animElem);
+	  
+	  setTimeout(function() {
+		// 重新更新為靜態精靈圖
+		let roomRef = firebase.database().ref("battles").child(window.currentBattleRoom);
+		roomRef.once("value").then(function(snapshot) {
+		  let data = snapshot.val();
+		  let enemyStyle = (data && data[window.enemyRole] && data[window.enemyRole].style) ? data[window.enemyRole].style : "";
+		  updateEnemyAnimation(enemyStyle);
+		});
+	  }, 3000);
 	}
 
 	// 修改“開始對戰”按鈕事件，令其調用 Firebase 對戰流程
