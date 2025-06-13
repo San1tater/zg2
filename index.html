@@ -5000,6 +5000,7 @@ function triggerT80Cannon() {
 
 
 	
+	// 假設這是進入房間的流程（非 joinBattleRoom 部分）：
 	function startBattleModeFirebase() {
 	  let pin = document.getElementById("battlePin").value.trim();
 	  if (pin === "") {
@@ -5007,11 +5008,11 @@ function triggerT80Cannon() {
 		return;
 	  }
 	  
-	  // 若輸入 "000"，啟用本地模擬模式（本地模擬有獨立觸發邏輯）
 	  if (pin === "000") {
+		// 本地模擬模式
 		battleMatched = true;
 		initBattleAnimation(true);
-		pushBattleLog("本地模擬對戰開始！");
+		pushBattleLog("system", "本地模擬對戰開始！");
 		startBattleTimer();
 		if (battleSpecialTimer) clearInterval(battleSpecialTimer);
 		battleSpecialTimer = setInterval(checkBattleBTREvent, 30000);
@@ -5020,72 +5021,80 @@ function triggerT80Cannon() {
 	  
 	  let battleRoomRef = firebase.database().ref("battles").child(pin);
 	  let currentUid = firebase.auth().currentUser ? firebase.auth().currentUser.uid : "userPlaceholder";
-	  
+
+	  // 使用 once("value") 檢查該房間的存在情況
 	  battleRoomRef.once("value").then(function(snapshot) {
 		let battleData = snapshot.val();
-		// 如果房間不存在，建立房間並設定 userA，但不啟動對戰
 		if (battleData === null) {
+		  // 房間不存在 → 設置 userA
 		  battleRoomRef.set({
 			userA: { uid: currentUid },
-			log: []
+			log: {}
 		  }).then(function() {
-			pushBattleLog("等待對戰對手加入...");
-			// 持續監聽直到 userB 加入
-			battleRoomRef.on("value", function(snap) {
-			  let data = snap.val();
-			  if (data && data.userB) {
-				battleRoomRef.off("value");
-				joinBattleRoom(pin, "userA");
-			  }
-			});
-		  });
-		} else {
-		  // 房間存在
-		  if (battleData.userA && battleData.userA.uid === currentUid) {
 			joinBattleRoom(pin, "userA");
-		  } else if (battleData.userB && battleData.userB.uid === currentUid) {
+		  });
+		} else if (battleData.userA && battleData.userA.uid === currentUid) {
+		  // 當前設備已經是 userA
+		  joinBattleRoom(pin, "userA");
+		} else if (!battleData.userB) {
+		  // 房間存在但沒有 userB，加入成爲 userB
+		  battleRoomRef.child("userB").set({ uid: currentUid }).then(function() {
 			joinBattleRoom(pin, "userB");
-		  } else if (!battleData.userB) {
-			battleRoomRef.child("userB").set({ uid: currentUid }).then(function() {
-			  joinBattleRoom(pin, "userB");
-			});
-		  } else {
-			alert("此戰局已滿！");
-		  }
+		  });
+		} else if (battleData.userB && battleData.userB.uid === currentUid) {
+		  // 當前設備已經是 userB
+		  joinBattleRoom(pin, "userB");
+		} else {
+		  alert("此戰局已滿！");
 		}
-	  }).catch(function(err) {
-		console.error(err);
 	  });
 	}
+
 
 	function joinBattleRoom(battleId, role) {
 	  console.log("加入戰局房間", battleId, "身份為", role);
 	  window.currentBattleRoom = battleId;
 	  window.battleRole = role;
-	  // 清除日誌監聽器以避免重複
-	  let logRef = firebase.database().ref("battles").child(battleId).child("log");
-	  logRef.off("child_added");
-	  logRef.on("child_added", function(snapshot) {
-		let logMsg = snapshot.val();
-		appendBattleLogEntry("system", logMsg);
+	  
+	  // 建立房間參考
+	  let roomRef = firebase.database().ref("battles").child(battleId);
+	  
+	  // 清除並持續監聽房間狀態
+	  roomRef.off("value");
+	  roomRef.on("value", function(snapshot) {
+		let data = snapshot.val();
+		if (data && data.userA && data.userB) {
+		  if (!battleMatched) {
+			battleMatched = true;
+			initBattleAnimation(true);
+			pushBattleLog("system", "雙方連線成功，對戰開始！");
+			startBattleTimer();
+			if (battleSpecialTimer) clearInterval(battleSpecialTimer);
+			battleSpecialTimer = setInterval(checkBattleBTREvent, 30000);
+		  }
+		} else {
+		  if (battleMatched) {
+			battleMatched = false;
+			pushBattleLog("system", "等待對戰對手加入...");
+		  }
+		}
 	  });
 	  
-	  // 檢查該房間是否已同時存在 userA 與 userB
-	  firebase.database().ref("battles").child(battleId).once("value").then(function(snap) {
-		let data = snap.val();
-		if (data && data.userA && data.userB) {
-		  battleMatched = true;
-		  initBattleAnimation(true);
-		  pushBattleLog("雙方連線成功，對戰開始！");
-		  startBattleTimer();
-		  if (battleSpecialTimer) clearInterval(battleSpecialTimer);
-		  battleSpecialTimer = setInterval(checkBattleBTREvent, 30000);
+	  // 清除並監聽房間中 "log" 子節點的更新
+	  let logRef = roomRef.child("log");
+	  logRef.off("child_added");
+	  logRef.on("child_added", function(snapshot) {
+		let data = snapshot.val();
+		// 如果 data 為對象且包含 side 與 message 屬性，就根據這兩個屬性顯示
+		if (data && data.side && data.message) {
+		  appendBattleLogEntry(data.side, data.message);
 		} else {
-		  battleMatched = false;
-		  pushBattleLog("等待對戰對手加入...");
+		  // 否則當作系統提示
+		  appendBattleLogEntry("system", data);
 		}
 	  });
 	}
+
 
 	function pushBattleLog(message) {
 	  if (window.currentBattleRoom) {
