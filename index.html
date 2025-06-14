@@ -2,7 +2,7 @@
 <html lang="zh">
 <head>
   <meta charset="UTF-8" name="viewport" content="width=device-width, initial-scale=0.45"/>
-  <title>末日控制中心 - 正式版v.1.083 conflict update</title>
+  <title>末日控制中心 - 正式版v.1.084 conflict update</title>
   <style>
     /* 彈窗系統 */
     .modal-overlay {
@@ -4905,6 +4905,7 @@ function triggerT80Cannon() {
 		resultCalculated = false;
 		totalSelfDamage = 0;
 		totalEnemyDamage = 0;
+		window.location.reload();
 	  }
 	}
 
@@ -5739,7 +5740,23 @@ function triggerT80Cannon() {
 	  const hitChance = Math.min(40 + centerLevel * 0.5, 85);
 
 	  const ourHit = (Math.random() * 100 < hitChance);
-	  const ourDamage = ourHit ? (Math.floor(Math.random() * 10) + 1) : 0;
+	  const baseOurDamage = ourHit ? (Math.floor(Math.random() * 10) + 1): 0;
+	   // 從 gameState 中查找僵尸指揮中心的等級
+	  let commandCenterLevel = 0;
+	  if (window.gameState && window.gameState.buildings) {
+		  const commandCenter = window.gameState.buildings.find(b => 
+			  b && b.type.toLowerCase() === "zombiecommandcenter"
+		  );
+		  if (commandCenter) {
+			  commandCenterLevel = commandCenter.level;
+		  }
+	  }
+
+	  // 每級1%的加成：倍率 = 1 + (僵尸指揮中心等級 × 0.01)
+	  const multiplierZ = 1 + commandCenterLevel * 0.01;
+
+	  // 最終傷害
+	  const ourDamage = Math.round(baseOurDamage * multiplierZ);
 	  if (ourHit) {
 		pushBattleLog(" 僵尸 打出了長點射(命中)，對方僵尸-" + ourDamage);
 		totalEnemyDamage += ourDamage;
@@ -6155,9 +6172,26 @@ function triggerT80Cannon() {
 	  const hitChanceVal = Math.min(baseHitChance + centerLevel * 0.5, 85);
 	  
 	  const hitRoll = Math.random() * 100;
-	  const damage = battleBTRType === "t80" ? 
-		Math.floor(Math.random() * 20) + 15 : // T-80伤害15-35
-		Math.floor(Math.random() * 15) + 10;  // BTR伤害10-25
+	  const baseDamage = battleBTRType === "t80" ? 
+		  Math.floor(Math.random() * 20) + 15 :  // T-80伤害15-35
+		  Math.floor(Math.random() * 15) + 10;     // BTR伤害10-25
+
+	  // 從全局 gameState.buildings 中查找拖拉機廠（armoredgarage）的等級
+	  let tractorLevel = 0;
+	  if (window.gameState && window.gameState.buildings) {
+		  const tractor = window.gameState.buildings.find(b => 
+			  b && b.type.toLowerCase() === "armoredgarage"
+		  );
+		  if (tractor) {
+		     tractorLevel = tractor.level;
+		  }
+	  }
+
+	  // 每級0.5%的加成：倍率 = 1 + (拖拉機廠等級 × 0.005)
+	  const multiplier = 1 + tractorLevel * 0.005;
+
+	  // 根據倍率調整最終傷害，並取整（四捨五入）
+	  const damage = Math.round(baseDamage * multiplier);
 	  
 	  const hitSuccess = hitRoll < hitChanceVal;
 	  
