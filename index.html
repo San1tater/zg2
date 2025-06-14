@@ -1236,16 +1236,16 @@
 	  display: flex;
 	  justify-content: center;
 	  align-items: center;
-	  gap: 10px;
+	  gap: 20px;
 	}
 
 	.battle-header input[type="text"] {
-	  padding: 5px;
+	  padding: 20px;
 	  font-size: 1rem;
 	}
 
 	.battle-header button {
-	  padding: 5px 10px;
+	  padding: 20px 40px;
 	  font-size: 1rem;
 	  cursor: pointer;
 	}
@@ -1288,7 +1288,7 @@
 
 	.battle-log {
 	  position: fixed;
-	  top: 220px;      /* 戰鬥日誌頂部緊貼 battle-container 底部 */
+	  top: 260px;      /* 戰鬥日誌頂部緊貼 battle-container 底部 */
 	  left: 0;
 	  width: 100%;
 	  height: calc(100vh - 220px);  /* 占滿剩餘高度 */
@@ -1317,7 +1317,9 @@
 	  font-weight: bold;
 	  margin: 4px 0;
 	}
-
+	#battleSelfAnim .zombie-search, #battleEnemyAnim .enemy-zombie-search  {
+	  top: 60%
+	}
 	
   </style>
 </head>
@@ -6256,15 +6258,6 @@ function triggerT80Cannon() {
 	  }, 4250);
 	}
 
-	
-	
-	
-	
-	
-	
-	
-	
-	
 	function handleBattleEvent(eventData) {
 	  // 忽略自己发送的事件
 	  if (eventData.senderRole === window.myRole) return;
