@@ -5344,13 +5344,13 @@ function triggerT80Cannon() {
 		if (remaining <= 0) {
 		  clearInterval(battleInterval);
 		  battleInterval = null;
+		  battleEnded = true;
 		  
 		  // 停止所有事件触发
 		  if (battleSpecialTimer) {
 			clearInterval(battleSpecialTimer);
 			battleSpecialTimer = null;
 		  }
-		  battleEnded = true;
 		  
 		  if (window.myRole === "userA" && !resultCalculated) {
 			calculateAndBroadcastBattleResult();
@@ -6207,8 +6207,9 @@ function triggerT80Cannon() {
 
 	// 7. 执行特殊攻击
 	function triggerBattleBTRSpecialAttack() {
+	  if (battleEnded) return;
 	  if (!battleBTRActive) return;
-	  
+	    
 	  const centerBuilding = gameState.buildings.find(b => 
 		b && b.type.toLowerCase() === "center"
 	  );
