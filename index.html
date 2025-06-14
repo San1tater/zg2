@@ -2,7 +2,7 @@
 <html lang="zh">
 <head>
   <meta charset="UTF-8" name="viewport" content="width=device-width, initial-scale=0.45"/>
-  <title>末日控制中心 - 正式版v.1.084 conflict update</title>
+  <title>末日控制中心 - 正式版v.1.085 conflict update</title>
   <style>
     /* 彈窗系統 */
     .modal-overlay {
@@ -4837,27 +4837,35 @@ function triggerT80Cannon() {
 	
 	const attackPhrases = {
 	  normal: [
-		"自信地打出一個長點射",
-		"使用單發點射，進行精確射擊",
-		"克制地打出兩個短點射",
-		"把槍舉過頭頂，亂射一通",
-		"調到全自動，進行壓制射擊"
+		"僵尸自信地打出一個長點射",
+		"僵尸使用單發點射，進行精確射擊",
+		"僵尸克制地打出兩個短點射",
+		"僵尸把槍舉過頭頂，亂射一通",
+		"僵尸調到全自動，進行壓制射擊"
 	  ],
 	  btr: [
-		"使用30mm高爆彈鏈[HE]，前出實施火力支援",
-		"使用30mm混合彈鏈[AP+HE+API]，對目標展開火力覆蓋",
-		"使用30mm對空彈鏈[API+HE]，對目標展開精準射擊",
-		"使用30mm穿甲彈鏈[AP]，對敵方掩體展開集中射擊"
+		"BTR-80A使用30mm高爆彈鏈[HE]，前出實施火力支援",
+		"BTR-80A使用30mm混合彈鏈[AP+HE+API]，對目標展開火力覆蓋",
+		"BTR-80A使用30mm對空彈鏈[API+HE]，對目標展開精準射擊",
+		"BTR-80A使用30mm穿甲彈鏈[AP]，對敵方掩體展開集中射擊"
 	  ],
 	  t80: [
-	    "使用12.7mm高射機槍[7n34]，對目標展開精確點射",
-		"使用125mm高爆彈[3OF26]，對開闊地目標展開射擊",
-		"使用125mm高爆彈[3OF26]，對掩體內目標展開射擊",
-		"使用125mm穿甲彈[3BM42]，對混凝土建築展開射擊",
-		"使用125mm破甲彈[BK-12]，對混凝土建築展開射擊"
+	    "T-80使用12.7mm高射機槍[7n34]，對目標展開精確點射",
+		"T-80使用125mm高爆彈[3OF26]，對開闊地目標展開射擊",
+		"T-80使用125mm高爆彈[3OF26]，對掩體內目標展開射擊",
+		"T-80使用125mm穿甲彈[3BM42]，對混凝土建築展開射擊",
+		"T-80使用125mm破甲彈[BK-12]，對混凝土建築展開射擊"
 	  ]
 	};
-
+	function getRandomPhrase(type) {
+	  let phrases = attackPhrases[type];
+	  if (!phrases || phrases.length === 0) {
+		// 沒有特定類型，返回一般攻擊的描述
+		phrases = attackPhrases.normal;
+	  }
+	  const index = Math.floor(Math.random() * phrases.length);
+	  return phrases[index];
+	}
 
 	// 修改後：進入對戰模式只初始化獨立對戰動畫
 	function enterBattleMode() {
@@ -5318,10 +5326,10 @@ function triggerT80Cannon() {
 	  const ourDamage = Math.round(baseOurDamage * multiplierZ);
 	  if (ourHit) {
 	    let phrase = getRandomPhrase("normal");
-		pushBattleLog("僵尸" + phrase + "（命中），對方僵尸-" + ourDamage);
+		pushBattleLog( phrase + "（命中），對方僵尸-" + ourDamage);
 		totalEnemyDamage += ourDamage;
 	  } else {
-		pushBattleLog("僵尸" + phrase + "（未命中）");
+		pushBattleLog( phrase + "（未命中）");
 	  }
 	}
 
@@ -5771,15 +5779,7 @@ function triggerT80Cannon() {
 	  updateResourceCounters();
 	}
 	
-	function getRandomPhrase(type) {
-	  let phrases = attackPhrases[type];
-	  if (!phrases || phrases.length === 0) {
-		// 沒有特定類型，返回一般攻擊的描述
-		phrases = attackPhrases.normal;
-	  }
-	  const index = Math.floor(Math.random() * phrases.length);
-	  return phrases[index];
-	}
+
 	function triggerBattleEvent() {
 	  if (!battleMatched) return;
 	  
@@ -5807,10 +5807,10 @@ function triggerT80Cannon() {
 	  const ourDamage = Math.round(baseOurDamage * multiplierZ);
 	  if (ourHit) {
 	    let phrase = getRandomPhrase("normal");
-		pushBattleLog("僵尸" + phrase + "（命中），對方僵尸-" + ourDamage);
+		pushBattleLog( phrase + "（命中），對方僵尸-" + ourDamage);
 		totalEnemyDamage += ourDamage;
 	  } else {
-		pushBattleLog("僵尸" + phrase + "（未命中）");
+		pushBattleLog( phrase + "（未命中）");
 	  }
 
 	}
@@ -6239,25 +6239,25 @@ function triggerT80Cannon() {
 	  if (hitSuccess) {
 	    totalEnemyDamage += damage;
 		
-	    let type = battleBTRType === "t80" ? "T-80" : "BTR-80A";
-	     // 從對應詞庫中獲取一個隨機短語
-	    let phrase = getRandomPhrase(type);
-	  
+	    let type = battleBTRType === "t80" ? "t80" : "btr";
+		  // 從對應詞庫中獲取一個隨機短語
+		  let phrase = getRandomPhrase(type);
+		  
 		  // 上傳攻擊日志，使用隨機短語來描述事件
-		  const attackMessage = `${phrase}（命中），對方僵尸-${damage}`;
+		  const attackMessage = `${phrase}，對方僵尸-${damage}`;
 		  pushBattleLog(attackMessage);
 
 		  // 如果是 T-80 事件，觸發開炮動畫
 		  if (battleBTRType === "t80") {
 			triggerBattleT80Cannon();
 		  }
-	  } else {
+		} else {
 		  // 未命中時也同樣隨機採用對應詞庫中的描述
-		  let type = battleBTRType === "t80" ? "T-80" : "BTR-80A";
+		  let type = battleBTRType === "t80" ? "t80" : "btr";
 		  let phrase = getRandomPhrase(type);
-		  const missMessage = `${phrase}（未命中）`;
+		  const missMessage = `${phrase}，但未命中`;
 		  pushBattleLog(missMessage);
-	  }
+		}
 	  
 	  // 上传攻击结果到Firebase
 	  uploadBattleBTRAttack({
