@@ -1312,7 +1312,7 @@
 	  margin: 4px 0;
 	}
 	
-	.log-entry.battle-msg-entry {
+	.log-entry.battle-system-entry {
 	  color: #ffd700;
 	  font-weight: bold;
 	  margin: 4px 0;
@@ -4828,11 +4828,16 @@ function triggerT80Cannon() {
 	let btrSpecialActive = false;
 	let totalEnemyDamage = 0;
 	let totalSelfDamage = 0;
+	let resultCalculated = false;
+	let resultData = null;
+	let battleEnded = false;
 	const battleDuration = 180; // 戰鬥時長 180 秒（3 分鐘）
 
 	// 修改後：進入對戰模式只初始化獨立對戰動畫
 	function enterBattleMode() {
 	  if (battleModeActive) return;
+	  totalSelfDamage = 0;
+	  totalEnemyDamage = 0;
 	  battleModeActive = true;
 	  battleMatched = false; // 初始狀態設定為未匹配
 	  document.getElementById("battleOverlay").style.display = "block";
@@ -4847,21 +4852,57 @@ function triggerT80Cannon() {
 
 
 	function exitBattleMode() {
-	  battleModeActive = false;
-	  battleMatched = false;
-	  document.getElementById("battleOverlay").style.display = "none";
-	  document.body.style.overflow = "";
-	  if (battleInterval) {
-		clearInterval(battleInterval);
-		battleInterval = null;
-	  }
-	  if (battleSpecialTimer) {
-		clearInterval(battleSpecialTimer);
-		battleSpecialTimer = null;
-	  }
-	  if (battleSpecialLogTimer) {
-		clearInterval(battleSpecialLogTimer);
-		battleSpecialLogTimer = null;
+	  if (battleModeActive) {
+		battleModeActive = false;
+		battleMatched = false;
+		document.getElementById("battleOverlay").style.display = "none";
+		document.body.style.overflow = "";
+		
+		// 清理计时器
+		if (battleInterval) {
+		  clearInterval(battleInterval);
+		  battleInterval = null;
+		}
+		if (battleSpecialTimer) {
+		  clearInterval(battleSpecialTimer);
+		  battleSpecialTimer = null;
+		}
+		if (battleSpecialLogTimer) {
+		  clearInterval(battleSpecialLogTimer);
+		  battleSpecialLogTimer = null;
+		}
+		
+		// 清理 Firebase 监听
+		if (window.currentBattleRoom) {
+		  const roomRef = firebase.database().ref("battles").child(window.currentBattleRoom);
+		  
+		  // 移除用户
+		  if (window.myRole === "userA") {
+			roomRef.child("userA").remove();
+		  } else if (window.myRole === "userB") {
+			roomRef.child("userB").remove();
+		  }
+		  
+		  // 检查房间是否为空
+		  roomRef.once("value").then(snapshot => {
+			const data = snapshot.val();
+			if ((!data.userA || !data.userA.uid) && (!data.userB || !data.userB.uid)) {
+			  // 房间为空，删除整个房间
+			  roomRef.remove();
+			}
+		  });
+		  
+		  // 移除结果监听
+		  roomRef.child("result").off();
+		}
+		
+		// 重置变量
+		window.currentBattleRoom = null;
+		window.myRole = null;
+		resultData = null;
+		resultCalculated = false;
+		totalSelfDamage = 0;
+		totalEnemyDamage = 0;
 	  }
 	}
 
@@ -4951,55 +4992,78 @@ function triggerT80Cannon() {
 	  updateBattleZombieSearchSprite();
 	  
 	}
+	function handleIncomingDamage(damage) {
+	  totalSelfDamage += damage;
+	}
 
-
-
-	// 戰鬥日誌輔助函數：根據傳入 side 參數決定使用何種樣式以及是否顯示暱稱標記
-	function appendBattleLogEntry(side, message) {
-	  if (typeof message !== "string") {
-	    message = String(message);
-	  }
-	  if (typeof side !== "string" || (side !== "enemy" && side !== "self")) {
-		if (message.indexOf("enemy:") === 0) {
-		  side = "enemy";
-		  message = message.substring(6);
-		} else if (message.indexOf("self:") === 0) {
-		  side = "self";
-		  message = message.substring(5);
-		} else {
-		  side = "msg";
-		}
-	  }
-	  const logContent = document.getElementById("battleLogContent");
-	  if (!logContent) {
-		console.error("未找到對戰日誌內容容器");
+	// 修改 appendBattleLogEntry 函数
+	function appendBattleLogEntry(messageObj) {
+	  // 调试信息
+	  console.log("处理日志条目:", messageObj);
+	  
+	  // 确保 messageObj 是对象
+	  if (typeof messageObj !== 'object' || messageObj === null) {
+		console.error("无效的日志对象:", messageObj);
 		return;
 	  }
 	  
-	  const maxLogs = 50;
-	  while (logContent.childElementCount >= maxLogs) {
-		logContent.removeChild(logContent.firstChild);
+	  // 处理系统消息
+	  if (messageObj.senderRole === "system") {
+		const entry = document.createElement("div");
+		entry.className = "log-entry battle-system-entry";
+		entry.textContent = messageObj.message || "系统消息";
+		
+		const logContainer = document.getElementById("battleLogContent");
+		if (logContainer) {
+		  logContainer.appendChild(entry);
+		  logContainer.scrollTop = logContainer.scrollHeight;
+		}
+		return;
 	  }
+	  
+	  // 处理普通消息
+	  const sender = messageObj.sender || "未知";
+	  const msg = messageObj.message || "未知"; // 确保 msg 被定义
+	  
+	  // 组合显示文本
+	  const displayText = `${sender}派遣的${msg}`;
+	  
 	  const entry = document.createElement("div");
 	  
-	  // 僅依據傳入的 side 區分
-	  if (side === "self") {
-	  entry.className = "log-entry battle-self-entry";
-	  let nickname = document.getElementById("battleNickname").value || "A";
-	  entry.textContent = nickname + "派遣的" + message;
-	} else if (side === "enemy") {
-	  entry.className = "log-entry battle-enemy-entry";
-	  // 如果全局保存了敵手的暱稱，就用該暱稱，否則默認 "B"
-	  let enemyNickname = window.enemyNickname || "B";
-	  entry.textContent = enemyNickname + "派遣的" + message;
-	} else {
-	  entry.className = "log-entry battle-msg-entry";
-	  entry.textContent = message;
-	}
+	  // 根据 senderRole 与本地角色区分样式
+	  if (messageObj.senderRole === window.myRole) {
+		entry.className = "log-entry battle-self-entry";
+	  } else if (messageObj.senderRole) {
+		entry.className = "log-entry battle-enemy-entry";
+	  } else {
+		entry.className = "log-entry battle-system-entry";
+	  }
 	  
-	  logContent.appendChild(entry);
-	  logContent.scrollTop = logContent.scrollHeight;
+	  entry.textContent = displayText;
+	  
+	  const logContainer = document.getElementById("battleLogContent");
+	  if (logContainer) {
+		logContainer.appendChild(entry);
+		logContainer.scrollTop = logContainer.scrollHeight;
+	  }
+	  
+	  // 解析伤害信息 - 现在 msg 已经被定义
+	  if (messageObj.senderRole && messageObj.senderRole !== window.myRole) {
+		const damageMatch = msg.match(/對方僵尸-(\d+)/);
+		if (damageMatch) {
+		  const damage = parseInt(damageMatch[1]);
+		  handleIncomingDamage(damage);
+		}
+	  }
 	}
+
+	// 添加敌方伤害处理函数
+	function handleIncomingDamage(damage) {
+	  totalSelfDamage += damage;
+	  console.log(`收到敌方伤害: ${damage}, 累计己方伤害: ${totalSelfDamage}`);
+	}
+
+
 
 	
 	// 當頁面加載完成後，初始化使用者 UID（直接使用暱稱）
@@ -5033,7 +5097,7 @@ function triggerT80Cannon() {
 		// 本地模擬模式
 		battleMatched = true;
 		initBattleAnimation(true);
-		pushBattleLog("system", "本地模擬對戰開始！");
+		pushBattleLog("本地模擬對戰開始！");
 		startBattleTimer();
 		if (battleSpecialTimer) clearInterval(battleSpecialTimer);
 		battleSpecialTimer = setInterval(checkBattleBTREvent, 30000);
@@ -5069,12 +5133,29 @@ function triggerT80Cannon() {
 	  });
 	}
 
-
-	function joinBattleRoom(battleId, role) {
-	  console.log("加入戰局房間", battleId, "身份為", role);
-	  window.currentBattleRoom = battleId;
-	  window.battleRole = role;
+	// 添加系统消息推送函数
+	function pushSystemMessage(message) {
+	  if (!window.currentBattleRoom) return;
 	  
+	  const data = {
+		sender: "系統",
+		senderRole: "system",
+		message: message
+	  };
+	  
+	  const logRef = firebase.database().ref("battles")
+							.child(window.currentBattleRoom)
+							.child("log");
+	  logRef.push(data);
+	}
+	function joinBattleRoom(battleId, roleFromServer) {
+	  window.currentBattleRoom = battleId;
+	  window.myRole = roleFromServer; 
+	  window.myUid = document.getElementById("battleNickname").value.trim();
+	  console.log("加入戰場成功，角色：", window.myRole, "暱稱：", window.myUid);
+	   // 清理旧结果
+	  resultData = null;
+	  resultCalculated = false;
 	  
 	  // 建立房間參考
 	  let roomRef = firebase.database().ref("battles").child(battleId);
@@ -5087,44 +5168,88 @@ function triggerT80Cannon() {
 		  if (!battleMatched) {
 			battleMatched = true;
 			initBattleAnimation(true);
-			pushBattleLog("system", "雙方連線成功，對戰開始！");
-			startBattleTimer();
+			pushBattleLog("雙方連線成功，對戰開始！");
+			startBattleTimerFirebase();
 			if (battleSpecialTimer) clearInterval(battleSpecialTimer);
 			battleSpecialTimer = setInterval(checkBattleBTREvent, 30000);
 		  }
 		} else {
 		  if (battleMatched) {
 			battleMatched = false;
-			pushBattleLog("system", "等待對戰對手加入...");
+			pushBattleLog("等待對戰對手加入...");
 		  }
 		}
 	  });
 	  
-	  // 清除並監聽房間中 "log" 子節點的更新
 	  let logRef = roomRef.child("log");
 	  logRef.off("child_added");
 	  logRef.on("child_added", function(snapshot) {
-		let data = snapshot.val();
-		// 如果 data 為對象且包含 side 與 message 屬性，就根據這兩個屬性顯示
-		if (data && data.side && data.message) {
-		  appendBattleLogEntry(data.side, data.message);
-		} else {
-		  // 否則當作系統提示
-		  appendBattleLogEntry("system", data);
+		try {
+		  let data = snapshot.val();
+		  console.log("收到日志:", data);
+		  
+		  // 确保数据是对象
+		  if (data && typeof data === 'object') {
+			appendBattleLogEntry(data);
+		  } else {
+			// 处理旧格式或无效数据
+			appendBattleLogEntry({
+			  sender: "系統",
+			  senderRole: "system",
+			  message: data || "未知消息"
+			});
+		  }
+		} catch (e) {
+		  console.error("处理日志错误:", e);
 		}
 	  });
+	  listenForZombieStatus();
+	  listenForAdjustmentCommand();
+	  
+	  // 添加结果监听
+	  const resultRef = roomRef.child("result");
+	  resultRef.off("value");
+	  resultRef.on("value", snapshot => {
+		const result = snapshot.val();
+		if (result && !resultData) {
+		  resultData = result;
+		  displayBattleResult(result);
+		}
+	  });
+	  startStatusCheck();
+
 	}
 
 
 
 	function pushBattleLog(message) {
+	  if (!window.myRole) {
+		console.error("window.myRole 未被設定，無法上傳對戰訊息");
+		return;
+	  }
+	  
+	  const data = {
+		sender: window.myUid || "未知", // 使用昵称
+		senderRole: window.myRole,      // "userA" 或 "userB"
+		message: message                // 攻击消息
+	  };
+	  
+	  console.log("上傳對戰訊息：", data);
+	  
 	  if (window.currentBattleRoom) {
-		let logRef = firebase.database().ref("battles")
-						  .child(window.currentBattleRoom)
-						  .child("log");
-		logRef.push(message);
+		try {
+		  const logRef = firebase.database().ref("battles")
+								.child(window.currentBattleRoom)
+								.child("log");
+		  logRef.push(data)
+			.then(() => console.log("日志上传成功"))
+			.catch(err => console.error("日志上传失败:", err));
+		} catch (e) {
+		  console.error("日志上传异常:", e);
+		}
 	  }
 	}
+
 
 	// 修改“開始對戰”按鈕事件，令其調用 Firebase 對戰流程
 	document.getElementById("battleStartBtn").addEventListener("click", function(){
@@ -5134,47 +5259,332 @@ function triggerT80Cannon() {
 
 	// 使用 Firebase 同步對戰日誌信息的對戰事件
 	function triggerBattleEventFirebase() {
-	  // 根據中央基地等級與隨機數計算命中率（基礎 40%，每級加 0.5%，上限 85%）
-	  const centerBuilding = gameState.buildings.find(b => b && b.type.toLowerCase() === "center");
-	  const centerLevel = centerBuilding ? centerBuilding.level : 1;
-	  const baseHitChance = 40;
-	  const hitChanceVal = Math.min(baseHitChance + centerLevel * 0.5, 85);
-	  let ourHit = (Math.random() * 100 < hitChanceVal);
-	  let ourDamage = ourHit ? (Math.floor(Math.random() * 10) + 1) : 0;
-	  if (ourHit) {
-		pushBattleLog("self: 僵尸 進行了長點射(命中)，對方僵尸-" + ourDamage);
-		totalEnemyDamage += ourDamage;
-	  } else {
-		pushBattleLog("self: 僵尸 進行了長點射（未命中）");
+	  if (battleEnded || !battleModeActive) {
+		return;
 	  }
-
-	  let enemyHit = (Math.random() * 100 < hitChanceVal);
-	  let enemyDamage = enemyHit ? (Math.floor(Math.random() * 10) + 1) : 0;
-	  if (enemyHit) {
-		pushBattleLog("enemy: 僵尸 進行了長點射(命中)，對方僵尸-" + enemyDamage);
-		totalSelfDamage += enemyDamage;
+	  const centerBuilding = gameState.buildings.find(b => 
+		b && b.type.toLowerCase() === "center"
+	  );
+	  const centerLevel = centerBuilding ? centerBuilding.level : 1;
+	  const hitChance = Math.min(40 + centerLevel * 0.5, 85);
+	  
+	  // 模拟我方攻击
+	  const ourHit = (Math.random() * 100 < hitChance);
+	  const ourDamage = ourHit ? (Math.floor(Math.random() * 10) + 1) : 0;
+	  
+	  if (ourHit) {
+		totalEnemyDamage += ourDamage;
+		pushBattleLog(`僵尸打出了長點射(命中)，對方僵尸-${ourDamage}`); // 确保格式一致
 	  } else {
-		pushBattleLog("enemy: 僵尸 進行了長點射（未命中）");
+		pushBattleLog("僵尸打出了長點射（未命中）");
 	  }
 	}
 
-	// 修改戰鬥計時器函數，每 5 秒呼叫 triggerBattleEventFirebase 並判定對戰是否結束
+
 	function startBattleTimerFirebase() {
 	  let remaining = battleDuration;
-	  battleInterval = setInterval(function(){
+	  battleInterval = setInterval(function() {
 		if (remaining <= 0) {
 		  clearInterval(battleInterval);
 		  battleInterval = null;
-		  adjustBattleOutcome();
-		  endBattleFirebase();
+		  
+		  // 停止所有事件触发
+		  if (battleSpecialTimer) {
+			clearInterval(battleSpecialTimer);
+			battleSpecialTimer = null;
+		  }
+		  battleEnded = true;
+		  
+		  if (window.myRole === "userA" && !resultCalculated) {
+			calculateAndBroadcastBattleResult();
+		  }
+		  // 所有玩家监听结果
+		  listenForBattleResult();
+		  
+		  // 添加对战结束提示
+		  pushSystemMessage("戰鬥結束！戰鬥總結生成中");
 		} else {
 		  triggerBattleEventFirebase();
 		  remaining -= 5;
 		}
 	  }, 5000);
 	}
+	function clearPendingEvents() {
+	  // 清除所有计划中的事件
+	  if (window.pendingEvents) {
+		window.pendingEvents.forEach(timeoutId => {
+		  clearTimeout(timeoutId);
+		});
+		window.pendingEvents = [];
+	  }
+	}
 
-	// 當對戰結束時，關閉 Firebase 日誌監聽並退出對戰模式
+	function calculateAndBroadcastBattleResult() {
+	  // 确保只计算一次
+	  if (resultCalculated) return;
+	  resultCalculated = true;
+	  
+	  // 获取房间数据
+	  const roomRef = firebase.database().ref("battles").child(window.currentBattleRoom);
+	  
+	  roomRef.once("value").then(snapshot => {
+		const roomData = snapshot.val();
+		if (!roomData || !roomData.userA || !roomData.userB) return;
+		
+		// 获取双方UID
+		const userAUid = roomData.userA.uid;
+		const userBUid = roomData.userB.uid;
+		
+		// 获取双方伤害数据
+		const logEntries = Object.values(roomData.log || {});
+		
+		// 计算双方伤害
+		let damageA = 0;
+		let damageB = 0;
+		
+		logEntries.forEach(entry => {
+		  if (entry.senderRole === "userA") {
+			const damageMatch = entry.message.match(/對方僵尸-(\d+)/);
+			if (damageMatch) damageB += parseInt(damageMatch[1]);
+		  } else if (entry.senderRole === "userB") {
+			const damageMatch = entry.message.match(/對方僵尸-(\d+)/);
+			if (damageMatch) damageA += parseInt(damageMatch[1]);
+		  }
+		});
+		
+		// 判定胜负
+		let winnerUid = null;
+		let loserUid = null;
+		let isDraw = false;
+		
+		if (damageA < damageB) {
+		  winnerUid = userAUid;
+		  loserUid = userBUid;
+		} else if (damageA > damageB) {
+		  winnerUid = userBUid;
+		  loserUid = userAUid;
+		} else {
+		  isDraw = true; // 平局
+		}
+		
+		// 创建结果对象
+		const result = {
+		  userA: userAUid,
+		  userB: userBUid,
+		  damageA: damageA,
+		  damageB: damageB,
+		  isDraw: isDraw, // 添加平局标志
+		  timestamp: Date.now()
+		};
+		// 只在有胜负时设置胜败方
+		if (!isDraw) {
+		  result.winner = winnerUid;
+		  result.loser = loserUid;
+		}
+		
+		// 保存结果到Firebase
+		roomRef.child("result").set(result)
+			.then(() => console.log("[userA] 战斗结果已广播"))
+			.catch(err => console.error("[userA] 结果广播失败:", err));
+		
+		// 请求双方上传僵尸状态
+		const myStatus = {
+		  uid: window.myUid,
+		  totalZombies: gameState.totalZombies,
+		  allocations: {...gameState.allocations}
+		};
+		
+		roomRef.child("status").child(window.myRole).set(myStatus);
+		
+		// 通知对方也上传状态
+		pushSystemMessage("戰鬥結束，自動上傳僵尸狀態...");
+	  });
+	}
+	// 添加僵尸状态请求函数
+	function requestZombieStatus() {
+	  if (!window.currentBattleRoom) return;
+	  
+	  // 上传自己的僵尸状态
+	  const myStatus = {
+		uid: window.myUid,
+		totalZombies: gameState.totalZombies,
+		allocations: {...gameState.allocations},
+		timestamp: Date.now()
+	  };
+	  
+	  const statusRef = firebase.database().ref("battles")
+		.child(window.currentBattleRoom)
+		.child("status")
+		.child(window.myRole);
+	  
+	  statusRef.transaction(current => {
+		return myStatus; // 直接替换为新数据
+	  }, (error, committed) => {
+		if (error) {
+		  console.error(`[${window.myRole}] 状态上传事务失败:`, error);
+		} else if (committed) {
+		  console.log(`[${window.myRole}] 状态上传成功`);
+		} else {
+		  console.log(`[${window.myRole}] 状态上传未提交`);
+		}
+	  }, false); 
+	}
+
+	// 添加僵尸状态监听
+	function listenForZombieStatus() {
+	  if (!window.currentBattleRoom) return;
+	  
+	  const statusRef = firebase.database().ref("battles")
+		.child(window.currentBattleRoom)
+		.child("status");
+	  
+	  // 清除旧监听
+	  statusRef.off("value");
+	  
+	  statusRef.on("value", snapshot => {
+		const statusData = snapshot.val();
+		console.log("狀態節點更新:", statusData);
+		
+		// +++ 更健壮的状态检查 +++
+		const userAReady = statusData && statusData.userA && statusData.userA.uid;
+		const userBReady = statusData && statusData.userB && statusData.userB.uid;
+		
+		if (userAReady && userBReady) {
+		  console.log("雙方狀態已就緒");
+		  pushSystemMessage("雙方狀態已接收，開始計算資源調整");
+		  
+		  // 只有 userA 计算资源调整
+		  if (window.myRole === "userA") {
+			calculateResourceAdjustment(statusData);
+		  }
+		} else {
+		  // 显示当前状态
+		  let statusMessage = "等待狀態: ";
+		  statusMessage += userAReady ? "A✓ " : "A✗ ";
+		  statusMessage += userBReady ? "B✓" : "B✗";
+		  
+		  pushSystemMessage(statusMessage);
+		  
+		  // 如果是userB没准备好且我是userA，尝试重新请求
+		  if (!userBReady && window.myRole === "userA") {
+			pushSystemMessage("請求userB重新上傳狀態...");
+			const logRef = firebase.database().ref("battles")
+			  .child(window.currentBattleRoom)
+			  .child("log");
+			  
+			logRef.push({
+			  sender: "系统",
+			  senderRole: "system",
+			  message: "userB请重新上传僵尸状态"
+			});
+		  }
+		}
+	  });
+	}
+	function startStatusCheck() {
+	  if (statusCheckInterval) clearInterval(statusCheckInterval);
+	  
+	  statusCheckInterval = setInterval(() => {
+		if (!window.currentBattleRoom) return;
+		
+		const statusRef = firebase.database().ref("battles")
+		  .child(window.currentBattleRoom)
+		  .child("status");
+		
+		statusRef.once("value").then(snapshot => {
+		  const statusData = snapshot.val();
+		  
+		  // 如果userB状态不存在，且我是userB，立即上传
+		  if (window.myRole === "userB" && 
+			  (!statusData || !statusData.userB || !statusData.userB.uid)) {
+			console.log("userB狀態缺失，重新上傳");
+			requestZombieStatus();
+		  }
+		});
+	  }, 5000); // 每5秒检查一次
+	}
+
+	// 添加资源调整计算函数
+	function calculateResourceAdjustment(statusData) {
+	  // 确保是userA执行计算
+	  if (window.myRole !== "userA") return;
+	  
+	  // 获取结果数据
+	  const resultRef = firebase.database().ref("battles")
+		.child(window.currentBattleRoom)
+		.child("result");
+	  
+	  resultRef.once("value").then(snapshot => {
+		const result = snapshot.val();
+		if (!result || !result.winner) return;
+		
+		// 获取双方状态
+		const winnerStatus = result.winner === statusData.userA.uid ? statusData.userA : statusData.userB;
+		const loserStatus = result.loser === statusData.userA.uid ? statusData.userA : statusData.userB;
+		
+		if (!result.winner) {
+			console.log("平局，无需资源调整");
+			pushSystemMessage("平局，双方资源保持不变");
+			return;
+		  }
+		// 计算调整比例（10%-20%）
+		const adjustmentFraction = 0.1 + Math.random() * 0.1;
+		const adjustmentAmount = Math.floor(loserStatus.totalZombies * adjustmentFraction);
+		
+		// 计算赢家分配比例（探索:农业:回收:研究 = 4:4:1:1）
+		const winRatios = { exploration: 4, farming: 4, recycling: 1, research: 1 };
+		const winTotalRatio = 10;
+		
+		// 计算赢家各部门增加量
+		const winnerAdjustment = {};
+		for (const department in winRatios) {
+		  const ratio = winRatios[department];
+		  winnerAdjustment[department] = Math.floor(adjustmentAmount * (ratio / winTotalRatio));
+		}
+		
+		// 计算输家各部门扣除量（平均扣除）
+		const departments = Object.keys(loserStatus.allocations);
+		const deductionPerDept = Math.floor(adjustmentAmount / departments.length);
+		const loserAdjustment = {};
+		
+		for (const department of departments) {
+		  loserAdjustment[department] = deductionPerDept;
+		}
+		
+		// 创建调整指令
+		const adjustmentCommand = {
+		  winner: result.winner,
+		  loser: result.loser,
+		  adjustmentAmount: adjustmentAmount,
+		  winnerAdjustment: winnerAdjustment,
+		  loserAdjustment: loserAdjustment
+		};
+		
+		// 广播调整指令
+		const commandRef = firebase.database().ref("battles")
+		  .child(window.currentBattleRoom)
+		  .child("command");
+		
+		commandRef.set(adjustmentCommand);
+	  });
+	}
+	// 添加调整指令监听
+	function listenForAdjustmentCommand() {
+	  if (!window.currentBattleRoom) return;
+	  
+	  const commandRef = firebase.database().ref("battles")
+		.child(window.currentBattleRoom)
+		.child("command");
+	  
+	  commandRef.off("value");
+	  commandRef.on("value", snapshot => {
+		const command = snapshot.val();
+		if (command) {
+		  applyResourceAdjustment(command);
+		}
+	  });
+	}
+
 	function endBattleFirebase() {
 	  if (window.currentBattleRoom) {
 		firebase.database().ref("battles")
@@ -5182,25 +5592,150 @@ function triggerT80Cannon() {
 		  .child("log")
 		  .off();
 	  }
-	  exitBattleMode();
 	}
-	
-	
+
 	function checkBattleBTREvent() {
-	  if (!battleModeActive) return;
-	  
+	  if (battleEnded || !battleModeActive) {
+		return;
+	  }
 	  const garages = gameState.buildings.filter(b =>
 		b && b.type.toLowerCase() === "armoredgarage"
 	  );
 	  if (garages.length > 0) {
-		const garageInfo = BUILDINGS.armoredGarage.getUpgradeInfo(garages[0].level);
+		const garageInfo = BUILDINGS.armoredgarage.getUpgradeInfo(garages[0].level);
 		if (Math.random() < garageInfo.effect.btrChance) {
-		  // 只呼叫後者的動畫與命中邏輯，不再重複日誌產生部分
+		  // 呼叫後者函數，該函數中同樣只使用 pushBattleLog 上傳自己發生的事件
 		  triggerTractorBattleAnimation();
 		}
 	  }
 	}
 
+	function listenForBattleResult() {
+	  if (!window.currentBattleRoom) return;
+	  
+	  const resultRef = firebase.database().ref("battles")
+		.child(window.currentBattleRoom)
+		.child("result");
+	  resultRef.off("value");
+	  
+	  resultRef.on("value", snapshot => {
+		const result = snapshot.val();
+		if (result && !resultData) {
+		  resultData = result;
+		  displayBattleResult(result);
+		  
+		 // +++ 确保所有玩家都上传状态 +++
+		  console.log(`[${window.myRole}] 收到戰鬥結果，開始上傳僵尸狀態`);
+		  
+		  const myStatus = {
+			uid: window.myUid,
+			totalZombies: gameState.totalZombies,
+			allocations: {...gameState.allocations}
+		  };
+		  
+		  // +++ 使用统一路径格式 +++
+		  const statusRef = firebase.database().ref("battles")
+			.child(window.currentBattleRoom)
+			.child("status")
+			.child(window.myRole); // 直接存储在 userA/userB 下
+		  
+		  statusRef.set(myStatus)
+			.then(() => {
+			  console.log(`[${window.myRole}] 狀態上傳失敗`);
+			  pushSystemMessage(`狀態已上傳: ${gameState.totalZombies} 僵尸`);
+			})
+			.catch(error => {
+			  console.error(`[${window.myRole}] 狀態上傳失敗:`, error);
+			  pushSystemMessage("狀態上傳失敗，請檢查網絡連接");
+			  setTimeout(() => statusRef.set(myStatus), 2000);
+			});
+		}
+	  });
+	}
+
+	// 添加结果显示函数
+	function displayBattleResult(result) {
+	  if (!result) return;
+	  
+	  // 显示伤害统计
+	  const damageMessage = `戰鬥報告：
+		${result.userA} 擊斃: ${result.damageB} 名僵尸
+		${result.userB} 擊斃: ${result.damageA} 名僵尸`;
+	  
+	  pushSystemMessage(damageMessage);
+	  
+	  // +++ 处理平局情况 +++
+	  if (result.isDraw) {
+		pushSystemMessage("最終結果：平手");
+	  } else if (result.winner) {
+		const winnerName = result.winner === result.userA ? result.userA : result.userB;
+		const loserName = result.winner === result.userA ? result.userB : result.userA;
+		
+		const resultMessage = `最終結果：
+		  ${result.winner} 勝利
+		  ${result.loser} 失敗`;
+		
+		pushSystemMessage(resultMessage);
+	  }
+	}
+	function applyResourceAdjustment(command) {
+	  // 确定当前玩家身份
+	  const isWinner = window.myUid === command.winner;
+	  const isLoser = window.myUid === command.loser;
+	  
+	  if (!command.winner) {
+		pushSystemMessage("平局，无资源调整");
+		return;
+	  }
+	  
+	  // 应用调整
+	  if (isWinner) {
+		// 赢家：按比例增加各部门僵尸
+		for (const department in command.winnerAdjustment) {
+		  const amount = command.winnerAdjustment[department];
+		  gameState.allocations[department] += amount;
+		  gameState.totalZombies += amount;
+		}
+		
+		// 显示调整信息
+		const adjustmentMessage = `勝方掠奪量（${window.myUid}）：
+		  探索部門 +${command.winnerAdjustment.exploration || 0}
+		  農業部門 +${command.winnerAdjustment.farming || 0}
+		  回收部門 +${command.winnerAdjustment.recycling || 0}
+		  研究部門 +${command.winnerAdjustment.research || 0}
+		  總計 +${command.adjustmentAmount}隻僵尸`;
+		
+		pushSystemMessage(adjustmentMessage);
+	  } 
+	  else if (isLoser) {
+		// 输家：平均扣除各部门僵尸
+		for (const department in command.loserAdjustment) {
+		  const amount = command.loserAdjustment[department];
+		  // 确保不超过当前数量
+		  const deduction = Math.min(amount, gameState.allocations[department] || 0);
+		  gameState.allocations[department] -= deduction;
+		  gameState.totalZombies -= deduction;
+		}
+		
+		// 显示调整信息
+		const adjustmentMessage = `敗方損失量（${window.myUid}）：
+		  探索部門 -${command.loserAdjustment.exploration || 0}
+		  農業部門 -${command.loserAdjustment.farming || 0}
+		  回收部門 -${command.loserAdjustment.recycling || 0}
+		  研究部門 -${command.loserAdjustment.research || 0}
+		  總計 -${command.adjustmentAmount}隻僵尸`;
+		
+		pushSystemMessage(adjustmentMessage);
+	  }
+	  
+	  // 保存游戏状态
+	  saveGameState();
+	  
+	  // 更新UI
+	  updateResourceCounters();
+	}
+	
+	
 	function triggerTractorBattleAnimation() {
 	  const hasTractor = gameState.buildings.some(function(b) {
 		return b && b.type.toLowerCase() === "armoredgarage";
@@ -5277,9 +5812,9 @@ function triggerT80Cannon() {
 	  container.appendChild(wrapper);
 	  
 	  if (useT80) {
-		pushBattleLog("self: T-80進場，開始火力支援判定。");
+		pushBattleLog(" T-80進場，開始火力支援判定。");
 	  } else {
-		pushBattleLog("self: BTR-80A進場，開始掩護射擊判定。");
+		pushBattleLog(" BTR-80A進場，開始掩護射擊判定。");
 	  }
 	  
 	  const centerBuilding = gameState.buildings.find(b => b && b.type.toLowerCase() === "center");
@@ -5291,20 +5826,22 @@ function triggerT80Cannon() {
 	  let damage = Math.floor(Math.random() * 20) + 1;
 	  let hitSuccess = hitRoll < hitChanceVal;
 	  
-	  if (hitSuccess) {
+	   if (hitSuccess) {
+		totalEnemyDamage += damage;
+    
 		if (useT80) {
-		  pushBattleLog("self: T-80 實施火力支援（命中），對方僵尸-" + damage);
+		  pushBattleLog(`T-80實施火力支援（命中），對方僵尸-${damage}`); // 确保格式一致
 		} else {
-		  pushBattleLog("self: BTR-80A 實施掩護射擊（命中），對方僵尸-" + damage);
+		  pushBattleLog(`BTR-80A實施掩護射擊（命中），對方僵尸-${damage}`); // 确保格式一致
 		}
 	  } else {
 		if (useT80) {
-		  pushBattleLog("self: T-80 實施火力支援（未命中）");
+		  pushBattleLog("T-80實施火力支援（未命中）");
 		} else {
-		  pushBattleLog("self: BTR-80A 實施掩護射擊（未命中）");
+		  pushBattleLog("BTR-80A實施掩護射擊（未命中）");
 		}
 	  }
-	  
+  
 	  isBTRActive = true;
 	  setTimeout(() => { isBTRActive = false; }, 10000);
 	  setTimeout(() => {
@@ -5322,6 +5859,22 @@ function triggerT80Cannon() {
 		startT80IdleAnimation(spriteElem);
 		setTimeout(() => { triggerT80Cannon(); }, 1000);
 	  }
+	   const eventData = {
+		type: useT80 ? "t80" : "btr",
+		damage: damage,
+		hit: hitSuccess,
+		timestamp: Date.now(),
+		senderRole: window.myRole  // 添加发送者角色
+	  };
+	  
+	  // 上传到专门的事件节点
+	  if (window.currentBattleRoom) {
+		const eventRef = firebase.database().ref("battles")
+		  .child(window.currentBattleRoom)
+		  .child("events");
+		
+		eventRef.push(eventData);
+	  }
 	}
 
 	function triggerBattleEvent() {
@@ -5334,30 +5887,76 @@ function triggerT80Cannon() {
 	  const ourHit = (Math.random() * 100 < hitChance);
 	  const ourDamage = ourHit ? (Math.floor(Math.random() * 10) + 1) : 0;
 	  if (ourHit) {
-		pushBattleLog("self: 僵尸 進行了長點射(命中)，對方僵尸-" + ourDamage);
+		pushBattleLog(" 僵尸 打出了長點射(命中)，對方僵尸-" + ourDamage);
 		totalEnemyDamage += ourDamage;
 	  } else {
-		pushBattleLog("self: 僵尸 進行了長點射（未命中）");
+		pushBattleLog(" 僵尸 打出了長點射（未命中）");
 	  }
 
 	  const enemyHit = (Math.random() * 100 < hitChance);
 	  const enemyDamage = enemyHit ? (Math.floor(Math.random() * 10) + 1) : 0;
 	  if (enemyHit) {
-		pushBattleLog("enemy: 僵尸 進行了長點射(命中)，對方僵尸-" + enemyDamage);
+		pushBattleLog(" 僵尸 打出了長點射(命中)，對方僵尸-" + enemyDamage);
 		totalSelfDamage += enemyDamage;
 	  } else {
-		pushBattleLog("enemy: 僵尸 進行了長點射（未命中）");
+		pushBattleLog(" 僵尸 打出了長點射（未命中）");
+	  }
+	}
+	
+	function handleBattleEvent(eventData) {
+	  // 忽略自己发送的事件
+	  if (eventData.senderRole === window.myRole) return;
+	  
+	  // 根据事件类型处理
+	  switch (eventData.type) {
+		case "btr":
+		case "t80":
+		  // 在右侧显示敌方动画
+		  showEnemyVehicleAnimation(eventData);
+		  break;
 	  }
 	}
 
+	function showEnemyVehicleAnimation(eventData) {
+	  const enemyAnim = document.getElementById("battleEnemyAnim");
+	  if (!enemyAnim) return;
+	  
+	  // 创建动画元素
+	  const vehicleElem = document.createElement("div");
+	  vehicleElem.className = "enemy-vehicle";
+	  vehicleElem.style.position = "absolute";
+	  vehicleElem.style.bottom = "20%";
+	  
+	  // 根据事件类型设置不同样式
+	  if (eventData.type === "t80") {
+		vehicleElem.style.width = "100px";
+		vehicleElem.style.height = "50px";
+		vehicleElem.style.backgroundImage = "url('images/t80_sprite.png')";
+		vehicleElem.style.animation = "enemyT80Move 10s linear";
+	  } else {
+		vehicleElem.style.width = "80px";
+		vehicleElem.style.height = "40px";
+		vehicleElem.style.backgroundImage = "url('images/btr_sprite.png')";
+		vehicleElem.style.animation = "enemyBTRMove 10s linear";
+	  }
+	  
+	  enemyAnim.appendChild(vehicleElem);
+	  
+	  // 10秒后移除动画元素
+	  setTimeout(() => {
+		if (enemyAnim.contains(vehicleElem)) {
+		  enemyAnim.removeChild(vehicleElem);
+		}
+	  }, 10000);
+	}
+	
+	
 	function startBattleTimer() {
 	  let remaining = battleDuration;
 	  battleInterval = setInterval(function(){
 		if (remaining <= 0) {
 		  clearInterval(battleInterval);
 		  battleInterval = null;
-		  adjustBattleOutcome();
-		  endBattle();
 		} else {
 		  triggerBattleEvent();
 		  remaining -= 5;
@@ -5365,118 +5964,24 @@ function triggerT80Cannon() {
 	  }, 5000);
 	}
 
-	function endBattle() {
-	  exitBattleMode();
-	}
 
-	function adjustBattleOutcome() {
-	  // 1. 顯示對戰總結訊息
-	  appendBattleLogEntry("system", 
-		`對戰結束：己方僵尸損失 ${totalSelfDamage} 名，對方僵尸損失 ${totalEnemyDamage} 名。`);
-
-	  // 判定勝負：損失較大的一方輸
-	  let outcome; // "win" 表示己方勝， "loss" 表示己方輸，"draw" 表示平手
-	  if (totalSelfDamage < totalEnemyDamage) {
-		outcome = "win";
-	  } else if (totalSelfDamage > totalEnemyDamage) {
-		outcome = "loss";
-	  } else {
-		outcome = "draw";
+	// 添加系统消息推送函数（确保使用正确）
+	function pushSystemMessage(message) {
+	  const data = {
+		sender: "系統",
+		senderRole: "system",
+		message: message
+	  };
+	  
+	  appendBattleLogEntry(data);
+	  
+	  // 如果需要同步到对方，上传到Firebase
+	  if (window.currentBattleRoom) {
+		const logRef = firebase.database().ref("battles")
+							  .child(window.currentBattleRoom)
+							  .child("log");
+		logRef.push(data);
 	  }
-	  
-	  appendBattleLogEntry("system", `最終結果：${outcome === "win" ? "勝利" : outcome === "loss" ? "失敗" : "平手"}`);
-	  
-	  // 2. 若為平手，則不進一步進行數值調整
-	  if (outcome === "draw") return;
-	  
-	  // 3. 確定哪一方為輸家（損失較大者）和贏家（損失較小者）
-	  // 此處我們假定己方存於 gameState，對方存於 enemy***
-	  let loser, winner;
-	  if (outcome === "loss") { // 己方輸
-		loser = {
-		  total: gameState.totalZombies,
-		  allocations: Object.assign({}, gameState.allocations)
-		};
-		winner = {
-		  total: enemyTotalZombies,
-		  allocations: Object.assign({}, enemyAllocations)
-		};
-	  } else { // 己方勝，對方輸
-		loser = {
-		  total: enemyTotalZombies,
-		  allocations: Object.assign({}, enemyAllocations)
-		};
-		winner = {
-		  total: gameState.totalZombies,
-		  allocations: Object.assign({}, gameState.allocations)
-		};
-	  }
-	  
-	  // 4. 從輸家中扣除一定比例的僵尸，比例隨機在 10%～30%之間
-	  let fraction = 0.1 + Math.random() * 0.2; // 0.1 到 0.3
-	  let deduction = Math.floor(loser.total * fraction);
-	  
-	  // 扣除邏輯：優先扣除待分配（pending = total - allocations總和）
-	  let allocatedSum = 0;
-	  for (let key in loser.allocations) {
-		allocatedSum += loser.allocations[key];
-	  }
-	  let pending = loser.total - allocatedSum;
-	  let remainingDeduction = deduction;
-	  
-	  if (pending >= remainingDeduction) {
-		// 全部扣自待分配
-		loser.total -= remainingDeduction;
-		pending -= remainingDeduction;
-		remainingDeduction = 0;
-	  } else {
-		// 扣完待分配
-		loser.total -= pending;
-		remainingDeduction -= pending;
-		pending = 0;
-		
-		// 接下來按 4:4:1:1 比例從各部門扣除
-		let ratios = { exploration: 4, farming: 4, recycling: 1, research: 1 };
-		let totalRatio = 10; // 4+4+1+1
-		for (let key in loser.allocations) {
-		  let deduc = Math.floor(remainingDeduction * (ratios[key] / totalRatio));
-		  // 不超過該部門現有數量
-		  deduc = Math.min(deduc, loser.allocations[key]);
-		  loser.allocations[key] -= deduc;
-		  loser.total -= deduc;
-		}
-	  }
-	  
-	  // 5. 將扣出的數目加到贏家那邊，按 4:4:1:1 分配到各部門
-	  let ratios = { exploration: 4, farming: 4, recycling: 1, research: 1 };
-	  let totalRatio = 10;
-	  for (let key in winner.allocations) {
-		let addVal = Math.floor(deduction * (ratios[key] / totalRatio));
-		winner.allocations[key] += addVal;
-		winner.total += addVal;
-	  }
-	  
-	  // 6. 更新全局數據
-	  if (outcome === "loss") {
-		gameState.totalZombies = loser.total;
-		gameState.allocations = loser.allocations;
-		enemyTotalZombies = winner.total;
-		enemyAllocations = winner.allocations;
-	  } else {
-		enemyTotalZombies = loser.total;
-		enemyAllocations = loser.allocations;
-		gameState.totalZombies = winner.total;
-		gameState.allocations = winner.allocations;
-	  }
-	  
-	  // 7. 播報調整結果
-	  appendBattleLogEntry("system",
-		`調整後：輸家扣除 ${deduction} 隻僵尸，贏家增加 ${deduction} 隻僵尸。`);
-	  
-	  
-	  // 重置累計損失數，便於下次對戰
-	  totalSelfDamage = 0;
-	  totalEnemyDamage = 0;
 	}
 
 
