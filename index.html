@@ -6248,7 +6248,7 @@ function triggerT80Cannon() {
 		  let phrase = getRandomPhrase(type);
 		  
 		  // 上傳攻擊日志，使用隨機短語來描述事件
-		  const attackMessage = `${phrase}，對方僵尸-${damage}`;
+		  const attackMessage = `${phrase}（命中），對方僵尸-${damage}`;
 		  pushBattleLog(attackMessage);
 
 		  // 如果是 T-80 事件，觸發開炮動畫
@@ -6259,7 +6259,7 @@ function triggerT80Cannon() {
 		  // 未命中時也同樣隨機採用對應詞庫中的描述
 		  let type = battleBTRType === "t80" ? "t80" : "btr";
 		  let phrase = getRandomPhrase(type);
-		  const missMessage = `${phrase}，但未命中`;
+		  const missMessage = `${phrase}，（未命中）`;
 		  pushBattleLog(missMessage);
 		}
 	  
