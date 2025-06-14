@@ -2,7 +2,7 @@
 <html lang="zh">
 <head>
   <meta charset="UTF-8" name="viewport" content="width=device-width, initial-scale=0.45"/>
-  <title>末日控制中心 - 正式版v.1.080 conflict update</title>
+  <title>末日控制中心 - 正式版v.1.083 conflict update</title>
   <style>
     /* 彈窗系統 */
     .modal-overlay {
@@ -5100,7 +5100,6 @@ function triggerT80Cannon() {
 		pushBattleLog("本地模擬對戰開始！");
 		startBattleTimer();
 		if (battleSpecialTimer) clearInterval(battleSpecialTimer);
-		battleSpecialTimer = setInterval(checkBattleBTREvent, 30000);
 		return;
 	  }
 	  
@@ -5171,7 +5170,6 @@ function triggerT80Cannon() {
 			pushBattleLog("雙方連線成功，對戰開始！");
 			startBattleTimerFirebase();
 			if (battleSpecialTimer) clearInterval(battleSpecialTimer);
-			battleSpecialTimer = setInterval(checkBattleBTREvent, 30000);
 		  }
 		} else {
 		  if (battleMatched) {
@@ -5204,6 +5202,7 @@ function triggerT80Cannon() {
 		}
 	  });
 	  listenForZombieStatus();
+	  requestZombieStatus();
 	  listenForAdjustmentCommand();
 	  
 	  // 添加结果监听
@@ -5217,6 +5216,9 @@ function triggerT80Cannon() {
 		}
 	  });
 	  startStatusCheck();
+	  initBattleBTRSystem();
+	  listenForEnemyBTR();
+	  listenForEnemyBTRAttacks();
 
 	}
 
@@ -5405,11 +5407,13 @@ function triggerT80Cannon() {
 	  if (!window.currentBattleRoom) return;
 	  
 	  // 上传自己的僵尸状态
+	  const zombieSearchSprite = getZombieSearchSpriteUrl();
+  
 	  const myStatus = {
 		uid: window.myUid,
 		totalZombies: gameState.totalZombies,
 		allocations: {...gameState.allocations},
-		timestamp: Date.now()
+		zombieSearchSprite: zombieSearchSprite // 添加精灵图信息
 	  };
 	  
 	  const statusRef = firebase.database().ref("battles")
@@ -5421,11 +5425,11 @@ function triggerT80Cannon() {
 		return myStatus; // 直接替换为新数据
 	  }, (error, committed) => {
 		if (error) {
-		  console.error(`[${window.myRole}] 状态上传事务失败:`, error);
+		  console.error(`[${window.myRole}] 狀態上傳事務失敗:`, error);
 		} else if (committed) {
-		  console.log(`[${window.myRole}] 状态上传成功`);
+		  console.log(`[${window.myRole}] 狀態上傳成功`);
 		} else {
-		  console.log(`[${window.myRole}] 状态上传未提交`);
+		  console.log(`[${window.myRole}] 狀態上傳未提交`);
 		}
 	  }, false); 
 	}
@@ -5450,6 +5454,11 @@ function triggerT80Cannon() {
 		const userBReady = statusData && statusData.userB && statusData.userB.uid;
 		
 		if (userAReady && userBReady) {
+		  const enemyRole = window.myRole === "userA" ? "userB" : "userA";
+		  const enemySprite = statusData[enemyRole].zombieSearchSprite;
+		  
+		  // 初始化敌方僵尸搜索动画
+		  initEnemyZombieSearchAnimation(enemySprite);
 		  console.log("雙方狀態已就緒");
 		  pushSystemMessage("雙方狀態已接收，開始計算資源調整");
 		  
@@ -5594,22 +5603,6 @@ function triggerT80Cannon() {
 	  }
 	}
 
-	function checkBattleBTREvent() {
-	  if (battleEnded || !battleModeActive) {
-		return;
-	  }
-	  const garages = gameState.buildings.filter(b =>
-		b && b.type.toLowerCase() === "armoredgarage"
-	  );
-	  if (garages.length > 0) {
-		const garageInfo = BUILDINGS.armoredgarage.getUpgradeInfo(garages[0].level);
-		if (Math.random() < garageInfo.effect.btrChance) {
-		  // 呼叫後者函數，該函數中同樣只使用 pushBattleLog 上傳自己發生的事件
-		  triggerTractorBattleAnimation();
-		}
-	  }
-	}
-
 	function listenForBattleResult() {
 	  if (!window.currentBattleRoom) return;
 	  
@@ -5736,147 +5729,6 @@ function triggerT80Cannon() {
 	}
 	
 	
-	function triggerTractorBattleAnimation() {
-	  const hasTractor = gameState.buildings.some(function(b) {
-		return b && b.type.toLowerCase() === "armoredgarage";
-	  });
-	  if (!hasTractor) return;
-	  
-	  const container = document.getElementById("battleSelfAnim");
-	  if (!container) {
-		console.error("找不到 #battleSelfAnim 容器");
-		return;
-	  }
-	  
-	  const containerWidth = container.clientWidth;
-	  const offset = 50;
-	  const rootStyles = getComputedStyle(document.documentElement);
-	  
-	  const useT80 = (Math.random() < 0.4);
-	  let frameWidth;
-	  if (useT80) {
-		frameWidth = 480;
-	  } else {
-		frameWidth = parseFloat(rootStyles.getPropertyValue('--btr-frame-width')) || 240;
-	  }
-	  
-	  const centerStart = containerWidth + offset + 0.5 * frameWidth;
-	  const centerStop = 0.5 * containerWidth;
-	  const startLeft = centerStart - 0.5 * frameWidth;
-	  const stopLeft  = centerStop - 0.5 * frameWidth;
-	  
-	  const keyframesText = `
-		@keyframes btrMoveDynamicBattle {
-		  0%   { left: ${startLeft}px; }
-		  20%  { left: ${stopLeft}px; }
-		  60%  { left: ${stopLeft}px; }
-		  100% { left: ${startLeft}px; }
-		}
-	  `;
-	  let styleElem = document.getElementById("btrKeyframesBattle");
-	  if (!styleElem) {
-		styleElem = document.createElement("style");
-		styleElem.id = "btrKeyframesBattle";
-		document.head.appendChild(styleElem);
-	  }
-	  styleElem.textContent = keyframesText;
-	  console.log("Battle dynamic keyframes:", keyframesText);
-	  
-	  const wrapper = document.createElement("div");
-	  wrapper.className = "btr-wrapper";
-	  wrapper.style.position = "absolute";
-	  wrapper.style.top = "25%";
-	  wrapper.style.left = startLeft + "px";
-	  wrapper.style.animation = "btrMoveDynamicBattle 10s ease-in-out forwards";
-	  
-	  let spriteElem;
-	  if (useT80) {
-		const frameContainer = document.createElement("div");
-		frameContainer.className = "frameContainer";
-		frameContainer.style.width = frameWidth + "px";
-		frameContainer.style.height = rootStyles.getPropertyValue('--btr-frame-height') || "120px";
-		frameContainer.style.overflow = "hidden";
-		
-		spriteElem = document.createElement("div");
-		spriteElem.className = "t80-animation";
-		spriteElem.style.backgroundPosition = "0px 0";
-		
-		frameContainer.appendChild(spriteElem);
-		wrapper.appendChild(frameContainer);
-	  } else {
-		spriteElem = document.createElement("div");
-		spriteElem.className = "btr-animation";
-		wrapper.appendChild(spriteElem);
-	  }
-	  
-	  container.appendChild(wrapper);
-	  
-	  if (useT80) {
-		pushBattleLog(" T-80進場，開始火力支援判定。");
-	  } else {
-		pushBattleLog(" BTR-80A進場，開始掩護射擊判定。");
-	  }
-	  
-	  const centerBuilding = gameState.buildings.find(b => b && b.type.toLowerCase() === "center");
-	  const centerLevel = centerBuilding ? centerBuilding.level : 1;
-	  const baseHitChance = 40;
-	  const hitChanceVal = Math.min(baseHitChance + centerLevel * 0.5, 85);
-	  
-	  let hitRoll = Math.random() * 100;
-	  let damage = Math.floor(Math.random() * 20) + 1;
-	  let hitSuccess = hitRoll < hitChanceVal;
-	  
-	   if (hitSuccess) {
-		totalEnemyDamage += damage;
-    
-		if (useT80) {
-		  pushBattleLog(`T-80實施火力支援（命中），對方僵尸-${damage}`); // 确保格式一致
-		} else {
-		  pushBattleLog(`BTR-80A實施掩護射擊（命中），對方僵尸-${damage}`); // 确保格式一致
-		}
-	  } else {
-		if (useT80) {
-		  pushBattleLog("T-80實施火力支援（未命中）");
-		} else {
-		  pushBattleLog("BTR-80A實施掩護射擊（未命中）");
-		}
-	  }
-  
-	  isBTRActive = true;
-	  setTimeout(() => { isBTRActive = false; }, 10000);
-	  setTimeout(() => {
-		if (container.contains(wrapper)) {
-		  container.removeChild(wrapper);
-		  console.log("Battle animation wrapper 已移除");
-		}
-		if (useT80 && t80IdleInterval) {
-		  clearInterval(t80IdleInterval);
-		  t80IdleInterval = null;
-		}
-	  }, 10000);
-	  
-	  if (useT80) {
-		startT80IdleAnimation(spriteElem);
-		setTimeout(() => { triggerT80Cannon(); }, 1000);
-	  }
-	   const eventData = {
-		type: useT80 ? "t80" : "btr",
-		damage: damage,
-		hit: hitSuccess,
-		timestamp: Date.now(),
-		senderRole: window.myRole  // 添加发送者角色
-	  };
-	  
-	  // 上传到专门的事件节点
-	  if (window.currentBattleRoom) {
-		const eventRef = firebase.database().ref("battles")
-		  .child(window.currentBattleRoom)
-		  .child("events");
-		
-		eventRef.push(eventData);
-	  }
-	}
-
 	function triggerBattleEvent() {
 	  if (!battleMatched) return;
 	  
@@ -5902,6 +5754,516 @@ function triggerT80Cannon() {
 		pushBattleLog(" 僵尸 打出了長點射（未命中）");
 	  }
 	}
+	// 获取当前玩家的僵尸搜索精灵图URL
+	function getZombieSearchSpriteUrl() {
+	  const hasTractor = gameState.buildings.some(b => 
+		b && b.type.toLowerCase() === "armoredgarage"
+	  );
+	  const hasArmory = gameState.buildings.some(b => 
+		b && b.type.toLowerCase() === "armory"
+	  );
+	  const hasZombieCommand = gameState.buildings.some(b => 
+		b && b.type.toLowerCase() === "zombiecommandcenter"
+	  );
+	  
+	  if (hasTractor && hasArmory && hasZombieCommand) {
+		return "images/zombie_search_sprite_elite.png";
+	  } else if (hasTractor && (hasArmory || hasZombieCommand)) {
+		return "images/zombie_search_sprite_equipped.png";
+	  } else if (hasTractor) {
+		return "images/zombie_search_sprite_btr.png";
+	  } else if (hasArmory || hasZombieCommand) {
+		return "images/zombie_search_sprite_helmet.png";
+	  } else {
+		return "images/zombie_search_sprite.png";
+	  }
+	}
+	
+	// 初始化敌方僵尸搜索动画
+	function initEnemyZombieSearchAnimation(spriteUrl) {
+	  const enemyAnim = document.getElementById("battleEnemyAnim");
+	  if (!enemyAnim) return;
+	  
+	  // 清除旧动画（如果存在）
+	  const oldZombie = enemyAnim.querySelector(".enemy-zombie-search");
+	  if (oldZombie) {
+		enemyAnim.removeChild(oldZombie);
+	  }
+	  
+	  // 创建僵尸搜索元素
+	  const zombieSearch = document.createElement("div");
+	  zombieSearch.className = "zombie-search enemy-zombie-search";
+	  zombieSearch.style.backgroundImage = `url('${spriteUrl}')`;
+	  
+	  // 添加到敌方动画窗口
+	  enemyAnim.appendChild(zombieSearch);
+	  
+	  console.log("敌方僵尸搜索动画已创建，使用精灵图:", spriteUrl);
+	}
+	
+	/***** 对战模式BTR/T-80事件系统 *****/
+	let battleBTREventTimer = null;
+	let battleBTRActive = false;
+	let battleBTRType = null;
+	let battleBTRInterval = null;
+	let battleBTRWrapper = null;
+	let statusCheckInterval = null;
+
+	// 1. 初始化对战模式BTR事件系统
+	function initBattleBTRSystem() {
+	  if (battleBTREventTimer) clearInterval(battleBTREventTimer);
+	  
+	  // 每30秒检查一次BTR事件
+	  battleBTREventTimer = setInterval(() => {
+		if (!battleModeActive || battleEnded) return;
+		
+		const garages = gameState.buildings.filter(b => 
+		  b && b.type.toLowerCase() === "armoredgarage"
+		);
+		
+		if (garages.length > 0) {
+		  const garageInfo = BUILDINGS.armoredGarage.getUpgradeInfo(garages[0].level);
+		  if (Math.random() < garageInfo.effect.btrChance) {
+			triggerBattleBTRAnimation();
+		  }
+		}
+	  }, 30000);
+	}
+
+	// 2. 触发对战模式BTR动画
+	function triggerBattleBTRAnimation() {
+	  const container = document.getElementById("battleSelfAnim");
+	  if (!container) {
+		console.error("找不到 #battleSelfAnim 容器");
+		return;
+	  }
+	  
+	  const containerWidth = container.clientWidth;
+	  const offset = 50;
+	  const rootStyles = getComputedStyle(document.documentElement);
+	  
+	  // 40%几率使用T-80，否则BTR
+	  const useT80 = (Math.random() < 0.4);
+	  battleBTRType = useT80 ? "t80" : "btr";
+	  
+	  let frameWidth;
+	  if (useT80) {
+		frameWidth = 480;
+	  } else {
+		frameWidth = parseFloat(rootStyles.getPropertyValue('--btr-frame-width')) || 240;
+	  }
+	  
+	  const centerStart = containerWidth + offset + 0.5 * frameWidth;
+	  const centerStop = 0.5 * containerWidth;
+	  const startLeft = centerStart - 0.5 * frameWidth;
+	  const stopLeft  = centerStop - 0.5 * frameWidth;
+	  
+	  const keyframesText = `
+		@keyframes btrMoveDynamicBattle {
+		  0%   { left: ${startLeft}px; }
+		  20%  { left: ${stopLeft}px; }
+		  60%  { left: ${stopLeft}px; }
+		  100% { left: ${startLeft}px; }
+		}
+	  `;
+	  
+	  let styleElem = document.getElementById("btrKeyframesBattle");
+	  if (!styleElem) {
+		styleElem = document.createElement("style");
+		styleElem.id = "btrKeyframesBattle";
+		document.head.appendChild(styleElem);
+	  }
+	  styleElem.textContent = keyframesText;
+	  
+	  // 创建动画容器
+	  battleBTRWrapper = document.createElement("div");
+	  battleBTRWrapper.className = "btr-wrapper";
+	  battleBTRWrapper.style.position = "absolute";
+	  battleBTRWrapper.style.top = "25%";
+	  battleBTRWrapper.style.left = startLeft + "px";
+	  battleBTRWrapper.style.animation = "btrMoveDynamicBattle 10s ease-in-out forwards";
+	  
+	  let spriteElem;
+	  if (useT80) {
+		const frameContainer = document.createElement("div");
+		frameContainer.className = "frameContainer";
+		frameContainer.style.width = frameWidth + "px";
+		frameContainer.style.height = rootStyles.getPropertyValue('--btr-frame-height') || "120px";
+		frameContainer.style.overflow = "hidden";
+		
+		spriteElem = document.createElement("div");
+		spriteElem.className = "t80-animation";
+		spriteElem.style.backgroundPosition = "0px 0";
+		
+		frameContainer.appendChild(spriteElem);
+		battleBTRWrapper.appendChild(frameContainer);
+		
+		// 启动T-80空闲动画
+		startT80IdleAnimation(spriteElem);
+	  } else {
+		// BTR动画保持不变
+		spriteElem = document.createElement("div");
+		spriteElem.className = "btr-animation";
+		battleBTRWrapper.appendChild(spriteElem);
+	  }
+  
+		container.appendChild(battleBTRWrapper);
+	  
+	  // 上传事件到Firebase
+	  uploadBattleBTREvent(battleBTRType);
+	  
+	  // 启动特殊攻击
+	  startBattleBTRSpecialAttack();
+	  
+	  battleBTRActive = true;
+	  if (useT80) {
+		setTimeout(() => {
+		// 修复：传递spriteElem参数
+		triggerBattleT80Cannon(spriteElem);
+		}, 1000);
+	  }
+	  
+	  // 10秒后清理
+	  setTimeout(() => {
+		if (container.contains(battleBTRWrapper)) {
+		  container.removeChild(battleBTRWrapper);
+		  battleBTRWrapper = null;
+		}
+		
+		if (useT80 && t80IdleInterval) {
+		  clearInterval(t80IdleInterval);
+		  t80IdleInterval = null;
+		}
+		
+		if (battleBTRInterval) {
+		  clearInterval(battleBTRInterval);
+		  battleBTRInterval = null;
+		}
+		
+		battleBTRActive = false;
+	  }, 10000);
+	}
+
+	// 3. 上传BTR事件到Firebase
+	function uploadBattleBTREvent(type) {
+	  if (!window.currentBattleRoom) return;
+	  
+	  const eventData = {
+		type: type,
+		senderRole: window.myRole,
+		timestamp: Date.now()
+	  };
+	  
+	  const eventRef = firebase.database().ref("battles")
+		.child(window.currentBattleRoom)
+		.child("btrEvents");
+	  
+	  eventRef.push(eventData)
+		.then(() => console.log(`${type}事件上传成功`))
+		.catch(err => console.error(`${type}事件上传失败:`, err));
+	}
+
+	// 4. 监听敌方BTR事件
+	function listenForEnemyBTR() {
+	  if (!window.currentBattleRoom) return;
+	  
+	  const eventRef = firebase.database().ref("battles")
+		.child(window.currentBattleRoom)
+		.child("btrEvents");
+	  
+	  eventRef.off("child_added");
+	  eventRef.on("child_added", snapshot => {
+		const event = snapshot.val();
+		
+		// 忽略自己发送的事件
+		if (event.senderRole === window.myRole) return;
+		
+		// 在敌方区域显示动画
+		showEnemyVehicleAnimation(event);
+	  });
+	}
+
+	// 5. 在敌方区域显示车辆动画
+	function showEnemyVehicleAnimation(event) {
+	  const enemyAnim = document.getElementById("battleEnemyAnim");
+	  if (!enemyAnim) return;
+	  
+	  const containerWidth = enemyAnim.clientWidth;
+	  const offset = 50;
+	  const rootStyles = getComputedStyle(document.documentElement);
+	  
+	  let frameWidth;
+	  if (event.type === "t80") {
+		frameWidth = 480;
+	  } else {
+		frameWidth = parseFloat(rootStyles.getPropertyValue('--btr-frame-width')) || 240;
+	  }
+	  
+	  // 修复：敌方动画从右向左移动
+	  const startRight = containerWidth + offset + 0.5 * frameWidth;
+	  const stopRight = 0.5 * containerWidth - 0.5 * frameWidth;
+	  
+	  const keyframesText = `
+		@keyframes btrMoveDynamicBattleEnemy {
+		  0%   { left: ${startRight}px; }
+		  20%  { left: ${stopRight}px; }
+		  60%  { left: ${stopRight}px; }
+		  100% { left: ${containerWidth + offset}px; }
+		}
+	  `;
+	  
+	  let styleElem = document.getElementById("btrKeyframesBattleEnemy");
+	  if (!styleElem) {
+		styleElem = document.createElement("style");
+		styleElem.id = "btrKeyframesBattleEnemy";
+		document.head.appendChild(styleElem);
+	  }
+	  styleElem.textContent = keyframesText;
+	  
+	  // 创建动画容器
+	  const enemyWrapper = document.createElement("div");
+	  enemyWrapper.className = "btr-wrapper enemy";
+	  enemyWrapper.style.position = "absolute";
+	  enemyWrapper.style.top = "25%";
+	  enemyWrapper.style.left = startRight + "px";
+	  enemyWrapper.style.animation = "btrMoveDynamicBattleEnemy 10s ease-in-out forwards";
+	  
+	  let spriteElem;
+	  if (event.type === "t80") {
+		// T-80动画
+		const frameContainer = document.createElement("div");
+		frameContainer.className = "frameContainer";
+		frameContainer.style.width = frameWidth + "px";
+		frameContainer.style.height = rootStyles.getPropertyValue('--btr-frame-height') || "120px";
+		frameContainer.style.overflow = "hidden";
+		
+		spriteElem = document.createElement("div");
+		spriteElem.className = "t80-animation";
+		spriteElem.style.backgroundPosition = "0px 0";
+		
+		frameContainer.appendChild(spriteElem);
+		enemyWrapper.appendChild(frameContainer);
+		
+		// 启动空闲动画
+		startT80IdleAnimation(spriteElem);
+		
+		// ===== 修复1：声明并初始化冷却状态变量 =====
+		let enemyT80CannonOnCooldown = false;
+		
+		// ===== 修复2：确保使用正确的空闲动画函数 =====
+		const startLocalIdleAnimation = (sprite) => {
+		  // 确保idle定時器不存在
+		  if (window.enemyT80IdleInterval) clearInterval(window.enemyT80IdleInterval);
+		  window.enemyT80IdleToggle = false;
+		  // 初始設為第1幀
+		  sprite.style.backgroundPosition = "0px 0";
+		  window.enemyT80IdleInterval = setInterval(() => {
+			// 使用 toggle 變數進行交替
+			window.enemyT80IdleToggle = !window.enemyT80IdleToggle;
+			// 第1幀： "0px 0"；第4幀： -1440px 0（因為 3*480 = 1440）
+			sprite.style.backgroundPosition = window.enemyT80IdleToggle ? "-1440px 0" : "0px 0";
+		  }, 250);
+		};
+		
+		const triggerEnemyT80Cannon = () => {
+		  if (enemyT80CannonOnCooldown) return;
+		  enemyT80CannonOnCooldown = true;
+		  
+		  // 停止空闲动画
+		  if (window.enemyT80IdleInterval) {
+			clearInterval(window.enemyT80IdleInterval);
+			window.enemyT80IdleInterval = null;
+		  }
+		  
+		  // 播放开炮动画序列
+		  spriteElem.style.backgroundPosition = "0px 0"; // frame1
+		  setTimeout(() => { spriteElem.style.backgroundPosition = "-480px 0"; }, 250); // frame2
+		  setTimeout(() => { spriteElem.style.backgroundPosition = "-960px 0"; }, 500); // frame3
+		  setTimeout(() => { spriteElem.style.backgroundPosition = "-1440px 0"; }, 750); // frame4
+		  
+		  // 1秒后恢复空闲帧
+		  setTimeout(() => {
+			if (spriteElem && spriteElem.parentNode) {
+			  spriteElem.style.backgroundPosition = "0px 0";
+			  startLocalIdleAnimation(spriteElem); // 使用修复后的空闲动画函数
+			}
+			enemyT80CannonOnCooldown = false;
+		  }, 1000);
+		};
+		
+		// ===== 修复3：确保正确启动开炮循环 =====
+		// 启动开炮循环
+		setTimeout(() => {
+		  triggerEnemyT80Cannon(); // 首次开炮
+		  
+		  // 每4.25秒开炮一次
+		  const cannonInterval = setInterval(() => {
+			if (enemyAnim.contains(enemyWrapper)) {
+			  triggerEnemyT80Cannon();
+			} else {
+			  clearInterval(cannonInterval); // 动画元素已移除时停止
+			}
+		  }, 4250);
+		}, 1000); // 延迟1秒开始
+		
+	  } else {
+		// BTR动画
+		spriteElem = document.createElement("div");
+		spriteElem.className = "btr-animation";
+		enemyWrapper.appendChild(spriteElem);
+	  }
+	  
+	  enemyAnim.appendChild(enemyWrapper);
+	  
+	  // 10秒后清理
+	  setTimeout(() => {
+		if (enemyAnim.contains(enemyWrapper)) {
+		  enemyAnim.removeChild(enemyWrapper);
+		}
+		// 清理空闲动画定时器
+		if (window.enemyT80IdleInterval) {
+		  clearInterval(window.enemyT80IdleInterval);
+		  window.enemyT80IdleInterval = null;
+		}
+	  }, 10000);
+	}
+
+	// 6. 启动特殊攻击
+	function startBattleBTRSpecialAttack() {
+	  if (battleBTRInterval) clearInterval(battleBTRInterval);
+	  
+	  // 立即执行第一次攻击
+	  triggerBattleBTRSpecialAttack();
+	  
+	  // 之后每5秒执行一次
+	  battleBTRInterval = setInterval(() => {
+		triggerBattleBTRSpecialAttack();
+	  }, 5000);
+	}
+
+	// 7. 执行特殊攻击
+	function triggerBattleBTRSpecialAttack() {
+	  if (!battleBTRActive) return;
+	  
+	  const centerBuilding = gameState.buildings.find(b => 
+		b && b.type.toLowerCase() === "center"
+	  );
+	  const centerLevel = centerBuilding ? centerBuilding.level : 1;
+	  const baseHitChance = 40;
+	  const hitChanceVal = Math.min(baseHitChance + centerLevel * 0.5, 85);
+	  
+	  const hitRoll = Math.random() * 100;
+	  const damage = battleBTRType === "t80" ? 
+		Math.floor(Math.random() * 20) + 15 : // T-80伤害15-35
+		Math.floor(Math.random() * 15) + 10;  // BTR伤害10-25
+	  
+	  const hitSuccess = hitRoll < hitChanceVal;
+	  
+	  if (hitSuccess) {
+		totalEnemyDamage += damage;
+		
+		// 上传攻击日志
+		const attackMessage = `${battleBTRType === 't80' ? 'T-80' : 'BTR-80A'}實施火力支援（命中），對方僵尸-${damage}`;
+		pushBattleLog(attackMessage);
+		
+		// 如果是T-80，触发开炮动画
+		if (battleBTRType === "t80") {
+		  triggerBattleT80Cannon();
+		}
+	  } else {
+		const missMessage = `${battleBTRType === 't80' ? 'T-80' : 'BTR-80A'}實施火力支援（未命中）`;
+		pushBattleLog(missMessage);
+	  }
+	  
+	  // 上传攻击结果到Firebase
+	  uploadBattleBTRAttack({
+		type: battleBTRType,
+		hit: hitSuccess,
+		damage: hitSuccess ? damage : 0,
+		timestamp: Date.now(),
+		senderRole: window.myRole
+	  });
+	}
+
+	// 8. 上传攻击结果
+	function uploadBattleBTRAttack(attackData) {
+	  if (!window.currentBattleRoom) return;
+	  
+	  const attackRef = firebase.database().ref("battles")
+		.child(window.currentBattleRoom)
+		.child("btrAttacks");
+	  
+	  attackRef.push(attackData)
+		.then(() => console.log("BTR攻击上传成功"))
+		.catch(err => console.error("BTR攻击上传失败:", err));
+	}
+
+	// 9. 监听敌方攻击
+	function listenForEnemyBTRAttacks() {
+	  if (!window.currentBattleRoom) return;
+	  
+	  const attackRef = firebase.database().ref("battles")
+		.child(window.currentBattleRoom)
+		.child("btrAttacks");
+	  
+	  attackRef.off("child_added");
+	  attackRef.on("child_added", snapshot => {
+		const attack = snapshot.val();
+		
+		// 忽略自己发送的攻击
+		if (attack.senderRole === window.myRole) return;
+		
+		if (attack.hit) {
+		  totalSelfDamage += attack.damage;
+		  console.log(`收到敌方BTR伤害: ${attack.damage}`);
+		}
+	  });
+	}
+
+	// 10. T-80开炮动画（对战模式简化版）
+	function triggerBattleT80Cannon(sprite) {
+	  if (!sprite) return;
+	  
+	  // 修复：使用主文件中的开炮逻辑
+	  if (window.t80CannonOnCooldown) return;
+	  window.t80CannonOnCooldown = true;
+	  
+	  // 停止idle定时器
+	  if (window.t80IdleInterval) {
+		clearInterval(window.t80IdleInterval);
+		window.t80IdleInterval = null;
+	  }
+	  
+	  // 播放完整开炮动画序列（主文件逻辑）
+	  sprite.style.backgroundPosition = "0px 0"; // frame1
+	  setTimeout(() => { sprite.style.backgroundPosition = "-480px 0"; }, 250); // frame2
+	  setTimeout(() => { sprite.style.backgroundPosition = "-960px 0"; }, 500); // frame3
+	  setTimeout(() => { sprite.style.backgroundPosition = "-1440px 0"; }, 750); // frame4
+	  
+	  // 1秒后恢复空闲帧
+	  setTimeout(() => {
+		sprite.style.backgroundPosition = "0px 0"; 
+		// 重新启动idle动画
+		startT80IdleAnimation(sprite);
+	  }, 1000);
+	  
+	  // 冷却后允许再次开炮
+	  setTimeout(() => {
+		window.t80CannonOnCooldown = false;
+		if (battleBTRActive) {
+		  triggerBattleT80Cannon(sprite);
+		}
+	  }, 4250);
+	}
+
+	
+	
+	
+	
+	
+	
+	
+	
 	
 	function handleBattleEvent(eventData) {
 	  // 忽略自己发送的事件
@@ -5917,40 +6279,6 @@ function triggerT80Cannon() {
 	  }
 	}
 
-	function showEnemyVehicleAnimation(eventData) {
-	  const enemyAnim = document.getElementById("battleEnemyAnim");
-	  if (!enemyAnim) return;
-	  
-	  // 创建动画元素
-	  const vehicleElem = document.createElement("div");
-	  vehicleElem.className = "enemy-vehicle";
-	  vehicleElem.style.position = "absolute";
-	  vehicleElem.style.bottom = "20%";
-	  
-	  // 根据事件类型设置不同样式
-	  if (eventData.type === "t80") {
-		vehicleElem.style.width = "100px";
-		vehicleElem.style.height = "50px";
-		vehicleElem.style.backgroundImage = "url('images/t80_sprite.png')";
-		vehicleElem.style.animation = "enemyT80Move 10s linear";
-	  } else {
-		vehicleElem.style.width = "80px";
-		vehicleElem.style.height = "40px";
-		vehicleElem.style.backgroundImage = "url('images/btr_sprite.png')";
-		vehicleElem.style.animation = "enemyBTRMove 10s linear";
-	  }
-	  
-	  enemyAnim.appendChild(vehicleElem);
-	  
-	  // 10秒后移除动画元素
-	  setTimeout(() => {
-		if (enemyAnim.contains(vehicleElem)) {
-		  enemyAnim.removeChild(vehicleElem);
-		}
-	  }, 10000);
-	}
-	
-	
 	function startBattleTimer() {
 	  let remaining = battleDuration;
 	  battleInterval = setInterval(function(){
