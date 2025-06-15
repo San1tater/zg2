@@ -2,7 +2,7 @@
 <html lang="zh">
 <head>
   <meta charset="UTF-8" name="viewport" content="width=device-width, initial-scale=0.45"/>
-  <title>末日控制中心 - 正式版v.1.087 conflict update</title>
+  <title>末日控制中心 - 正式版v.1.086 conflict update</title>
   <style>
     /* 彈窗系統 */
     .modal-overlay {
@@ -4937,10 +4937,9 @@ function triggerT80Cannon() {
 		  clearInterval(battleSpecialTimer);
 		  battleSpecialTimer = null;
 		}
-		if (battleSpecialLogTimer) {
-		  clearInterval(battleSpecialLogTimer);
-		  battleSpecialLogTimer = null;
-		}
+		const roomRef = firebase.database().ref("battles").child(window.currentBattleRoom);
+		  roomRef.child("log").off();
+		  roomRef.child("btrAttacks").off();
 		
 		// 清理 Firebase 监听
 		if (window.currentBattleRoom) {
@@ -5721,7 +5720,8 @@ function triggerT80Cannon() {
 		  const myStatus = {
 			uid: window.myUid,
 			totalZombies: gameState.totalZombies,
-			allocations: {...gameState.allocations}
+			allocations: {...gameState.allocations},
+			resources: { ...gameState.resources }
 		  };
 		  
 		  // +++ 使用统一路径格式 +++
@@ -5743,6 +5743,7 @@ function triggerT80Cannon() {
 		}
 	  });
 	}
+	
 
 	// 添加结果显示函数
 	function displayBattleResult(result) {
@@ -5770,7 +5771,7 @@ function triggerT80Cannon() {
 	  }
 	}
 	function applyResourceAdjustment(command) {
-	  // 确定当前玩家身份
+	  // 確定當前玩家身份
 	  const isWinner = window.myUid === command.winner;
 	  const isLoser = window.myUid === command.loser;
 	  
@@ -5779,16 +5780,14 @@ function triggerT80Cannon() {
 		return;
 	  }
 	  
-	  // 应用调整
 	  if (isWinner) {
-		// 赢家：按比例增加各部门僵尸
+		// 先執行原有的勝者資源調整（例如各部門僵尸數增加）
 		for (const department in command.winnerAdjustment) {
 		  const amount = command.winnerAdjustment[department];
 		  gameState.allocations[department] += amount;
 		  gameState.totalZombies += amount;
 		}
 		
-		// 显示调整信息
 		const adjustmentMessage = `勝方掠奪量（${window.myUid}）：
 		  探索部門 +${command.winnerAdjustment.exploration || 0}
 		  農業部門 +${command.winnerAdjustment.farming || 0}
@@ -5797,18 +5796,54 @@ function triggerT80Cannon() {
 		  總計 +${command.adjustmentAmount}隻僵尸`;
 		
 		pushSystemMessage(adjustmentMessage);
-	  } 
-	  else if (isLoser) {
-		// 输家：平均扣除各部门僵尸
+		
+		// 接下來，從對手（失敗方）那裡隨機掠奪各資源 1%-10%
+		// 根據雙方角色，決定對手為哪個 (例如如果我是 userA，對手為 userB)
+		const opponentRole = (window.myRole === "userA") ? "userB" : "userA";
+		const battleRoomRef = firebase.database().ref("battles").child(window.currentBattleRoom);
+		
+		battleRoomRef.child("status").child(opponentRole).once("value").then(snapshot => {
+		  const opponentStatus = snapshot.val();
+		  if (!opponentStatus || !opponentStatus.resources) {
+			pushSystemMessage("無法獲取對手資源狀態");
+			return;
+		  }
+		  
+		  const resourceKeys = ["food", "materials", "weapons", "tech"];
+		  let detailMessages = [];
+		  
+		  resourceKeys.forEach(res => {
+			const opponentAmt = opponentStatus.resources[res] || 0;
+			// 隨機百分比 1% ~ 10%
+			const pct = Math.random() * 0.09 + 0.01;
+			const plunderAmt = Math.floor(opponentAmt * pct);
+			
+			// 勝利方本地資源增加
+			gameState.resources[res] = (gameState.resources[res] || 0) + plunderAmt;
+			
+			// 更新對手資源並寫回 Firebase
+			const newOpponentAmt = Math.max(0, opponentAmt - plunderAmt);
+			battleRoomRef.child("status").child(opponentRole).child("resources").child(res).set(newOpponentAmt);
+			
+			detailMessages.push(`${res} (${(pct * 100).toFixed(1)}%): +${plunderAmt}`);
+		  });
+		  
+		  pushSystemMessage(`勝者成功掠奪失敗方資源：${detailMessages.join("，")}`);
+		  updateResourceDisplays();
+		  saveGameState();
+		}).catch(err => {
+		  console.error("掠奪失敗：", err);
+		  pushSystemMessage("掠奪失敗，請檢查網絡");
+		});
+	  } else if (isLoser) {
+		// 對於輸家：平均扣除各部門僵尸
 		for (const department in command.loserAdjustment) {
 		  const amount = command.loserAdjustment[department];
-		  // 确保不超过当前数量
 		  const deduction = Math.min(amount, gameState.allocations[department] || 0);
 		  gameState.allocations[department] -= deduction;
 		  gameState.totalZombies -= deduction;
 		}
 		
-		// 显示调整信息
 		const adjustmentMessage = `敗方損失量（${window.myUid}）：
 		  探索部門 -${command.loserAdjustment.exploration || 0}
 		  農業部門 -${command.loserAdjustment.farming || 0}
@@ -5819,12 +5854,11 @@ function triggerT80Cannon() {
 		pushSystemMessage(adjustmentMessage);
 	  }
 	  
-	  // 保存游戏状态
+	  // 保存狀態並更新界面
 	  saveGameState();
-	  
-	  // 更新UI
-	  updateResourceCounters();
+	  updateResourceDisplays();
 	}
+
 	
 
 	function triggerBattleEvent() {
