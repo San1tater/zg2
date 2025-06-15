@@ -5888,7 +5888,7 @@ function triggerT80Cannon() {
 		  gameState.resources[command.resourceType] += command.resourceAmount;
 		  
 		  // 添加系统消息
-		  const gainMessage = `勝方獲得${resourceName}資源: +${command.resourceAmount}`;
+		  const gainMessage = `勝方（${window.myUid}）獲得${resourceName}資源: +${command.resourceAmount}`;
 		  pushSystemMessage(gainMessage);
 		  
 		  // 更新UI显示
@@ -5902,7 +5902,7 @@ function triggerT80Cannon() {
 		  gameState.resources[command.resourceType] -= deduction;
 		  
 		  // 添加系统消息
-		  const lossMessage = `敗方損失${resourceName}資源: -${deduction}`;
+		  const lossMessage = `敗方（${window.myUid}）損失${resourceName}資源: -${deduction}`;
 		  pushSystemMessage(lossMessage);
 		  
 		  // 更新UI显示
