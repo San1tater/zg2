@@ -4868,6 +4868,7 @@ function triggerT80Cannon() {
 	let resultCalculated = false;
 	let resultData = null;
 	let battleEnded = false;
+	let processedCommands = {};
 	const battleDuration = 60; // 戰鬥時長 180 秒（3 分鐘）
 	
 	const attackPhrases = {
@@ -5715,12 +5716,24 @@ function triggerT80Cannon() {
 	  commandRef.off("value");
 	  commandRef.on("value", snapshot => {
 		const command = snapshot.val();
-		if (command) {
-		  applyResourceAdjustment(command);
+		if (!command) return;
+    
+		// +++ 添加指令唯一性检查 +++
+		const commandId = command.timestamp; // 使用时间戳作为唯一ID
+		
+		// 如果已经处理过这个指令，则跳过
+		if (processedCommands[commandId]) {
+		  console.log(`指令 ${commandId} 已处理，跳过`);
+		  return;
 		}
+		
+		// 标记指令已处理
+		processedCommands[commandId] = true;
+		console.log(`应用新指令 ${commandId}`);
+		
+		applyResourceAdjustment(command);
 	  });
 	}
-
 	function endBattleFirebase() {
 	  if (window.currentBattleRoom) {
 		firebase.database().ref("battles")
