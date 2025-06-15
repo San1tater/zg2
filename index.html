@@ -2,7 +2,7 @@
 <html lang="zh">
 <head>
   <meta charset="UTF-8" name="viewport" content="width=device-width, initial-scale=0.45"/>
-  <title>末日控制中心 - 正式版v.1.086 conflict update</title>
+  <title>末日控制中心 - 正式版v.1.088 conflict update</title>
   <style>
     /* 彈窗系統 */
     .modal-overlay {
@@ -5541,7 +5541,14 @@ function triggerT80Cannon() {
 		uid: window.myUid,
 		totalZombies: gameState.totalZombies,
 		allocations: {...gameState.allocations},
-		zombieSearchSprite: zombieSearchSprite // 添加精灵图信息
+		zombieSearchSprite: zombieSearchSprite,
+		// +++ 新增资源数据 +++
+		resources: {
+		  food: gameState.resources.food,
+		  materials: gameState.resources.materials,
+		  weapons: gameState.resources.weapons,
+		  tech: gameState.resources.tech
+		}
 	  };
 	  
 	  const statusRef = firebase.database().ref("battles")
@@ -5687,14 +5694,25 @@ function triggerT80Cannon() {
 		for (const department of departments) {
 		  loserAdjustment[department] = deductionPerDept;
 		}
-		
+		// +++ 新增资源转移计算 +++
+	    const resourceTypes = ['food', 'materials', 'weapons', 'tech'];
+	    const selectedResource = resourceTypes[Math.floor(Math.random() * resourceTypes.length)];
+	  
+	    // 获取失败方该资源数量
+	    const loserResource = loserStatus.resources[selectedResource] || 0;
+	  
+	    // 计算转移量（20%）
+	    const resourceAdjustment = Math.floor(loserResource * 0.2);
 		// 创建调整指令
 		const adjustmentCommand = {
 		  winner: result.winner,
 		  loser: result.loser,
 		  adjustmentAmount: adjustmentAmount,
 		  winnerAdjustment: winnerAdjustment,
-		  loserAdjustment: loserAdjustment
+		  loserAdjustment: loserAdjustment,
+		  // +++ 新增资源转移字段 +++
+		  resourceType: selectedResource, // 随机选择的资源类型
+		  resourceAmount: resourceAdjustment // 转移数量
 		};
 		
 		// 广播调整指令
@@ -5832,7 +5850,7 @@ function triggerT80Cannon() {
 		}
 		
 		// 显示调整信息
-		const adjustmentMessage = `勝方掠奪量（${window.myUid}）：
+		const adjustmentMessage = `勝方（${window.myUid}）掠奪量：
 		  探索部門 +${command.winnerAdjustment.exploration || 0}
 		  農業部門 +${command.winnerAdjustment.farming || 0}
 		  回收部門 +${command.winnerAdjustment.recycling || 0}
@@ -5852,7 +5870,7 @@ function triggerT80Cannon() {
 		}
 		
 		// 显示调整信息
-		const adjustmentMessage = `敗方損失量（${window.myUid}）：
+		const adjustmentMessage = `敗方（${window.myUid}）損失量：
 		  探索部門 -${command.loserAdjustment.exploration || 0}
 		  農業部門 -${command.loserAdjustment.farming || 0}
 		  回收部門 -${command.loserAdjustment.recycling || 0}
@@ -5860,6 +5878,36 @@ function triggerT80Cannon() {
 		  總計 -${command.adjustmentAmount}隻僵尸`;
 		
 		pushSystemMessage(adjustmentMessage);
+	  }
+	  // +++ 新增资源转移处理 +++
+	  if (command.resourceType && command.resourceAmount) {
+		const resourceName = resourceMapping[command.resourceType];
+		
+		if (isWinner) {
+		  // 胜方增加资源
+		  gameState.resources[command.resourceType] += command.resourceAmount;
+		  
+		  // 添加系统消息
+		  const gainMessage = `勝方（${result.winner}）獲得${resourceName}資源: +${command.resourceAmount}`;
+		  pushSystemMessage(gainMessage);
+		  
+		  // 更新UI显示
+		  updateResourceDisplay(command.resourceType);
+		} 
+		else if (isLoser) {
+		  // 败方扣除资源（确保不低于0）
+		  const currentAmount = gameState.resources[command.resourceType] || 0;
+		  const deduction = Math.min(command.resourceAmount, currentAmount);
+		  
+		  gameState.resources[command.resourceType] -= deduction;
+		  
+		  // 添加系统消息
+		  const lossMessage = `敗方（${result.loser}）損失${resourceName}資源: -${deduction}`;
+		  pushSystemMessage(lossMessage);
+		  
+		  // 更新UI显示
+		  updateResourceDisplay(command.resourceType);
+		}
 	  }
 	  
 	  // 保存游戏状态
