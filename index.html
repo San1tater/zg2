@@ -5782,7 +5782,14 @@ function triggerT80Cannon() {
 		  const myStatus = {
 			uid: window.myUid,
 			totalZombies: gameState.totalZombies,
-			allocations: {...gameState.allocations}
+			allocations: {...gameState.allocations},
+			zombieSearchSprite: zombieSearchSprite,
+			// +++ 新增资源数据 +++
+			resources: {
+			  food: gameState.resources.food,
+			  materials: gameState.resources.materials,
+			  weapons: gameState.resources.weapons,
+			  tech: gameState.resources.tech
 		  };
 		  
 		  // +++ 使用统一路径格式 +++
