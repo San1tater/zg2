@@ -5968,7 +5968,7 @@ function triggerT80Cannon() {
 	  
 	  // 每30秒检查一次BTR事件
 	  battleBTREventTimer = setInterval(() => {
-		if (!battleModeActive || battleEnded) return;
+		if (!battleModeActive || battleEnded || !battleMatched) return;
 		
 		const garages = gameState.buildings.filter(b => 
 		  b && b.type.toLowerCase() === "armoredgarage"
