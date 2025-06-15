@@ -2,7 +2,7 @@
 <html lang="zh">
 <head>
   <meta charset="UTF-8" name="viewport" content="width=device-width, initial-scale=0.45"/>
-  <title>末日控制中心 - 正式版v.1.087 conflict update</title>
+  <title>末日控制中心 - 正式版v.1.086 conflict update</title>
   <style>
     /* 彈窗系統 */
     .modal-overlay {
@@ -5721,7 +5721,8 @@ function triggerT80Cannon() {
 		  const myStatus = {
 			uid: window.myUid,
 			totalZombies: gameState.totalZombies,
-			allocations: {...gameState.allocations}
+			allocations: {...gameState.allocations},
+			resources: { ...gameState.resources }
 		  };
 		  
 		  // +++ 使用统一路径格式 +++
@@ -5734,6 +5735,9 @@ function triggerT80Cannon() {
 			.then(() => {
 			  console.log(`[${window.myRole}] 狀態上傳失敗`);
 			  pushSystemMessage(`狀態已上傳: ${gameState.totalZombies} 僵尸`);
+			  if (window.myUid === result.winner) {
+				plunderLoserResources();
+			  }
 			})
 			.catch(error => {
 			  console.error(`[${window.myRole}] 狀態上傳失敗:`, error);
@@ -5743,6 +5747,48 @@ function triggerT80Cannon() {
 		}
 	  });
 	}
+	function plunderLoserResources() {
+	  // 根據當前用戶角色決定對方角色：如果我是 userA，那對手是 userB；否則反之
+	  const opponentRole = (window.myRole === "userA") ? "userB" : "userA";
+	  const battleRoomRef = firebase.database().ref("battles").child(window.currentBattleRoom);
+	  
+	  battleRoomRef.child("status").child(opponentRole).once("value").then(snapshot => {
+		const opponentStatus = snapshot.val();
+		if (!opponentStatus || !opponentStatus.resources) {
+		  pushSystemMessage("無法獲取對手資源狀態");
+		  return;
+		}
+		
+		const resourceKeys = ["food", "materials", "weapons", "tech"];
+		let detailMessages = [];
+		
+		resourceKeys.forEach(res => {
+		  const opponentAmt = opponentStatus.resources[res] || 0;
+		  // 隨機百分比 1% ~ 10%
+		  const pct = Math.random() * 0.09 + 0.01;
+		  const plunderAmt = Math.floor(opponentAmt * pct);
+		  
+		  // 更新本地勝方資源
+		  gameState.resources[res] = (gameState.resources[res] || 0) + plunderAmt;
+		  
+		  // 更新對手資源，避免變為負數
+		  const newOpponentAmt = Math.max(0, opponentAmt - plunderAmt);
+		  
+		  // 將更新後的資源寫回對手狀態的 Firebase 節點
+		  battleRoomRef.child("status").child(opponentRole).child("resources").child(res).set(newOpponentAmt);
+		  
+		  detailMessages.push(`${res} (${(pct * 100).toFixed(1)}%): +${plunderAmt}`);
+		});
+		
+		pushSystemMessage(` ${result.winner}成功掠奪${result.loser}資源：${detailMessages.join("，")}`);
+		updateResourceDisplays();
+		saveGameState();
+	  }).catch(err => {
+		console.error("掠奪失敗：", err);
+		pushSystemMessage("掠奪失敗，請檢查網絡");
+	  });
+	}
+
 
 	// 添加结果显示函数
 	function displayBattleResult(result) {
