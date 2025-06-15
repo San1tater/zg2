@@ -5380,9 +5380,9 @@ function triggerT80Cannon() {
 
 	  // 最終傷害
 	  const ourDamage = Math.round(baseOurDamage * multiplierZ);
+	  const phrase = getRandomPhrase("normal");
 	  if (ourHit) {
-	    let phrase = getRandomPhrase("normal");
-		pushBattleLog( phrase + "（命中），對方僵尸-" + ourDamage);
+	    pushBattleLog( phrase + "（命中），對方僵尸-" + ourDamage);
 		totalEnemyDamage += ourDamage;
 	  } else {
 		pushBattleLog( phrase + "（未命中）");
@@ -5882,12 +5882,12 @@ function triggerT80Cannon() {
 
 	  // 最終傷害
 	  const ourDamage = Math.round(baseOurDamage * multiplierZ);
-	  let phrase = getRandomPhrase("normal");
+	  const phrase = getRandomPhrase("normal");
 	  if (ourHit) {
-	    pushBattleLog( phrase + "（命中），對方僵尸-" + ourDamage);
+		pushBattleLog( phrase + "（命中），對方僵尸-" + ourDamage);
 		totalEnemyDamage += ourDamage;
 	  } else {
-	    pushBattleLog( phrase + "（未命中）");
+		pushBattleLog( phrase + "（未命中）");
 	  }
 
 	}
@@ -6267,6 +6267,7 @@ function triggerT80Cannon() {
 
 	// 6. 启动特殊攻击
 	function startBattleBTRSpecialAttack() {
+	  if (!battleModeActive || battleEnded || !battleMatched) return;
 	  if (battleBTRInterval) clearInterval(battleBTRInterval);
 	  
 	  // 立即执行第一次攻击
