@@ -2,7 +2,7 @@
 <html lang="zh">
 <head>
   <meta charset="UTF-8" name="viewport" content="width=device-width, initial-scale=0.45"/>
-  <title>末日控制中心 - 正式版v.1.085 conflict update</title>
+  <title>末日控制中心 - 正式版v.1.086 conflict update</title>
   <style>
     /* 彈窗系統 */
     .modal-overlay {
@@ -1240,12 +1240,12 @@
 	}
 
 	.battle-header input[type="text"] {
-	  padding: 20px;
+	  padding: 15px;
 	  font-size: 1rem;
 	}
 
 	.battle-header button {
-	  padding: 20px 40px;
+	  padding: 15px 30px;
 	  font-size: 1rem;
 	  cursor: pointer;
 	}
@@ -1307,19 +1307,27 @@
 	}
 
 	.log-entry.battle-enemy-entry {
-	  color: #ff5e00;
+	  color: #fca572;
 	  font-weight: bold;
 	  margin: 4px 0;
 	}
 	
 	.log-entry.battle-system-entry {
-	  color: #ffd700;
+	  color: #fae678;
 	  font-weight: bold;
 	  margin: 4px 0;
 	}
 	#battleSelfAnim .zombie-search, #battleEnemyAnim .enemy-zombie-search  {
 	  top: 60%
 	}
+	#battleExitBtn {
+	  background-color: #5e1c0d; /* 底色為紅色 */
+	  color: white;          /* 文字顏色為白色 */
+	  border: none;          /* 無邊框（可根據需要調整） */
+	  font-size: 20px;       /* 調整字體大小 */
+	  cursor: pointer;
+	}
+
 	
   </style>
 </head>
@@ -1459,6 +1467,7 @@
 		  📜 行動日誌
 		 <!-- 在標題右側加入收藏按鈕 -->
 		 <button id="favoritesBtn">收藏</button>
+		 <button id="encounterBattleBtn">遭遇戰</button>
 		</h3>
 		<div class="log-header">
           <span class="zombie-status">待分配僵尸: <span id="pendingZombies">0</span></span>
@@ -1575,7 +1584,8 @@
 		  <input type="text" id="battleNickname" placeholder="輸入暱稱">
 		  <!-- 新增：PIN 輸入框，用以匹配對戰 -->
 		  <input type="text" id="battlePin" placeholder="輸入PIN碼">
-		  <button id="battleStartBtn">遭遇戰</button>
+		  <button id="battleStartBtn">開始</button>
+		  <button id="battleExitBtn">X</button>
 		</div>
 		<div class="battle-content">
 		  <!-- 左半邊：己方動畫區，所有動畫元素透過 CSS 翻轉水平顯示 -->
@@ -4678,18 +4688,6 @@ function triggerT80Cannon() {
 	
 	// 當文件內容完全加載後啟動遊戲
 	document.addEventListener("DOMContentLoaded", function() {
-		if (/iP(hone|od|ad)/.test(navigator.userAgent)) {
-		  let lastTouchEnd = 0;
-		  const DOUBLE_TAP_THRESHOLD = 300; // 毫秒
-		  
-		  document.addEventListener('touchend', function (event) {
-			const now = Date.now();
-			if (now - lastTouchEnd < DOUBLE_TAP_THRESHOLD) {
-			  event.preventDefault();
-			}
-			lastTouchEnd = now;
-		  }, { passive: false });
-		}
 		initProductionAnimation();
 		initExplorationAnimation();
 		updateProductionBackground(); // 初始化生产背景
@@ -4963,7 +4961,9 @@ function triggerT80Cannon() {
 	document.getElementById("explorationAnim").addEventListener("dblclick", function(e) {
 	  enterBattleMode();
 	});
-	
+	document.getElementById("encounterBattleBtn").addEventListener("click", function() {
+	  enterBattleMode();
+	});
 	function updateBattleZombieSearchSprite() {
 	  // 尋找對戰模式己方動畫區內的 zombie-search 元素
 	  var battleZombieElem = document.querySelector("#battleSelfAnim .zombie-search");
@@ -5309,6 +5309,9 @@ function triggerT80Cannon() {
 	  initializeUser();
 	  startBattleModeFirebase();
 	});
+	document.getElementById("battleExitBtn").addEventListener("click", function() {
+	  exitBattleMode();
+	});
 
 	// 使用 Firebase 同步對戰日誌信息的對戰事件
 	function triggerBattleEventFirebase() {
@@ -5362,6 +5365,10 @@ function triggerT80Cannon() {
 		  if (battleSpecialTimer) {
 			clearInterval(battleSpecialTimer);
 			battleSpecialTimer = null;
+		  }
+		   if (battleBTREventTimer) {
+			clearInterval(battleBTREventTimer);
+			battleBTREventTimer = null;
 		  }
 		  
 		  if (window.myRole === "userA" && !resultCalculated) {
@@ -6272,7 +6279,7 @@ function triggerT80Cannon() {
 		  // 未命中時也同樣隨機採用對應詞庫中的描述
 		  let type = battleBTRType === "t80" ? "t80" : "btr";
 		  let phrase = getRandomPhrase(type);
-		  const missMessage = `${phrase}，（未命中）`;
+		  const missMessage = `${phrase}（未命中）`;
 		  pushBattleLog(missMessage);
 		}
 	  
