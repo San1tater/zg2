@@ -1350,6 +1350,9 @@
 	  text-align: right;
 	  padding-right: 20px;
 	}
+
+
+
 	
   </style>
 </head>
@@ -4865,7 +4868,7 @@ function triggerT80Cannon() {
 	let resultCalculated = false;
 	let resultData = null;
 	let battleEnded = false;
-	const battleDuration = 90; // 戰鬥時長 180 秒（3 分鐘）
+	const battleDuration = 60; // 戰鬥時長 180 秒（3 分鐘）
 	
 	const attackPhrases = {
 	  normal: [
@@ -4930,17 +4933,29 @@ function triggerT80Cannon() {
 		
 		// 清理计时器
 		if (battleInterval) {
-		  clearInterval(battleInterval);
-		  battleInterval = null;
-		}
-		if (battleSpecialTimer) {
-		  clearInterval(battleSpecialTimer);
-		  battleSpecialTimer = null;
-		}
-		if (battleSpecialLogTimer) {
-		  clearInterval(battleSpecialLogTimer);
-		  battleSpecialLogTimer = null;
-		}
+		clearInterval(battleInterval);
+		battleInterval = null;
+	  }
+	  if (battleSpecialTimer) {
+		clearInterval(battleSpecialTimer);
+		battleSpecialTimer = null;
+	  }
+	  if (battleSpecialLogTimer) {
+		clearInterval(battleSpecialLogTimer);
+		battleSpecialLogTimer = null;
+	  }
+	  if (statusCheckInterval) {
+		clearInterval(statusCheckInterval);
+		statusCheckInterval = null;
+	  }
+	  if (battleBTREventTimer) {
+		clearInterval(battleBTREventTimer);
+		battleBTREventTimer = null;
+	  }
+	  if (battleBTRInterval) {
+		clearInterval(battleBTRInterval);
+		battleBTRInterval = null;
+	  }
 		
 		// 清理 Firebase 监听
 		if (window.currentBattleRoom) {
@@ -5255,11 +5270,9 @@ function triggerT80Cannon() {
 	  let logRef = roomRef.child("log");
 	  logRef.off("child_added");
 	  logRef.on("child_added", function(snapshot) {
-	    if (battleEnded) return; 
-		try {
-		  let data = snapshot.val();
-		  console.log("收到日志:", data);
-		  
+	    if (battleEnded) return;
+		let data = snapshot.val();
+		try {  
 		  // 确保数据是对象
 		  if (data && typeof data === 'object') {
 			appendBattleLogEntry(data);
@@ -5312,7 +5325,6 @@ function triggerT80Cannon() {
 	  };
 	  
 	  console.log("上傳對戰訊息：", data);
-	  
 	  
 	  if (window.currentBattleRoom) {
 		try {
@@ -5391,6 +5403,10 @@ function triggerT80Cannon() {
 			clearInterval(battleSpecialTimer);
 			battleSpecialTimer = null;
 		  }
+		   if (battleBTREventTimer) {
+			clearInterval(battleBTREventTimer);
+			battleBTREventTimer = null;
+		  }
 		  const roomRef = firebase.database().ref("battles").child(window.currentBattleRoom);
 		  roomRef.child("log").off();
 		  roomRef.child("btrAttacks").off();
@@ -5404,7 +5420,9 @@ function triggerT80Cannon() {
 		  // 添加对战结束提示
 		  pushSystemMessage("戰鬥結束！戰鬥總結生成中");
 		} else {
-		  triggerBattleEventFirebase();
+		  if (!battleEnded) {
+			triggerBattleEventFirebase();
+		  }
 		  remaining -= 5;
 		}
 	  }, 5000);
@@ -5713,6 +5731,7 @@ function triggerT80Cannon() {
 		const result = snapshot.val();
 		if (result && !resultData) {
 		  resultData = result;
+		
 		  displayBattleResult(result);
 		  
 		 // +++ 确保所有玩家都上传状态 +++
@@ -5721,8 +5740,7 @@ function triggerT80Cannon() {
 		  const myStatus = {
 			uid: window.myUid,
 			totalZombies: gameState.totalZombies,
-			allocations: {...gameState.allocations},
-			resources: { ...gameState.resources }
+			allocations: {...gameState.allocations}
 		  };
 		  
 		  // +++ 使用统一路径格式 +++
@@ -5744,7 +5762,6 @@ function triggerT80Cannon() {
 		}
 	  });
 	}
-	
 
 	// 添加结果显示函数
 	function displayBattleResult(result) {
@@ -5825,9 +5842,8 @@ function triggerT80Cannon() {
 	  saveGameState();
 	  
 	  // 更新UI
-	  updateResourceCounters();
+	  updateResourceDisplays();
 	}
-
 	
 
 	function triggerBattleEvent() {
@@ -6338,11 +6354,12 @@ function triggerT80Cannon() {
 	  if (!window.currentBattleRoom) return;
 	  
 	  const attackRef = firebase.database().ref("battles")
-		.child(window.currentBattleRoom)
-		.child("btrAttacks");
+						.child(window.currentBattleRoom)
+						.child("btrAttacks");
 	  
 	  attackRef.off("child_added");
-	  attackRef.on("child_added", snapshot => {
+	  attackRef.on("child_added", function(snapshot) {
+	    if (battleEnded) return;
 		const attack = snapshot.val();
 		
 		// 忽略自己发送的攻击
@@ -6350,7 +6367,7 @@ function triggerT80Cannon() {
 		
 		if (attack.hit) {
 		  totalSelfDamage += attack.damage;
-		  console.log(`收到敌方BTR伤害: ${attack.damage}`);
+		  console.log(`受到敵方BTR傷害: ${attack.damage}`);
 		}
 	  });
 	}
