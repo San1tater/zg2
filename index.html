@@ -5391,41 +5391,52 @@ function triggerT80Cannon() {
 
 
 	function startBattleTimerFirebase() {
-	  let remaining = battleDuration;
-	  battleInterval = setInterval(function() {
-		if (remaining <= 0) {
-		  battleEnded = true;
-		  clearInterval(battleInterval);
-		  battleInterval = null;
-		  
-		  // 停止所有事件触发
-		  if (battleSpecialTimer) {
-			clearInterval(battleSpecialTimer);
-			battleSpecialTimer = null;
-		  }
-		   if (battleBTREventTimer) {
-			clearInterval(battleBTREventTimer);
-			battleBTREventTimer = null;
-		  }
-		  const roomRef = firebase.database().ref("battles").child(window.currentBattleRoom);
-		  roomRef.child("log").off();
-		  roomRef.child("btrAttacks").off();
-		  
-		  if (window.myRole === "userA" && !resultCalculated) {
-			calculateAndBroadcastBattleResult();
-		  }
-		  // 所有玩家监听结果
-		  listenForBattleResult();
-		  
-		  // 添加对战结束提示
-		  pushSystemMessage("戰鬥結束！戰鬥總結生成中");
-		} else {
-		  if (!battleEnded) {
-			triggerBattleEventFirebase();
-		  }
-		  remaining -= 5;
-		}
-	  }, 5000);
+	   let remaining = battleDuration;
+		battleInterval = setInterval(function() {
+		  if (remaining <= 0) {
+			endBattle(); // 直接調用我們的新函數，立即終止所有事件生成
+			} else {
+			  // 僅在 battleEnded 為 false 時觸發事件生成
+			  if (!battleEnded) {
+				triggerBattleEventFirebase();
+			  }
+			  remaining -= 5;
+			}
+		}, 5000);
+	}
+	function endBattle() {
+	  // 立即清除所有定時器
+	  if (battleInterval) {
+		clearInterval(battleInterval);
+		battleInterval = null;
+	  }
+	  if (battleSpecialTimer) {
+		clearInterval(battleSpecialTimer);
+		battleSpecialTimer = null;
+	  }
+	  if (battleBTREventTimer) {
+		clearInterval(battleBTREventTimer);
+		battleBTREventTimer = null;
+	  }
+
+	  // 立即卸載 Firebase 上對 log 與 btrAttacks 的監聽器
+	  const roomRef = firebase.database().ref("battles").child(window.currentBattleRoom);
+	  roomRef.child("log").off();
+	  roomRef.child("btrAttacks").off();
+
+	  // 設定 battleEnded 為 true，阻止未來所有事件生成入口
+	  battleEnded = true;
+
+	  // 如果本端是 userA 且結果尚未計算，則計算並上傳戰鬥結果
+	  if (window.myRole === "userA" && !resultCalculated) {
+		calculateAndBroadcastBattleResult();
+	  }
+	  
+	  // 監聽結果（讓所有用戶都看到最終結果）
+	  listenForBattleResult();
+
+	  // 發送戰鬥結束系統提示
+	  pushSystemMessage("戰鬥結束！戰鬥總結生成中");
 	}
 	function clearPendingEvents() {
 	  // 清除所有计划中的事件
