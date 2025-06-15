@@ -4937,9 +4937,10 @@ function triggerT80Cannon() {
 		  clearInterval(battleSpecialTimer);
 		  battleSpecialTimer = null;
 		}
-		const roomRef = firebase.database().ref("battles").child(window.currentBattleRoom);
-		  roomRef.child("log").off();
-		  roomRef.child("btrAttacks").off();
+		if (battleSpecialLogTimer) {
+		  clearInterval(battleSpecialLogTimer);
+		  battleSpecialLogTimer = null;
+		}
 		
 		// 清理 Firebase 监听
 		if (window.currentBattleRoom) {
@@ -5390,7 +5391,7 @@ function triggerT80Cannon() {
 			clearInterval(battleSpecialTimer);
 			battleSpecialTimer = null;
 		  }
-		    const roomRef = firebase.database().ref("battles").child(window.currentBattleRoom);
+		  const roomRef = firebase.database().ref("battles").child(window.currentBattleRoom);
 		  roomRef.child("log").off();
 		  roomRef.child("btrAttacks").off();
 		  
