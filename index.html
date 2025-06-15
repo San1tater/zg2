@@ -2,7 +2,7 @@
 <html lang="zh">
 <head>
   <meta charset="UTF-8" name="viewport" content="width=device-width, initial-scale=0.45"/>
-  <title>末日控制中心 - 正式版v.1.086 conflict update</title>
+  <title>末日控制中心 - 正式版v.1.087 conflict update</title>
   <style>
     /* 彈窗系統 */
     .modal-overlay {
@@ -1254,7 +1254,7 @@
 	  height: 180px;
 	  width: 100vw;
 	  display: flex;
-	  margin: 10px auto;
+	  margin: 0px;
 	}
 
 	.battle-half {
@@ -1288,7 +1288,7 @@
 
 	.battle-log {
 	  position: fixed;
-	  top: 260px;      /* 戰鬥日誌頂部緊貼 battle-container 底部 */
+	  top: 250px;      /* 戰鬥日誌頂部緊貼 battle-container 底部 */
 	  left: 0;
 	  width: 100%;
 	  height: calc(100vh - 220px);  /* 占滿剩餘高度 */
@@ -1327,7 +1327,29 @@
 	  font-size: 20px;       /* 調整字體大小 */
 	  cursor: pointer;
 	}
+	.resource-header {
+	  display: grid;
+	  grid-template-columns: 20% 30% 50%; /* 第一欄固定30%，第二欄40%，第三欄30%，總和為100% */
+	  align-items: center;
+	  width: 100%;
+	  padding: 10px 0;  /* 根據需要調整內邊距 */
+	}
 
+	.resource-icon {
+	  grid-column: 1;
+	  text-align: center;  /* 靠右對齊，讓圖示靠近邊界 */
+	}
+
+	.resource-name {
+	  grid-column: 2;
+	  text-align: center;
+	}
+
+	.resource-count {
+	  grid-column: 3;
+	  text-align: right;
+	  padding-right: 20px;
+	}
 	
   </style>
 </head>
@@ -5233,6 +5255,7 @@ function triggerT80Cannon() {
 	  let logRef = roomRef.child("log");
 	  logRef.off("child_added");
 	  logRef.on("child_added", function(snapshot) {
+	    if (battleEnded) return; 
 		try {
 		  let data = snapshot.val();
 		  console.log("收到日志:", data);
@@ -5276,6 +5299,7 @@ function triggerT80Cannon() {
 
 
 	function pushBattleLog(message) {
+	  if (battleEnded) return;
 	  if (!window.myRole) {
 		console.error("window.myRole 未被設定，無法上傳對戰訊息");
 		return;
@@ -5288,6 +5312,7 @@ function triggerT80Cannon() {
 	  };
 	  
 	  console.log("上傳對戰訊息：", data);
+	  
 	  
 	  if (window.currentBattleRoom) {
 		try {
@@ -5357,19 +5382,18 @@ function triggerT80Cannon() {
 	  let remaining = battleDuration;
 	  battleInterval = setInterval(function() {
 		if (remaining <= 0) {
+		  battleEnded = true;
 		  clearInterval(battleInterval);
 		  battleInterval = null;
-		  battleEnded = true;
 		  
 		  // 停止所有事件触发
 		  if (battleSpecialTimer) {
 			clearInterval(battleSpecialTimer);
 			battleSpecialTimer = null;
 		  }
-		   if (battleBTREventTimer) {
-			clearInterval(battleBTREventTimer);
-			battleBTREventTimer = null;
-		  }
+		    const roomRef = firebase.database().ref("battles").child(window.currentBattleRoom);
+		  roomRef.child("log").off();
+		  roomRef.child("btrAttacks").off();
 		  
 		  if (window.myRole === "userA" && !resultCalculated) {
 			calculateAndBroadcastBattleResult();
