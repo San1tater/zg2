@@ -5887,6 +5887,7 @@ function triggerT80Cannon() {
 		pushBattleLog( phrase + "（命中），對方僵尸-" + ourDamage);
 		totalEnemyDamage += ourDamage;
 	  } else {
+	    let phrase = getRandomPhrase("normal");
 		pushBattleLog( phrase + "（未命中）");
 	  }
 
