@@ -2692,8 +2692,8 @@
 	  });
 
 	  const roundedProduction = Math.round(totalProduction);
-	  // 設定單次生產上限：基礎產量上限為 9900000
-	  const productionCap = 9900000;
+	  // 設定單次生產上限：基礎產量上限為 99000000
+	  const productionCap = 99000000;
 	  const limitedProduction = Math.min(roundedProduction, productionCap);
 
 	  if (limitedProduction > 0) {
@@ -2733,7 +2733,7 @@
   
 	  // 設定單次資源獲得上限（例如 productionCap 為 990000）
 	  const normalMultiplier = 2.5;
-	  const baseCapFactor = 9900000 / normalMultiplier; // 3960000
+	  const baseCapFactor = 99000000 / normalMultiplier; // 3960000
 	  const rarityMultipliers = {
 		  junk: 1,
 		  old: 1.5,
@@ -2811,7 +2811,7 @@
       const amount = convertProduction(computed);
 	  
 	  // 設置單次生產上限
-	  const productionCap = 9900000;
+	  const productionCap = 99000000;
 	  // 限制原始生產量
 	  const limitedAmount = Math.min(amount, productionCap);
 	  
