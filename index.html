@@ -2,7 +2,7 @@
 <html lang="zh">
 <head>
   <meta charset="UTF-8" name="viewport" content="width=device-width, initial-scale=0.45"/>
-  <title>末日控制中心 - 正式版v.1.091 skin update</title>
+  <title>末日控制中心 - 正式版v.1.090 skin update</title>
   <style>
     /* 彈窗系統 */
     .modal-overlay {
@@ -6705,6 +6705,10 @@ function triggerT80Cannon() {
             window.hideWardrobeMode();
           }
         });
+	  wardrobeModal.addEventListener("click", function(e){
+		// 阻止事件冒泡，避免點擊彈窗內部也觸發退出
+		e.stopPropagation();
+		});
 	  
 	})();
 
