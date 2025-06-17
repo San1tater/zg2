@@ -2,7 +2,7 @@
 <html lang="zh">
 <head>
   <meta charset="UTF-8" name="viewport" content="width=device-width, initial-scale=0.45"/>
-  <title>末日控制中心 - 正式版v.1.089 conflict update</title>
+  <title>末日控制中心 - 正式版v.1.090 skin update</title>
   <style>
     /* 彈窗系統 */
     .modal-overlay {
@@ -1351,7 +1351,91 @@
 	  padding-right: 20px;
 	}
 
-
+	 #wardrobeModal {
+      display: none;
+      position: fixed;
+      top: 10%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 90vw;
+      max-width: 500px;
+      background: #2d2d2d;
+      border-radius: 12px;
+      padding: 1rem;
+      z-index: 3000;
+    }
+    #wardrobeModal h3 {
+      text-align: center;
+      margin-bottom: 0.5em;
+    }
+    #wardrobeTabs {
+      display: flex;
+      justify-content: space-around;
+      margin-bottom: 1em;
+      border-bottom: 1px solid var(--border-color);
+    }
+    #wardrobeTabs button {
+      flex: 1;
+      background: transparent;
+      border: none;
+      padding: 0.5em;
+      font-weight: bold;
+      color: var(--text-color);
+      cursor: pointer;
+    }
+    #wardrobeTabs button.active {
+      border-bottom: 2px solid limegreen;
+    }
+    #wardrobeContent {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+	  max-height: 400px; /* 根據需要調整高度 */
+      overflow-y: auto;
+    }
+	#wardrobeHeader {
+	  display: flex;
+	  align-items: center;
+	  font-weight: bold;
+	}
+	#wardrobeCloseBtn {
+	  margin-left: auto;
+	  background-color: #5e1c0d; /* 底色為紅色 */
+	  color: white;          /* 文字顏色為白色 */
+	  border: none;          /* 無邊框（可根據需要調整） */
+	  font-size: 20px;       /* 調整字體大小 */
+	  cursor: pointer;
+	}
+    .wardrobe-card {
+      width: 150px;
+      height: 150px;
+      background-size: cover;
+      background-position: center;
+      position: relative;
+      border: 2px solid transparent;
+      cursor: pointer;
+      transition: border 0.3s;
+    }
+    .wardrobe-card.locked {
+      filter: grayscale(100%);
+    }
+    .wardrobe-card.selected {
+      border: 2px solid limegreen;
+    }
+    .wardrobe-card .label {
+      position: absolute;
+      bottom: 0;
+      width: 100%;
+      background: rgba(0, 128, 0, 0.7);
+      color: white;
+      font-size: 1em;
+      text-align: center;
+      display: none;
+    }
+    .wardrobe-card.selected .label {
+      display: block;
+    }
 
 	
   </style>
@@ -1521,7 +1605,9 @@
 	  </div>
 	 </div>
     <div class="grid-item building-system-container" id="buildingSystem">
-        <h2 class="section-title">🏗️ 基地建設</h2>
+        <h2 class="section-title">🏗️ 基地建設
+		<button id="wardrobeBtn">衣櫃模式</button>
+		</h2>
         <div class="construction-grid" id="buildingGrid">
           <!-- 動態生成的建築格子 -->
         </div>
@@ -1601,37 +1687,47 @@
 		<div class="build-options" id="buildOptions"></div>
 	  </div>
 	</div>
-	<!-- ===== 新增：對戰模式遮罩與面板 ===== -->
-	<div id="battleOverlay" class="battle-overlay">
-	  <div class="battle-container">
-		<div class="battle-header">
-		  <!-- 新增：暱稱輸入框（雙方連線前可任意修改） -->
-		  <input type="text" id="battleNickname" placeholder="輸入暱稱">
-		  <!-- 新增：PIN 輸入框，用以匹配對戰 -->
-		  <input type="text" id="battlePin" placeholder="輸入PIN碼">
-		  <button id="battleStartBtn">開始</button>
-		  <button id="battleExitBtn">X</button>
-		</div>
-		<div class="battle-content">
-		  <!-- 左半邊：己方動畫區，所有動畫元素透過 CSS 翻轉水平顯示 -->
-		  <div class="battle-half left">
-			<div class="battle-inner" id="battleSelfAnim">
-			  <!-- （此區將在 JS 中動態複製原探索動畫視窗內容） -->
+	
+	 <div id="battleOverlay" class="battle-overlay">
+		<div class="battle-container">
+		  <div class="battle-header">
+			<input type="text" id="battleNickname" placeholder="輸入暱稱">
+			<input type="text" id="battlePin" placeholder="輸入PIN碼">
+			<button id="battleStartBtn">開始</button>
+			<button id="battleExitBtn">X</button>
+		  </div>
+		  <div class="battle-content">
+			<div class="battle-half left">
+			  <div class="battle-inner" id="battleSelfAnim">
+				<!-- 己方動畫內容，其僵尸精靈圖將取自全局配置 -->
+			  </div>
+			</div>
+			<div class="battle-half right">
+			  <div class="battle-inner" id="battleEnemyAnim">
+				<!-- 敵方動畫保持原有邏輯 -->
+			  </div>
 			</div>
 		  </div>
-		  <!-- 右半邊：對方動畫區，動畫保持原有方向 -->
-		  <div class="battle-half right">
-			<div class="battle-inner" id="battleEnemyAnim">
-			  <!-- （此區預留，同步顯示對方動畫內容） -->
-			</div>
+		</div>
+		<div class="battle-log" id="battleLog">
+		  <h3 class="battle-log-title">戰鬥日誌</h3>
+		  <div class="log" id="battleLogContent">
 		  </div>
 		</div>
 	  </div>
-	  <!-- 戰鬥日誌窗口 -->
-	  <div class="battle-log" id="battleLog">
-	  <h3 class="battle-log-title">戰鬥日誌</h3>
-	  <div class="log" id="battleLogContent">
-		<!-- 戰鬥事件將在此播放 -->
+
+	  <!-- ===== 新增： 衣櫃模式（Wardrobe Mode）彈窗 ===== -->
+	  <div id="wardrobeModal">
+	  <div id="wardrobeHeader">
+		<span>衣櫃模式</span>
+		<button id="wardrobeCloseBtn">X</button>
+	  </div>
+	  <div id="wardrobeTabs">
+		<button id="tabZombie" class="active">僵尸</button>
+		<button id="tabArmor">裝甲</button>
+	  </div>
+	  <div id="wardrobeContent">
+		<!-- 內容會由 JS 生成 -->
 	  </div>
 	</div>
 
@@ -1798,7 +1894,7 @@
 
 	
 	/***** 全局變量定義 *****/
-	
+	window.currentZombieSprite = localStorage.getItem("currentZombieSprite") || "images/zombie_search_sprite.png";
 	function getTotalRarityLevels() {
 	  return RARITIES.length;
 	}
@@ -4621,45 +4717,10 @@ function triggerT80Cannon() {
 	  }, 20000); // 匹配動畫時長
 	}
 	function updateZombieSearchSprite() {
-	  // 取得探索區域中那個顯示僵尸搜尋動畫的元素（class 為 zombie-search）
-	  const zombieElem = document.querySelector(".zombie-search");
-	  if (!zombieElem) return; // 若尚未創建，則直接返回
-
-	  // 檢查是否存在「拖拉機廠」建築（對應 BUILDINGS 中的 armoredGarage）
-	  const hasTractor = gameState.buildings.some(
-		b => b && b.type.toLowerCase() === "armoredgarage"
-	  );
-	   // 「軍械工坊」對應於 armory
-	  const hasArmory = gameState.buildings.some(
-		b => b && b.type.toLowerCase() === "armory"
-	  );
-	  // 「僵尸指揮中心」對應於 zombiecommandcenter
-	  const hasZombieCommand = gameState.buildings.some(
-		b => b && b.type.toLowerCase() === "zombiecommandcenter"
-	  );
-
-	  // 預設使用原始精靈圖
-	  let newSprite = "images/zombie_search_sprite.png";
-	  
-	  if (hasTractor && hasArmory && hasZombieCommand) {
-		newSprite = "images/zombie_search_sprite_elite.png";
-	  }
-	  // 若同時存在拖拉機廠與軍械工坊 / 僵尸指揮中心，則用 equipped 版
-	  else if (hasTractor && (hasArmory || hasZombieCommand)) {
-		newSprite = "images/zombie_search_sprite_equipped.png";
-	  }
-	  // 否則若僅有拖拉機廠，則用 btr 版
-	  else if (hasTractor) {
-		newSprite = "images/zombie_search_sprite_btr.png";
-	  }
-	  // 否則若僅有軍械工坊或僵尸指揮中心，則用 helmet 版
-	  else if (hasArmory || hasZombieCommand) {
-		newSprite = "images/zombie_search_sprite_helmet.png";
-	  }
-	  
-	  // 更新背景圖：這裡使用 CSS background-image 屬性來替換對應的圖片
-	  zombieElem.style.backgroundImage = "url('" + newSprite + "')";
-	}
+      const zombieElem = document.querySelector(".zombie-search");
+      if (!zombieElem) return;
+      zombieElem.style.backgroundImage = "url('" + window.currentZombieSprite + "')";
+    }
 
 	// 初始化生产动画：为生产动画各栏添加前景僵尸动画（常驻循环播放）
 	function initProductionAnimation() {
@@ -4856,7 +4917,7 @@ function triggerT80Cannon() {
 	
 
 
-	/***** 新增：對戰模式相關 JS 代碼 *****/
+ (function(){
 	let battleModeActive = false;
 	let battleMatched = false;
 	let battleInterval = null;
@@ -4909,28 +4970,23 @@ function triggerT80Cannon() {
 
 	// 修改後：進入對戰模式只初始化獨立對戰動畫
 	function enterBattleMode() {
-	  if (battleModeActive) return;
-	  totalSelfDamage = 0;
-	  totalEnemyDamage = 0;
-	  battleModeActive = true;
-	  battleMatched = false; // 初始狀態設定為未匹配
-	  document.getElementById("battleOverlay").style.display = "block";
-	  document.body.style.overflow = "hidden";
+        if (battleModeActive) return;
+        battleModeActive = true;
+        battleMatched = false;
+        document.getElementById("battleOverlay").style.display = "block";
+        document.body.style.overflow = "hidden";
+        // 初始化對戰動畫，己方使用 window.currentZombieSprite
+        initBattleAnimation(false);
+        // 為 battleOverlay 綁定雙擊退出事件
+        document.getElementById("battleOverlay").addEventListener("dblclick", exitBattleMode);
+      }
 	  
-	  // 初始化對戰動畫，match=false時只生成己方 zombie-search 並設定隨機背景
-	  initBattleAnimation(false);
-	  
-	  // 為 battleOverlay 綁定雙擊事件以退出對戰模式
-	  document.getElementById("battleOverlay").addEventListener("dblclick", exitBattleMode);
-	}
-
-
-	function exitBattleMode() {
-	  if (battleModeActive) {
-		battleModeActive = false;
-		battleMatched = false;
-		document.getElementById("battleOverlay").style.display = "none";
-		document.body.style.overflow = "";
+      function exitBattleMode() {
+        if (!battleModeActive) return;
+        battleModeActive = false;
+        battleMatched = false;
+        document.getElementById("battleOverlay").style.display = "none";
+        document.body.style.overflow = "";
 		
 		// 清理计时器
 		if (battleInterval) {
@@ -4991,96 +5047,41 @@ function triggerT80Cannon() {
 		totalEnemyDamage = 0;
 		window.location.reload();
 	  }
-	}
 
+	 function updateBattleZombieSearchSprite() {
+      const battleZombieElem = document.querySelector("#battleSelfAnim .zombie-search");
+      if (!battleZombieElem) return;
+      battleZombieElem.style.backgroundImage = "url('" + window.currentZombieSprite + "')";
+    }
+	
 
-
-	// 在探索動畫視窗上建立雙擊事件，觸發對戰模式
-	document.getElementById("explorationAnim").addEventListener("dblclick", function(e) {
-	  enterBattleMode();
-	});
-	document.getElementById("encounterBattleBtn").addEventListener("click", function() {
-	  enterBattleMode();
-	});
-	function updateBattleZombieSearchSprite() {
-	  // 尋找對戰模式己方動畫區內的 zombie-search 元素
-	  var battleZombieElem = document.querySelector("#battleSelfAnim .zombie-search");
-	  if (!battleZombieElem) return;
+	 function initBattleAnimation(match) {
+        const selfAnim = document.getElementById("battleSelfAnim");
+        const enemyAnim = document.getElementById("battleEnemyAnim");
+        selfAnim.innerHTML = "";
+        enemyAnim.innerHTML = "";
+        selfAnim.style.backgroundImage = "url('images/location_day_1.png')";
+        selfAnim.style.backgroundRepeat = "repeat-x";
+        selfAnim.style.backgroundSize = "auto 100%";
+        selfAnim.style.backgroundPosition = "center top";
+        selfAnim.style.animation = "scrollBgRight 30s linear infinite";
+        if (match) {
+          enemyAnim.style.backgroundImage = selfAnim.style.backgroundImage;
+          enemyAnim.style.backgroundRepeat = "repeat-x";
+          enemyAnim.style.backgroundSize = "auto 100%";
+          enemyAnim.style.backgroundPosition = "center top";
+          enemyAnim.style.animation = "scrollBgRight 30s linear infinite";
+        } else {
+          enemyAnim.style.backgroundColor = "#000";
+          enemyAnim.style.animation = "";
+        }
+        // 創建己方僵尸搜尋動畫元素，使用 window.currentZombieSprite
+        let zombieSearch = document.createElement("div");
+        zombieSearch.className = "zombie-search";
+        zombieSearch.style.backgroundImage = "url('" + window.currentZombieSprite + "')";
+        selfAnim.appendChild(zombieSearch);
+      }
 	  
-	  // 根據原先代碼中 updateZombieSearchSprite() 的判斷邏輯：
-	  var hasTractor = gameState.buildings.some(function(b) {
-		return b && b.type.toLowerCase() === "armoredgarage";
-	  });
-	  var hasArmory = gameState.buildings.some(function(b) {
-		return b && b.type.toLowerCase() === "armory";
-	  });
-	  var hasZombieCommand = gameState.buildings.some(function(b) {
-		return b && b.type.toLowerCase() === "zombiecommandcenter";
-	  });
-	  
-	  var newSprite = "images/zombie_search_sprite.png"; //預設
-	  if (hasTractor && hasArmory && hasZombieCommand) {
-		newSprite = "images/zombie_search_sprite_elite.png";
-	  } else if (hasTractor && (hasArmory || hasZombieCommand)) {
-		newSprite = "images/zombie_search_sprite_equipped.png";
-	  } else if (hasTractor) {
-		newSprite = "images/zombie_search_sprite_btr.png";
-	  } else if (hasArmory || hasZombieCommand) {
-		newSprite = "images/zombie_search_sprite_helmet.png";
-	  }
-	  
-	  battleZombieElem.style.backgroundImage = "url('" + newSprite + "')";
-	}
-
-	function initBattleAnimation(match) {
-	  const selfAnim = document.getElementById("battleSelfAnim");
-	  const enemyAnim = document.getElementById("battleEnemyAnim");
-	  // 清空兩邊動畫區內容
-	  selfAnim.innerHTML = "";
-	  enemyAnim.innerHTML = "";
-	  selfAnim.style.position = "relative";
-	  selfAnim.style.height = "100%";
-	  
-	  // 背景圖片來源（隨機選取，邏輯與探索一致）
-	  const backgrounds = [
-		"images/location_day_1.png",
-		"images/location_day_2.png",
-		"images/location_day_3.png",
-		"images/location_night_1.png",
-		"images/location_night_2.png",
-		"images/location_night_3.png"
-	  ];
-	  let bg = backgrounds[Math.floor(Math.random() * backgrounds.length)];
-	  
-	  // 為己方動畫區設定滾動背景
-	  selfAnim.style.backgroundImage = "url('" + bg + "')";
-	  selfAnim.style.backgroundRepeat = "repeat-x";
-	  selfAnim.style.backgroundSize = "auto 100%";
-	  selfAnim.style.backgroundPosition = "center top";
-	  selfAnim.style.animation = "scrollBgRight 30s linear infinite";
-	  
-	  // 如果匹配成功，則右側動畫區也使用相同背景；否則保持黑屏
-	  if (match) {
-		enemyAnim.style.backgroundImage = "url('" + bg + "')";
-		enemyAnim.style.backgroundRepeat = "repeat-x";
-		enemyAnim.style.backgroundSize = "auto 100%";
-		enemyAnim.style.backgroundPosition = "center top";
-		enemyAnim.style.animation = "scrollBgRight 30s linear infinite";
-	  } else {
-		enemyAnim.style.backgroundColor = "#000";
-		enemyAnim.style.backgroundImage = "";
-		enemyAnim.style.animation = "";
-	  }
-	  
-	  // 生成 zombie-search 效果
-	  let zombieSearch = document.createElement("div");
-	  zombieSearch.className = "zombie-search";
-	  selfAnim.appendChild(zombieSearch);
-	  
-	  // 呼叫新函數：根據遊戲建築決定對戰模式中 zombie-search 的 sprite
-	  updateBattleZombieSearchSprite();
-	  
-	}
 	function handleIncomingDamage(damage) {
 	  totalSelfDamage += damage;
 	}
@@ -6534,6 +6535,171 @@ function triggerT80Cannon() {
 		logRef.push(data);
 	  }
 	}
+
+	window.battleMode = {
+        enter: enterBattleMode,
+        exit: exitBattleMode
+    };
+	document.getElementById("battleStartBtn").addEventListener("click", function(){
+        if(initializeUser()){
+          startBattleModeFirebase();
+        }
+      });
+	document.getElementById("explorationAnim").addEventListener("dblclick", function(e) {
+	  battleMode.enter();
+	});
+	document.getElementById("encounterBattleBtn").addEventListener("click", function() {
+	  battleMode.enter();
+	});
+
+    })();
+
+	// 用本地 unlockedAchievements 生成一个称号集合
+	function syncAchievements() {
+	  const set = new Set();
+	  // 我們遍歷 unlockedAchievements 這個全局變量
+	  unlockedAchievements.forEach(a => {
+		if (a.title) {
+		  // 進行 Unicode 正規化、轉小寫並修剪空格
+		  set.add(a.title.normalize("NFC").toLowerCase().trim());
+		}
+	  });
+	  console.log("同步後的稱號庫 (從 unlockedAchievements):", Array.from(set));
+	  return set;
+	}
+
+	// 在衣櫃模式模塊中：
+	(function(){
+	  const wardrobeModal = document.getElementById("wardrobeModal");
+	  const wardrobeContent = document.getElementById("wardrobeContent");
+	  const tabZombie = document.getElementById("tabZombie");
+	  const tabArmor = document.getElementById("tabArmor");
+
+	  // 如果 unlockedAchievements 尚未定義，初始化它
+	  if (!window.unlockedAchievements) {
+		window.unlockedAchievements = [];
+	  }
+	  // 同時確保 gameState.unlockedAchievements 也存在
+	  if (!gameState.unlockedAchievements) {
+		gameState.unlockedAchievements = window.unlockedAchievements;
+	  }
+
+	  // 定義可選的僵尸精靈圖選項，這裡的 unlock 屬性需要和成就中的 title 匹配
+	  const spriteOptions = [
+		{ src: "images/zombie_search_sprite.png", unlock: true },
+		{ src: "images/zombie_search_sprite_helmet.png", unlock: "Алтын" },
+		{ src: "images/zombie_search_sprite_btr.png", unlock: "報話機" },
+		{ src: "images/zombie_search_sprite_equipped.png", unlock: "武裝通信兵" },
+		{ src: "images/zombie_search_sprite_svd.png", unlock: "拾荒高手" },
+		{ src: "images/zombie_search_sprite_svd_h.png", unlock: "物資收集者" },
+		{ src: "images/zombie_search_sprite_elite.png", unlock: "全副武裝" },
+		{ src: "images/zombie_search_sprite_pkm_e.png", unlock: "裝甲猛虎" },
+		{ src: "images/zombie_search_sprite_pkm_m.png", unlock: "銅墻鐵壁" },
+	  ];
+	  
+	  // 判斷一個 sprite 是否已解鎖
+	  function isSpriteUnlocked(option) {
+		// 如果 unlock 為 true，表示始終可用
+		if(option.unlock === true) return true;
+		
+		// 先對 item.unlock 進行正規化處理：
+		let need = "";
+		if (typeof option.unlock === "string") {
+		  need = option.unlock.normalize("NFC").toLowerCase().trim();
+		}
+		// 通常你也可能定義 "default" 為可用
+		if (need === "default") return true;
+
+		// 獲取同步後的稱號庫
+		const unlockedSet = syncAchievements();
+		return unlockedSet.has(need);
+	  }
+	  
+	  function renderWardrobeTab() {
+		// 每次渲染前立即同步 unlockedAchievements
+		renderUnlockedSet = syncAchievements();
+		wardrobeContent.innerHTML = "";
+		spriteOptions.forEach(option => {
+		  const card = document.createElement("div");
+		  card.className = "wardrobe-card";
+		  // 生成縮略圖的路徑：假設從 "xxx.png" 得到 "xxx_card.png"
+		  const thumb = option.src.replace(/(\.\w+)$/, "_card$1");
+		  card.style.backgroundImage = "url('" + thumb + "')";
+		  
+		  if (!isSpriteUnlocked(option)) {
+			card.classList.add("locked");
+		  }
+		  if (option.src === (window.currentZombieSprite || "images/zombie_search_sprite.png")) {
+			card.classList.add("selected");
+			const label = document.createElement("div");
+			label.className = "label";
+			label.textContent = "使用中";
+			card.appendChild(label);
+		  }
+		  card.addEventListener("click", function(){
+			if (!isSpriteUnlocked(option)) return;
+			if(card.classList.contains("selected")){
+			  card.classList.remove("selected");
+			  if(card.querySelector(".label")){
+				card.removeChild(card.querySelector(".label"));
+			  }
+			  window.currentZombieSprite = "images/zombie_search_sprite.png";
+			  localStorage.setItem("currentZombieSprite", window.currentZombieSprite);
+			} else {
+			  document.querySelectorAll(".wardrobe-card.selected").forEach(c => {
+				c.classList.remove("selected");
+				const lab = c.querySelector(".label");
+				if(lab) lab.remove();
+			  });
+			  card.classList.add("selected");
+			  const label = document.createElement("div");
+			  label.className = "label";
+			  label.textContent = "使用中";
+			  card.appendChild(label);
+			  window.currentZombieSprite = option.src;
+			  localStorage.setItem("currentZombieSprite", window.currentZombieSprite);
+			}
+			updateZombieSearchSprite();
+			updateBattleZombieSearchSprite();
+		  });
+		  wardrobeContent.appendChild(card);
+		});
+	  }
+	  
+	  tabZombie.addEventListener("click", function(){
+		tabZombie.classList.add("active");
+		tabArmor.classList.remove("active");
+		renderWardrobeTab();
+	  });
+	  tabArmor.addEventListener("click", function(){
+		tabArmor.classList.add("active");
+		tabZombie.classList.remove("active");
+		wardrobeContent.innerHTML = "<p style='color:white; text-align:center;'>敬請期待</p>";
+	  });
+	  
+	  window.showWardrobeMode = function(){
+		wardrobeModal.style.display = "block";
+		tabZombie.classList.add("active");
+		tabArmor.classList.remove("active");
+		renderWardrobeTab();
+	  };
+	  window.hideWardrobeMode = function(){
+		wardrobeModal.style.display = "none";
+	  };
+
+	  const wardrobeBtn = document.getElementById("wardrobeBtn");
+	  if (wardrobeBtn) {
+		wardrobeBtn.addEventListener("click", function(){
+		  window.showWardrobeMode();
+		});
+	  }
+	  const closeBtn = document.getElementById("wardrobeCloseBtn");
+	  if (closeBtn) {
+		closeBtn.addEventListener("click", function(){
+		  window.hideWardrobeMode();
+		});
+	  }
+	})();
 
 
 
