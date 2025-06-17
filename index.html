@@ -2,7 +2,7 @@
 <html lang="zh">
 <head>
   <meta charset="UTF-8" name="viewport" content="width=device-width, initial-scale=0.45"/>
-  <title>末日控制中心 - 正式版v.1.090 skin update</title>
+  <title>末日控制中心 - 正式版v.1.091 skin update</title>
   <style>
     /* 彈窗系統 */
     .modal-overlay {
@@ -1352,48 +1352,18 @@
 	}
 
 	 #wardrobeModal {
-      display: none;
-      position: fixed;
+      position: absolute;
       top: 10%;
       left: 50%;
       transform: translateX(-50%);
       width: 90vw;
-      max-width: 500px;
+      max-width: 600px;
       background: #2d2d2d;
       border-radius: 12px;
       padding: 1rem;
-      z-index: 3000;
+      box-sizing: border-box;
     }
-    #wardrobeModal h3 {
-      text-align: center;
-      margin-bottom: 0.5em;
-    }
-    #wardrobeTabs {
-      display: flex;
-      justify-content: space-around;
-      margin-bottom: 1em;
-      border-bottom: 1px solid var(--border-color);
-    }
-    #wardrobeTabs button {
-      flex: 1;
-      background: transparent;
-      border: none;
-      padding: 0.5em;
-      font-weight: bold;
-      color: var(--text-color);
-      cursor: pointer;
-    }
-    #wardrobeTabs button.active {
-      border-bottom: 2px solid limegreen;
-    }
-    #wardrobeContent {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      justify-content: center;
-	  max-height: 400px; /* 根據需要調整高度 */
-      overflow-y: auto;
-    }
+
 	#wardrobeHeader {
 	  display: flex;
 	  align-items: center;
@@ -1407,15 +1377,43 @@
 	  font-size: 20px;       /* 調整字體大小 */
 	  cursor: pointer;
 	}
+        /* 分頁部分 */
+    #wardrobeTabs {
+      display: flex;
+      justify-content: space-around;
+      margin-bottom: 1em;
+      border-bottom: 1px solid #aaa;
+    }
+    #wardrobeTabs button {
+      flex: 1;
+      background: transparent;
+      border: none;
+      padding: 0.5em;
+      font-weight: bold;
+      color: #fff;
+      cursor: pointer;
+    }
+    #wardrobeTabs button.active {
+      border-bottom: 2px solid limegreen;
+    }
+    /* 內容區（卡片區），超出高度則自動出現滾動條 */
+    #wardrobeContent {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+      max-height: 400px; /* 可根據需要調整 */
+      overflow-y: auto;
+    }
     .wardrobe-card {
       width: 150px;
       height: 150px;
       background-size: cover;
       background-position: center;
-      position: relative;
       border: 2px solid transparent;
       cursor: pointer;
-      transition: border 0.3s;
+      transition: border 0.3s ease;
+      position: relative;
     }
     .wardrobe-card.locked {
       filter: grayscale(100%);
@@ -1429,14 +1427,13 @@
       width: 100%;
       background: rgba(0, 128, 0, 0.7);
       color: white;
-      font-size: 1em;
       text-align: center;
+      font-size: 1em;
       display: none;
     }
     .wardrobe-card.selected .label {
       display: block;
     }
-
 	
   </style>
 </head>
@@ -1717,19 +1714,21 @@
 	  </div>
 
 	  <!-- ===== 新增： 衣櫃模式（Wardrobe Mode）彈窗 ===== -->
-	  <div id="wardrobeModal">
-	  <div id="wardrobeHeader">
-		<span>衣櫃模式</span>
-		<button id="wardrobeCloseBtn">X</button>
+	   <div id="wardrobeOverlay" class="modal-overlay">
+		<div id="wardrobeModal">
+		  <div id="wardrobeHeader">
+			<span>衣櫃模式</span>
+			<button id="wardrobeCloseBtn">X</button>
+		  </div>
+		  <div id="wardrobeTabs">
+			<button id="tabZombie" class="active">僵尸</button>
+			<button id="tabArmor">裝甲</button>
+		  </div>
+		  <div id="wardrobeContent">
+			<!-- 卡片內容會由 JS 動態生成 -->
+		  </div>
+		</div>
 	  </div>
-	  <div id="wardrobeTabs">
-		<button id="tabZombie" class="active">僵尸</button>
-		<button id="tabArmor">裝甲</button>
-	  </div>
-	  <div id="wardrobeContent">
-		<!-- 內容會由 JS 生成 -->
-	  </div>
-	</div>
 
 
 
@@ -6569,7 +6568,9 @@ function triggerT80Cannon() {
 	}
 
 	// 在衣櫃模式模塊中：
+	
 	(function(){
+	  const wardrobeOverlay = document.getElementById("wardrobeOverlay");
 	  const wardrobeModal = document.getElementById("wardrobeModal");
 	  const wardrobeContent = document.getElementById("wardrobeContent");
 	  const tabZombie = document.getElementById("tabZombie");
@@ -6678,13 +6679,13 @@ function triggerT80Cannon() {
 	  });
 	  
 	  window.showWardrobeMode = function(){
-		wardrobeModal.style.display = "block";
+		wardrobeOverlay.style.display = "block";
 		tabZombie.classList.add("active");
 		tabArmor.classList.remove("active");
 		renderWardrobeTab();
 	  };
 	  window.hideWardrobeMode = function(){
-		wardrobeModal.style.display = "none";
+		wardrobeOverlay.style.display = "none";
 	  };
 
 	  const wardrobeBtn = document.getElementById("wardrobeBtn");
@@ -6699,6 +6700,12 @@ function triggerT80Cannon() {
 		  window.hideWardrobeMode();
 		});
 	  }
+	   wardrobeOverlay.addEventListener("click", function(e){
+          if (e.target === wardrobeOverlay) {
+            window.hideWardrobeMode();
+          }
+        });
+	  
 	})();
 
 
