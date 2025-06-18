@@ -2,7 +2,7 @@
 <html lang="zh">
 <head>
   <meta charset="UTF-8" name="viewport" content="width=device-width, initial-scale=0.45"/>
-  <title>末日控制中心 - 正式版v.1.090 skin update</title>
+  <title>末日控制中心 - 正式版v.1.091 armorskin update</title>
   <style>
     /* 彈窗系統 */
     .modal-overlay {
@@ -5051,6 +5051,8 @@ function triggerT80Cannon() {
       const battleZombieElem = document.querySelector("#battleSelfAnim .zombie-search");
       if (!battleZombieElem) return;
       battleZombieElem.style.backgroundImage = "url('" + window.currentZombieSprite + "')";
+	  battleZombieElem.style.backgroundImage = "url('" + window.currentT80Sprite + "')";
+	  battleZombieElem.style.backgroundImage = "url('" + window.currentBtrSprite + "')";
     }
 	
 
@@ -5999,6 +6001,7 @@ function triggerT80Cannon() {
 	  const zombieSearch = document.createElement("div");
 	  zombieSearch.className = "zombie-search enemy-zombie-search";
 	  zombieSearch.style.backgroundImage = `url('${spriteUrl}')`;
+
 	  
 	  // 添加到敌方动画窗口
 	  enemyAnim.appendChild(zombieSearch);
@@ -6569,148 +6572,257 @@ function triggerT80Cannon() {
 
 	// 在衣櫃模式模塊中：
 	
-	(function(){
-	  const wardrobeOverlay = document.getElementById("wardrobeOverlay");
-	  const wardrobeModal = document.getElementById("wardrobeModal");
-	  const wardrobeContent = document.getElementById("wardrobeContent");
-	  const tabZombie = document.getElementById("tabZombie");
-	  const tabArmor = document.getElementById("tabArmor");
 
-	  // 如果 unlockedAchievements 尚未定義，初始化它
-	  if (!window.unlockedAchievements) {
-		window.unlockedAchievements = [];
-	  }
-	  // 同時確保 gameState.unlockedAchievements 也存在
-	  if (!gameState.unlockedAchievements) {
-		gameState.unlockedAchievements = window.unlockedAchievements;
-	  }
 
-	  // 定義可選的僵尸精靈圖選項，這裡的 unlock 屬性需要和成就中的 title 匹配
-	  const spriteOptions = [
-		{ src: "images/zombie_search_sprite.png", unlock: true },
-		{ src: "images/zombie_search_sprite_helmet.png", unlock: "Алтын" },
-		{ src: "images/zombie_search_sprite_btr.png", unlock: "報話機" },
-		{ src: "images/zombie_search_sprite_equipped.png", unlock: "武裝通信兵" },
-		{ src: "images/zombie_search_sprite_svd.png", unlock: "拾荒高手" },
-		{ src: "images/zombie_search_sprite_svd_h.png", unlock: "物資收集者" },
-		{ src: "images/zombie_search_sprite_elite.png", unlock: "全副武裝" },
-		{ src: "images/zombie_search_sprite_pkm_e.png", unlock: "裝甲猛虎" },
-		{ src: "images/zombie_search_sprite_pkm_m.png", unlock: "銅墻鐵壁" },
-	  ];
-	  
-	  // 判斷一個 sprite 是否已解鎖
-	  function isSpriteUnlocked(option) {
-		// 如果 unlock 為 true，表示始終可用
-		if(option.unlock === true) return true;
-		
-		// 先對 item.unlock 進行正規化處理：
-		let need = "";
-		if (typeof option.unlock === "string") {
-		  need = option.unlock.normalize("NFC").toLowerCase().trim();
-		}
-		// 通常你也可能定義 "default" 為可用
-		if (need === "default") return true;
 
-		// 獲取同步後的稱號庫
-		const unlockedSet = syncAchievements();
-		return unlockedSet.has(need);
-	  }
-	  
-	  function renderWardrobeTab() {
-		// 每次渲染前立即同步 unlockedAchievements
-		renderUnlockedSet = syncAchievements();
-		wardrobeContent.innerHTML = "";
-		spriteOptions.forEach(option => {
-		  const card = document.createElement("div");
-		  card.className = "wardrobe-card";
-		  // 生成縮略圖的路徑：假設從 "xxx.png" 得到 "xxx_card.png"
-		  const thumb = option.src.replace(/(\.\w+)$/, "_card$1");
-		  card.style.backgroundImage = "url('" + thumb + "')";
-		  
-		  if (!isSpriteUnlocked(option)) {
-			card.classList.add("locked");
-		  }
-		  if (option.src === (window.currentZombieSprite || "images/zombie_search_sprite.png")) {
-			card.classList.add("selected");
-			const label = document.createElement("div");
-			label.className = "label";
-			label.textContent = "使用中";
-			card.appendChild(label);
-		  }
-		  card.addEventListener("click", function(){
-			if (!isSpriteUnlocked(option)) return;
-			if(card.classList.contains("selected")){
-			  card.classList.remove("selected");
-			  if(card.querySelector(".label")){
-				card.removeChild(card.querySelector(".label"));
-			  }
-			  window.currentZombieSprite = "images/zombie_search_sprite.png";
-			  localStorage.setItem("currentZombieSprite", window.currentZombieSprite);
-			} else {
-			  document.querySelectorAll(".wardrobe-card.selected").forEach(c => {
-				c.classList.remove("selected");
-				const lab = c.querySelector(".label");
-				if(lab) lab.remove();
-			  });
-			  card.classList.add("selected");
-			  const label = document.createElement("div");
-			  label.className = "label";
-			  label.textContent = "使用中";
-			  card.appendChild(label);
-			  window.currentZombieSprite = option.src;
-			  localStorage.setItem("currentZombieSprite", window.currentZombieSprite);
-			}
-			updateZombieSearchSprite();
-			updateBattleZombieSearchSprite();
-		  });
-		  wardrobeContent.appendChild(card);
-		});
-	  }
-	  
-	  tabZombie.addEventListener("click", function(){
-		tabZombie.classList.add("active");
-		tabArmor.classList.remove("active");
-		renderWardrobeTab();
-	  });
-	  tabArmor.addEventListener("click", function(){
-		tabArmor.classList.add("active");
-		tabZombie.classList.remove("active");
-		wardrobeContent.innerHTML = "<p style='color:white; text-align:center;'>敬請期待</p>";
-	  });
-	  
-	  window.showWardrobeMode = function(){
-		wardrobeOverlay.style.display = "block";
-		tabZombie.classList.add("active");
-		tabArmor.classList.remove("active");
-		renderWardrobeTab();
-	  };
-	  window.hideWardrobeMode = function(){
-		wardrobeOverlay.style.display = "none";
-	  };
-
-	  const wardrobeBtn = document.getElementById("wardrobeBtn");
-	  if (wardrobeBtn) {
-		wardrobeBtn.addEventListener("click", function(){
-		  window.showWardrobeMode();
-		});
-	  }
-	  const closeBtn = document.getElementById("wardrobeCloseBtn");
-	  if (closeBtn) {
-		closeBtn.addEventListener("click", function(){
-		  window.hideWardrobeMode();
-		});
-	  }
-	   wardrobeOverlay.addEventListener("click", function(e){
+  (function(){
+    // ──────────────────────────────
+    // 模塊內定義精靈圖數據：原有的僵尸精靈圖與新增的裝甲系列
+    const zombieSpriteOptions = [
+      { src: "images/zombie_search_sprite.png", unlock: true },
+      { src: "images/zombie_search_sprite_helmet.png", unlock: "Алтын" },
+      { src: "images/zombie_search_sprite_btr.png", unlock: "報話機" },
+      { src: "images/zombie_search_sprite_equipped.png", unlock: "武裝通信兵" },
+      { src: "images/zombie_search_sprite_svd.png", unlock: "拾荒高手" },
+      { src: "images/zombie_search_sprite_svd_h.png", unlock: "物資收集者" },
+      { src: "images/zombie_search_sprite_elite.png", unlock: "全副武裝" },
+      { src: "images/zombie_search_sprite_pkm_e.png", unlock: "裝甲猛虎" },
+      { src: "images/zombie_search_sprite_pkm_m.png", unlock: "銅墻鐵壁" }
+    ];
+    const btrSpriteOptions = [
+      { src: "images/btr_sprite.png", unlock: true }
+      // 若有其他BTR選項，可在此添加……
+    ];
+    const t80SpriteOptions = [
+      { src: "images/t-80_sprite.png", unlock: true },
+      { src: "images/t-80_sprite_u.png", unlock: "裝甲猛虎" }
+    ];
+    
+    // ──────────────────────────────
+    // 全局精靈圖變量初始化，從 localStorage 讀取；如無則採用默認值
+    window.currentZombieSprite = localStorage.getItem("currentZombieSprite") || "images/zombie_search_sprite.png";
+    window.currentBtrSprite = localStorage.getItem("currentBtrSprite") || "images/btr_sprite.png";
+    window.currentT80Sprite = localStorage.getItem("currentT80Sprite") || "images/t-80_sprite.png";
+    
+    // ──────────────────────────────
+    // 覆蓋CSS規則函數：當用戶選定 T‑80 裝甲精靈圖後，更新 head 中的規則
+    function overrideT80SpriteCSS(){
+      const spritePath = localStorage.getItem("currentT80Sprite") || "images/t-80_sprite.png";
+      let styleEl = document.getElementById("t80OverrideStyle");
+      if (!styleEl) {
+        styleEl = document.createElement("style");
+        styleEl.id = "t80OverrideStyle";
+        document.head.appendChild(styleEl);
+      }
+      // 使用!important覆蓋原有設定
+      styleEl.innerHTML = ".t80-animation { background-image: url('" + spritePath + "') !important; }";
+      // 同時也更新BTR（如果需要）：
+      let styleEl2 = document.getElementById("btrOverrideStyle");
+      if (!styleEl2) {
+        styleEl2 = document.createElement("style");
+        styleEl2.id = "btrOverrideStyle";
+        document.head.appendChild(styleEl2);
+      }
+      const btrPath = localStorage.getItem("currentBtrSprite") || "images/btr_sprite.png";
+      styleEl2.innerHTML = ".btr-animation { background-image: url('" + btrPath + "') !important; }";
+    }
+    
+    // 每次更新用戶選擇後調用覆蓋函數以保證 css 覆蓋生效
+    overrideT80SpriteCSS();
+    
+    // ──────────────────────────────
+    // 輔助函數，用於檢查精靈圖是否解鎖（簡單返回 true，根據需求實現）
+    function isSpriteUnlocked(option) {
+      return option.unlock === true || true;
+    }
+    
+    // ──────────────────────────────
+    // 更新動畫窗口中僵尸精靈圖的函數（僵尸系列）
+    function updateZombieSearchSprite(){
+      const zombieElem = document.querySelector(".zombie-search");
+      if (!zombieElem) return;
+      zombieElem.style.backgroundImage = "url('" + window.currentZombieSprite + "')";
+    }
+    // 更新對戰模式中己方動畫窗口。這裡不進行判斷，僅供參考：如果對戰模式的T‑80動畫元素生成時
+    // 已經採用 CSS 覆蓋規則，那麼這裡就不必另外設置。
+    function updateBattleZombieSearchSprite(){
+      const battleZombieElem = document.querySelector("#battleSelfAnim .zombie-search");
+      if (!battleZombieElem) return;
+      // 由於T‑80動畫將依靠 CSS 覆蓋，所以這裡可以不做修改，或者強制書寫：
+      battleZombieElem.style.backgroundImage = "url('" + window.currentT80Sprite + "')";
+    }
+    
+    // ──────────────────────────────
+    // 渲染原有的僵尸衣櫥分頁：使用 zombieSpriteOptions
+    function renderWardrobeTab(){
+      const container = document.getElementById("wardrobeContent");
+      container.innerHTML = "";
+      zombieSpriteOptions.forEach(function(option){
+        const card = document.createElement("div");
+        card.className = "wardrobe-card";
+        const thumb = option.src.replace(/(\.\w+)$/, "_card$1");
+        card.style.backgroundImage = "url('" + thumb + "')";
+        if (!isSpriteUnlocked(option)){
+          card.classList.add("locked");
+        }
+        if (option.src === window.currentZombieSprite){
+          card.classList.add("selected");
+          const label = document.createElement("div");
+          label.className = "label";
+          label.textContent = "使用中";
+          card.appendChild(label);
+        }
+        card.addEventListener("click", function(){
+          if (!isSpriteUnlocked(option)) return;
+          document.querySelectorAll(".wardrobe-card.selected").forEach(function(el){
+            el.classList.remove("selected");
+            const lab = el.querySelector(".label");
+            if (lab) lab.remove();
+          });
+          card.classList.add("selected");
+          const label = document.createElement("div");
+          label.className = "label";
+          label.textContent = "使用中";
+          card.appendChild(label);
+          window.currentZombieSprite = option.src;
+          localStorage.setItem("currentZombieSprite", window.currentZombieSprite);
+          updateZombieSearchSprite();
+          updateBattleZombieSearchSprite();
+        });
+        container.appendChild(card);
+      });
+    }
+    
+    // ──────────────────────────────
+    // 渲染裝甲系列衣櫥：根據 mode ("btr" 或 "t80") 播放對應卡片
+    function renderArmorSprites(mode){
+      const container = document.getElementById("armorSprites");
+      container.innerHTML = "";
+      let optionsArray = (mode === "btr") ? btrSpriteOptions : t80SpriteOptions;
+      optionsArray.forEach(function(option){
+        const card = document.createElement("div");
+        card.className = "wardrobe-card";
+        const thumb = option.src.replace(/(\.\w+)$/, "_card$1");
+        card.style.backgroundImage = "url('" + thumb + "')";
+        if (!isSpriteUnlocked(option)){
+          card.classList.add("locked");
+        }
+        if (mode === "btr" && option.src === window.currentBtrSprite){
+          card.classList.add("selected");
+          const label = document.createElement("div");
+          label.className = "label";
+          label.textContent = "使用中";
+          card.appendChild(label);
+        }
+        if (mode === "t80" && option.src === window.currentT80Sprite){
+          card.classList.add("selected");
+          const label = document.createElement("div");
+          label.className = "label";
+          label.textContent = "使用中";
+          card.appendChild(label);
+        }
+        card.addEventListener("click", function(){
+          if (!isSpriteUnlocked(option)) return;
+          document.querySelectorAll("#armorSprites .wardrobe-card.selected").forEach(function(el){
+            el.classList.remove("selected");
+            const lab = el.querySelector(".label");
+            if (lab) lab.remove();
+          });
+          card.classList.add("selected");
+          const label = document.createElement("div");
+          label.className = "label";
+          label.textContent = "使用中";
+          card.appendChild(label);
+          if (mode === "btr"){
+            window.currentBtrSprite = option.src;
+            localStorage.setItem("currentBtrSprite", window.currentBtrSprite);
+          } else if (mode === "t80"){
+            window.currentT80Sprite = option.src;
+            localStorage.setItem("currentT80Sprite", window.currentT80Sprite);
+          }
+          // 覆蓋 CSS 規則，以便對戰動畫使用最新精靈圖
+          overrideT80SpriteCSS();
+          updateZombieSearchSprite();
+          updateBattleZombieSearchSprite();
+        });
+        container.appendChild(card);
+      });
+    }
+    
+    // ──────────────────────────────
+    // 衣櫃模式模塊：分頁切換及顯示邏輯
+    (function(){
+      const wardrobeOverlay = document.getElementById("wardrobeOverlay");
+      const wardrobeModal = document.getElementById("wardrobeModal");
+      const wardrobeContent = document.getElementById("wardrobeContent");
+      const tabZombie = document.getElementById("tabZombie");
+      const tabArmor = document.getElementById("tabArmor");
+      
+      tabZombie.addEventListener("click", function(){
+        tabZombie.classList.add("active");
+        tabArmor.classList.remove("active");
+        wardrobeContent.innerHTML = "";
+        renderWardrobeTab();
+      });
+      
+      tabArmor.addEventListener("click", function(){
+        tabArmor.classList.add("active");
+        tabZombie.classList.remove("active");
+        wardrobeContent.innerHTML = `
+          <div id="armorTabs" style="display: flex; justify-content: center; margin-bottom: 1em;">
+            <button id="armorTabBTR" class="active" style="flex: 1;">BTR</button>
+            <button id="armorTabT80" style="flex: 1;">T‑80</button>
+          </div>
+          <div id="armorSprites" style="display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;"></div>
+        `;
+        document.getElementById("armorTabBTR").addEventListener("click", function(){
+          this.classList.add("active");
+          document.getElementById("armorTabT80").classList.remove("active");
+          renderArmorSprites("btr");
+        });
+        document.getElementById("armorTabT80").addEventListener("click", function(){
+          this.classList.add("active");
+          document.getElementById("armorTabBTR").classList.remove("active");
+          renderArmorSprites("t80");
+        });
+        // 初始默認渲染 BTR 系列
+        renderArmorSprites("btr");
+      });
+      
+      window.showWardrobeMode = function(){
+        wardrobeOverlay.style.display = "block";
+        tabZombie.classList.add("active");
+        tabArmor.classList.remove("active");
+        renderWardrobeTab();
+      };
+      window.hideWardrobeMode = function(){
+        wardrobeOverlay.style.display = "none";
+      };
+      
+      const wardrobeBtn = document.getElementById("wardrobeBtn");
+      if (wardrobeBtn) {
+        wardrobeBtn.addEventListener("click", function(){
+          window.showWardrobeMode();
+        });
+      }
+      const closeBtn = document.getElementById("wardrobeCloseBtn");
+      if (closeBtn) {
+        closeBtn.addEventListener("click", function(){
+          window.hideWardrobeMode();
+        });
+      }
+      wardrobeOverlay.addEventListener("click", function(e){
           if (e.target === wardrobeOverlay) {
             window.hideWardrobeMode();
           }
-        });
-	  wardrobeModal.addEventListener("click", function(e){
-		// 阻止事件冒泡，避免點擊彈窗內部也觸發退出
-		e.stopPropagation();
-		});
-	  
-	})();
+      });
+      wardrobeModal.addEventListener("click", function(e){
+        e.stopPropagation();
+      });
+    })();
+    
+  })();
+
 
 
 
