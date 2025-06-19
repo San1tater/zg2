@@ -6634,10 +6634,22 @@ function triggerT80Cannon() {
     overrideT80SpriteCSS();
     
     // ──────────────────────────────
-    // 輔助函數，用於檢查精靈圖是否解鎖（簡單返回 true，根據需求實現）
-    function isSpriteUnlocked(option) {
-      return option.unlock === true || true;
-    }
+     function isSpriteUnlocked(option) {
+		// 如果 unlock 為 true，表示始終可用
+		if(option.unlock === true) return true;
+		
+		// 先對 item.unlock 進行正規化處理：
+		let need = "";
+		if (typeof option.unlock === "string") {
+		  need = option.unlock.normalize("NFC").toLowerCase().trim();
+		}
+		// 通常你也可能定義 "default" 為可用
+		if (need === "default") return true;
+
+		// 獲取同步後的稱號庫
+		const unlockedSet = syncAchievements();
+		return unlockedSet.has(need);
+	  }
     
     // ──────────────────────────────
     // 更新動畫窗口中僵尸精靈圖的函數（僵尸系列）
