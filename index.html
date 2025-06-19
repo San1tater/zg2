@@ -2,7 +2,7 @@
 <html lang="zh">
 <head>
   <meta charset="UTF-8" name="viewport" content="width=device-width, initial-scale=0.45"/>
-  <title>末日控制中心 - 正式版v.1.091 armorskin update</title>
+  <title>末日控制中心 - 正式版v.1.092 armorskin update</title>
   <style>
     /* 彈窗系統 */
     .modal-overlay {
@@ -1894,6 +1894,8 @@
 	
 	/***** 全局變量定義 *****/
 	window.currentZombieSprite = localStorage.getItem("currentZombieSprite") || "images/zombie_search_sprite.png";
+    window.currentBtrSprite = localStorage.getItem("currentBtrSprite") || "images/btr_sprite.png";
+    window.currentT80Sprite = localStorage.getItem("currentT80Sprite") || "images/t-80_sprite.png";
 	function getTotalRarityLevels() {
 	  return RARITIES.length;
 	}
@@ -5537,14 +5539,18 @@ function triggerT80Cannon() {
 	  if (!window.currentBattleRoom) return;
 	  
 	  // 上传自己的僵尸状态
-	  const zombieSearchSprite = getZombieSearchSpriteUrl();
+	  
   
 	  const myStatus = {
 		uid: window.myUid,
 		totalZombies: gameState.totalZombies,
-		allocations: {...gameState.allocations},
-		zombieSearchSprite: zombieSearchSprite,
-		// +++ 新增资源数据 +++
+		allocations: { ...gameState.allocations },
+
+		currentZombieSprite: window.currentZombieSprite,
+
+		currentT80Sprite: window.currentT80Sprite,
+		currentBtrSprite: window.currentBtrSprite,
+
 		resources: {
 		  food: gameState.resources.food,
 		  materials: gameState.resources.materials,
@@ -5592,10 +5598,13 @@ function triggerT80Cannon() {
 		
 		if (userAReady && userBReady) {
 		  const enemyRole = window.myRole === "userA" ? "userB" : "userA";
-		  const enemySprite = statusData[enemyRole].zombieSearchSprite;
+		   window.opponentZombieSprite = statusData[enemyRole].currentZombieSprite;
+		   window.opponentT80Sprite = statusData[enemyRole].currentT80Sprite;
+		   window.opponentBtrSprite = statusData[enemyRole].currentBtrSprite;
 		  
-		  // 初始化敌方僵尸搜索动画
-		  initEnemyZombieSearchAnimation(enemySprite);
+		  initEnemyZombieSearchAnimation(window.opponentZombieSprite);
+
+		 
 		  console.log("雙方狀態已就緒");
 		  pushSystemMessage("雙方狀態已接收，開始計算資源調整");
 		  
@@ -5961,53 +5970,29 @@ function triggerT80Cannon() {
 	  }
 
 	}
-	// 获取当前玩家的僵尸搜索精灵图URL
-	function getZombieSearchSpriteUrl() {
-	  const hasTractor = gameState.buildings.some(b => 
-		b && b.type.toLowerCase() === "armoredgarage"
-	  );
-	  const hasArmory = gameState.buildings.some(b => 
-		b && b.type.toLowerCase() === "armory"
-	  );
-	  const hasZombieCommand = gameState.buildings.some(b => 
-		b && b.type.toLowerCase() === "zombiecommandcenter"
-	  );
-	  
-	  if (hasTractor && hasArmory && hasZombieCommand) {
-		return "images/zombie_search_sprite_elite.png";
-	  } else if (hasTractor && (hasArmory || hasZombieCommand)) {
-		return "images/zombie_search_sprite_equipped.png";
-	  } else if (hasTractor) {
-		return "images/zombie_search_sprite_btr.png";
-	  } else if (hasArmory || hasZombieCommand) {
-		return "images/zombie_search_sprite_helmet.png";
-	  } else {
-		return "images/zombie_search_sprite.png";
-	  }
-	}
+
+
 	
-	// 初始化敌方僵尸搜索动画
-	function initEnemyZombieSearchAnimation(spriteUrl) {
+	function initEnemyZombieSearchAnimation(sprite) {
 	  const enemyAnim = document.getElementById("battleEnemyAnim");
 	  if (!enemyAnim) return;
 	  
-	  // 清除旧动画（如果存在）
+	  // 清除舊動畫（如果存在）
 	  const oldZombie = enemyAnim.querySelector(".enemy-zombie-search");
 	  if (oldZombie) {
 		enemyAnim.removeChild(oldZombie);
 	  }
 	  
-	  // 创建僵尸搜索元素
+	  // 創建僵尸搜索元素，直接使用傳入的 sprite
 	  const zombieSearch = document.createElement("div");
 	  zombieSearch.className = "zombie-search enemy-zombie-search";
-	  zombieSearch.style.backgroundImage = `url('${spriteUrl}')`;
-
+	  zombieSearch.style.backgroundImage = `url('${sprite}')`;
 	  
-	  // 添加到敌方动画窗口
+	  // 添加到敵方動畫窗口
 	  enemyAnim.appendChild(zombieSearch);
-	  
-	  console.log("敌方僵尸搜索动画已创建，使用精灵图:", spriteUrl);
+	  console.log("敵方僵尸搜索動畫已更新，使用精靈圖:", sprite);
 	}
+
 	
 	/***** 对战模式BTR/T-80事件系统 *****/
 	let battleBTREventTimer = null;
@@ -6247,6 +6232,8 @@ function triggerT80Cannon() {
 		
 		spriteElem = document.createElement("div");
 		spriteElem.className = "t80-animation";
+		const t80URL = window.opponentT80Sprite ? window.opponentT80Sprite : "default_t80.png";
+		spriteElem.style.backgroundImage = "url('" + t80URL + "')";
 		spriteElem.style.backgroundPosition = "0px 0";
 		
 		frameContainer.appendChild(spriteElem);
@@ -6318,6 +6305,8 @@ function triggerT80Cannon() {
 		// BTR动画
 		spriteElem = document.createElement("div");
 		spriteElem.className = "btr-animation";
+		const btrURL = window.opponentBtrSprite ? window.opponentBtrSprite : "default_btr.png";
+	    spriteElem.style.backgroundImage = "url('" + btrURL + "')";
 		enemyWrapper.appendChild(spriteElem);
 	  }
 	  
@@ -6607,26 +6596,39 @@ function triggerT80Cannon() {
     
     // ──────────────────────────────
     // 覆蓋CSS規則函數：當用戶選定 T‑80 裝甲精靈圖後，更新 head 中的規則
-    function overrideT80SpriteCSS(){
-      const spritePath = localStorage.getItem("currentT80Sprite") || "images/t-80_sprite.png";
-      let styleEl = document.getElementById("t80OverrideStyle");
-      if (!styleEl) {
-        styleEl = document.createElement("style");
-        styleEl.id = "t80OverrideStyle";
-        document.head.appendChild(styleEl);
-      }
-      // 使用!important覆蓋原有設定
-      styleEl.innerHTML = ".t80-animation { background-image: url('" + spritePath + "') !important; }";
-      // 同時也更新BTR（如果需要）：
-      let styleEl2 = document.getElementById("btrOverrideStyle");
-      if (!styleEl2) {
-        styleEl2 = document.createElement("style");
-        styleEl2.id = "btrOverrideStyle";
-        document.head.appendChild(styleEl2);
-      }
-      const btrPath = localStorage.getItem("currentBtrSprite") || "images/btr_sprite.png";
-      styleEl2.innerHTML = ".btr-animation { background-image: url('" + btrPath + "') !important; }";
-    }
+   function overrideT80SpriteCSS() {
+	  const spritePath = localStorage.getItem("currentT80Sprite") || "images/t-80_sprite.png";
+	  let styleEl = document.getElementById("t80OverrideStyle");
+	  
+	  if (!styleEl) {
+		styleEl = document.createElement("style");
+		styleEl.id = "t80OverrideStyle";
+		document.head.appendChild(styleEl);
+	  }
+
+	  // 排除敌方窗口的覆盖
+	  styleEl.innerHTML = `
+		.t80-animation:not(#battleEnemyAnim *) {
+		  background-image: url('${spritePath}') !important;
+		}
+	  `;
+
+	  let styleEl2 = document.getElementById("btrOverrideStyle");
+	  if (!styleEl2) {
+		styleEl2 = document.createElement("style");
+		styleEl2.id = "btrOverrideStyle";
+		document.head.appendChild(styleEl2);
+	  }
+
+	  const btrPath = localStorage.getItem("currentBtrSprite") || "images/btr_sprite.png";
+	  
+	  // 排除敌方窗口的覆盖
+	  styleEl2.innerHTML = `
+		.btr-animation:not(#battleEnemyAnim *) {
+		  background-image: url('${btrPath}') !important;
+		}
+	  `;
+	}
     
     // 每次更新用戶選擇後調用覆蓋函數以保證 css 覆蓋生效
     overrideT80SpriteCSS();
