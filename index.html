@@ -2,7 +2,7 @@
 <html lang="zh">
 <head>
   <meta charset="UTF-8" name="viewport" content="width=device-width, initial-scale=0.45"/>
-  <title>末日控制中心 - 正式版v.1.092 armorskin update</title>
+  <title>末日控制中心 - 正式版v.1.093 armorskin update</title>
   <style>
     /* 彈窗系統 */
     .modal-overlay {
@@ -1603,7 +1603,7 @@
 	 </div>
     <div class="grid-item building-system-container" id="buildingSystem">
         <h2 class="section-title">🏗️ 基地建設
-		<button id="wardrobeBtn">衣櫃模式</button>
+		<button id="wardrobeBtn">衣櫃</button>
 		</h2>
         <div class="construction-grid" id="buildingGrid">
           <!-- 動態生成的建築格子 -->
@@ -1717,7 +1717,7 @@
 	   <div id="wardrobeOverlay" class="modal-overlay">
 		<div id="wardrobeModal">
 		  <div id="wardrobeHeader">
-			<span>衣櫃模式</span>
+			<span>衣櫃</span>
 			<button id="wardrobeCloseBtn">X</button>
 		  </div>
 		  <div id="wardrobeTabs">
@@ -6559,11 +6559,6 @@ function triggerT80Cannon() {
 	  return set;
 	}
 
-	// 在衣櫃模式模塊中：
-	
-
-
-
   (function(){
     // ──────────────────────────────
     // 模塊內定義精靈圖數據：原有的僵尸精靈圖與新增的裝甲系列
@@ -6585,7 +6580,8 @@ function triggerT80Cannon() {
     ];
     const t80SpriteOptions = [
       { src: "images/t-80_sprite.png", unlock: true },
-      { src: "images/t-80_sprite_u.png", unlock: "裝甲猛虎" }
+      { src: "images/t-80_sprite_u.png", unlock: "裝甲猛虎" },
+	  { src: "images/t-80_sprite_um.png", unlock: "裝甲大軍" }
     ];
     
     // ──────────────────────────────
