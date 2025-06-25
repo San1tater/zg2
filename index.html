@@ -2,7 +2,7 @@
 <html lang="zh">
 <head>
   <meta charset="UTF-8" name="viewport" content="width=device-width, initial-scale=0.45"/>
-  <title>末日控制中心 - 正式版v.1.1 pve-coop update</title>
+  <title>末日控制中心 - 正式版v.1.101 pve-coop update</title>
   <style>
     /* 彈窗系統 */
     .modal-overlay {
@@ -7832,22 +7832,20 @@ function updateAllPlayerHealth(roomData) {
 
 // 显示伙伴的BTR/T80支援
 function showPartnerBtrSupport() {
-  // 获取动画容器
-  const selfAnim = document.getElementById('battleSelfAnim');
+  if (!window.currentBattleRoom) return;
+  const selfAnim = document.getElementById("battleSelfAnim");
   if (!selfAnim) return;
-  
-  // 是BTR还是T80
   const useT80 = (battleBTRType === "t80");
   const partnerRole = window.myRole === "userA" ? "userB" : "userA";
-  currentBattleRoomRef.child(partnerRole).once('value').then(snapshot => {
-    const partnerData = snapshot.val();
-    if (!partnerData) return;
-
-   const spriteUrl = (battleBTRType === "t80")
-        ? (partnerData.t80SpriteUrl || window.currentT80Sprite)
-        : (partnerData.btrSpriteUrl  || window.currentBtrSprite);
+  currentBattleRoomRef.child(partnerRole).once("value").then(snap => {
+    const pd = snap.val();
+    if (!pd) return;
+    // 1) 取对方上传的精灵图 URL
+    const spriteUrl = (battleBTRType === "t80")
+      ? (pd.t80SpriteUrl || window.currentT80Sprite)
+      : (pd.btrSpriteUrl  || window.currentBtrSprite);
   
-  // 动态计算位置
+   // 动态计算位置
   const containerWidth = selfAnim.clientWidth;
   const offset = 50;
   const rootStyles = getComputedStyle(document.documentElement);
@@ -7929,6 +7927,11 @@ function showPartnerBtrSupport() {
   }
   
   selfAnim.appendChild(btrWrapper);
+  spriteElem.style.setProperty(
+      "background-image",
+      `url("${spriteUrl}")`,
+      "important"
+    );
   
   // 10秒后清理
   setTimeout(() => {
