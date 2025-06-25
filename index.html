@@ -2,7 +2,7 @@
 <html lang="zh">
 <head>
   <meta charset="UTF-8" name="viewport" content="width=device-width, initial-scale=0.45"/>
-  <title>末日控制中心 - 正式版v.1.093 armorskin update</title>
+  <title>末日控制中心 - 正式版v.1.1 pve-coop update</title>
   <style>
     /* 彈窗系統 */
     .modal-overlay {
@@ -1226,17 +1226,19 @@
 	  left: 50%;
 	  transform: translateX(-50%);
 	  width: 100vw;
-	  height: 220px;
+	  height: 300px;
 	  z-index: 2100;
 	}
 
 	.battle-header {
-	  padding: 10px;
+	  padding: 15px;
 	  background: #333;
 	  display: flex;
+	  flex-direction: column; /* 修改为纵向排列 */
 	  justify-content: center;
-	  align-items: center;
-	  gap: 20px;
+	  align-items: stretch; /* 使子元素拉伸填充宽度 */
+	  gap: 10px;
+	  height: auto; /* 高度自适应内容 */
 	}
 
 	.battle-header input[type="text"] {
@@ -1288,7 +1290,7 @@
 
 	.battle-log {
 	  position: fixed;
-	  top: 250px;      /* 戰鬥日誌頂部緊貼 battle-container 底部 */
+	  top: 300px;      /* 戰鬥日誌頂部緊貼 battle-container 底部 */
 	  left: 0;
 	  width: 100%;
 	  height: calc(100vh - 220px);  /* 占滿剩餘高度 */
@@ -1434,6 +1436,50 @@
     .wardrobe-card.selected .label {
       display: block;
     }
+	/* 对战模式导航行样式 */
+	.battle-nav-row {
+	  display: flex;
+	  justify-content: center;
+	  align-items: center;
+	  gap: 10px; /* 元素间距 */
+	  width: 100%;
+	}
+
+	.battle-nav-row:first-child input[type="text"] {
+	  flex: 1;
+	  max-width: 40%; /* 限制最大宽度 */
+	  padding: 8px 12px;
+	  font-size: 1rem;
+	}
+
+	.battle-nav-row:first-child button {
+	  padding: 8px 15px;
+	  margin-left: auto; /* 推到右侧 */
+	}
+
+	/* 第二行样式 - 三个下拉菜单均匀分布 */
+	.battle-nav-row:last-child select {
+	  flex: 1;
+	  padding: 8px;
+	  max-width: 30%; /* 限制最大宽度，确保三个选择器大小一致 */
+	}
+
+	.battle-nav-row:last-child button {
+	  padding: 8px 20px;
+	  min-width: 100px; /* 给开始按钮一个最小宽度 */
+	}
+
+	/* 调整下拉菜单样式 */
+	#battleModeSelect, #bossList, #pveModeSelect {
+	  padding: 8px;
+	  border-radius: 4px;
+	  border: 1px solid #444;
+	  background: #222;
+	  color: #fff;
+	  height: 36px; /* 固定高度确保一致性 */
+	}
+
+
 	
   </style>
 </head>
@@ -1685,34 +1731,55 @@
 	  </div>
 	</div>
 	
-	 <div id="battleOverlay" class="battle-overlay">
-		<div class="battle-container">
-		  <div class="battle-header">
+	<div id="battleOverlay" class="battle-overlay">
+	  <div class="battle-container">
+		<!-- 导航区：分两行，结构清晰 -->
+		<div class="battle-header">
+		  <!-- 第一行：暱稱、PIN和退出 -->
+		  <div class="battle-nav-row">
 			<input type="text" id="battleNickname" placeholder="輸入暱稱">
 			<input type="text" id="battlePin" placeholder="輸入PIN碼">
-			<button id="battleStartBtn">開始</button>
 			<button id="battleExitBtn">X</button>
 		  </div>
-		  <div class="battle-content">
-			<div class="battle-half left">
-			  <div class="battle-inner" id="battleSelfAnim">
-				<!-- 己方動畫內容，其僵尸精靈圖將取自全局配置 -->
-			  </div>
-			</div>
-			<div class="battle-half right">
-			  <div class="battle-inner" id="battleEnemyAnim">
-				<!-- 敵方動畫保持原有邏輯 -->
-			  </div>
-			</div>
+		  
+		  <!-- 第二行：模式、BOSS、单挑/合作选择 -->
+		  <div class="battle-nav-row">
+			<select id="battleModeSelect">
+			  <option value="pvp">PVP模式</option>
+			  <option value="pve">PVE模式</option>
+			</select>
+			<select id="bossList" style="display:none">
+			  <option value="zombieKing">殭屍王</option>
+			  <option value="mutantLeader">變異領袖</option>
+			</select>
+			<select id="pveModeSelect" style="display:none">
+			  <option value="solo">單挑模式</option>
+			  <option value="coop">合作模式</option>
+			</select>
+			<button id="battleStartBtn">開始</button>
 		  </div>
 		</div>
-		<div class="battle-log" id="battleLog">
-		  <h3 class="battle-log-title">戰鬥日誌</h3>
-		  <div class="log" id="battleLogContent">
+		
+		<!-- 動畫區 -->
+		<div class="battle-content">
+		  <div class="battle-half left">
+			<div class="battle-inner" id="battleSelfAnim">
+			  <!-- 己方動畫內容，其僵尸精靈圖將取自全局配置 -->
+			</div>
+		  </div>
+		  <div class="battle-half right">
+			<div class="battle-inner" id="battleEnemyAnim">
+			  <!-- 敵方動畫保持原有邏輯 -->
+			</div>
 		  </div>
 		</div>
 	  </div>
-
+	  <!-- 日誌區 -->
+	  <div class="battle-log" id="battleLog">
+		<h3 class="battle-log-title">戰鬥日誌</h3>
+		<div class="log" id="battleLogContent"></div>
+	  </div>
+	</div>
 	  <!-- ===== 新增： 衣櫃模式（Wardrobe Mode）彈窗 ===== -->
 	   <div id="wardrobeOverlay" class="modal-overlay">
 		<div id="wardrobeModal">
@@ -1748,9 +1815,7 @@
 
 	// 初始化 Firebase
 	firebase.initializeApp(firebaseConfig);
-	var currentUid = firebase.auth().currentUser ? firebase.auth().currentUser.uid : "userPlaceholder";
-	console.log("當前 user uid:", currentUid);
-	
+	var currentUid = firebase.auth().currentUser ? firebase.auth().currentUser.uid : "userPlaceholder";	
 	var enemyTotalZombies = 0;
     var enemyAllocations = { exploration: 0, farming: 0, recycling: 0, research: 0 };
 
@@ -1976,10 +2041,7 @@
 		  // 計算：物品名+稀有度 與 物品名+詞綴+稀有度
 		  const countNameRarity = namesCount * rarityCount;
 		  const countNameModifierRarity = namesCount * modifiersCount * rarityCount;
-
 		  const resourceTotal = countNameModifierRarity;
-		  
-		  console.log(`${res}：物品名稱數量 = ${namesCount}, 詞綴數量 = ${modifiersCount}, 稀有度數量 = ${rarityCount}, 組合數 = ${resourceTotal}`);
 		  total += resourceTotal;
 		}
 	  }
@@ -1988,8 +2050,6 @@
 
 	// 從 ITEM_DATA 中動態計算所有可能的收藏組合數
 	let ALL_COMBINATIONS = calculateTotalCombinations();
-	console.log(`ITEM_DATA 全部收藏組合數 = ${ALL_COMBINATIONS}`);
-
 
 	// 更新收藏記錄完成度的函數
 	function updateCollectionCompletion() {
@@ -2819,7 +2879,6 @@
 
     function handleExploration() {
 	  const teamSize = gameState.allocations.exploration;
-	  console.log("handleExploration 執行，teamSize =", teamSize);
 	  if (teamSize < 1) return;
 	  const baseMultiplier = Math.pow(teamSize, 0.85);
 	  const bonusMultiplier = Math.pow(1.0005, teamSize);
@@ -3305,8 +3364,6 @@
 
 	function awardAchievement(category, rule) {
 	  if (isAchievementUnlocked(category, rule.level)) {
-		// 如果已解鎖，直接返回，不重複添加
-		console.log(`成就 [${rule.title}] (分類：${category}，等級：${rule.level}) 已經解鎖過了，跳過。`);
 		return;
 	  }
 	  let rarity = getRarityForAchievement(rule.level);
@@ -3456,7 +3513,6 @@
 		tile.className = tileClass;
 		tile.setAttribute('data-index', index);
 		tile.onclick = () => {
-		  console.log("Tile clicked, index:", index);
 		  handleBuildingClick(index);
 		};
 
@@ -3837,7 +3893,6 @@
 	function triggerBTRAnimation() {
 	  const container = document.getElementById("explorationAnim");
 	  if (!container) {
-		console.error("找不到 #explorationAnim 容器");
 		return;
 	  }
 	  const containerWidth = container.clientWidth;
@@ -3877,9 +3932,7 @@
 		document.head.appendChild(styleElem);
 	  }
 	  styleElem.textContent = keyframesText;
-	  console.log("動態 keyframes:", keyframesText);
-
-	  // 建立 wrapper，注意不要設置 top，依CSS中 bottom:0 保持正確定位
+	  
 	  const wrapper = document.createElement("div");
 	  wrapper.className = "btr-wrapper";
 	  wrapper.style.position = "absolute";
@@ -3915,16 +3968,13 @@
 	  if (useT80) {
 		addEventLog('[T-80]入場，獲得僵尸事件獎勵提升！', 'btr-active', 'exploration');
 	  } else {
-		addEventLog('[BTR-80A]入場，獲得僵尸事件獎勵提升！', 'btr-active', 'exploration');
+		addEventLog('[BTR-80]入場，獲得僵尸事件獎勵提升！', 'btr-active', 'exploration');
 	  }
-	  console.log(`動畫啟動：containerWidth=${containerWidth}px, startLeft=${startLeft}px, stopLeft=${stopLeft}px, frameWidth=${frameWidth}px`);
-
 	  isBTRActive = true;
 	  setTimeout(() => { isBTRActive = false; }, 10000);
 	  setTimeout(() => {
 		if (container.contains(wrapper)) {
 		  container.removeChild(wrapper);
-		  console.log("動畫 wrapper 已移除");
 		}
 		// 如果 T‑80，清除 idle 定時器
 		if (useT80 && t80IdleInterval) {
@@ -3946,7 +3996,6 @@ function triggerT80Cannon() {
 	  if (t80CannonOnCooldown) return;
 	  const sprite = document.querySelector(".t80-animation");
 	  if (!sprite) {
-		console.error("未找到 T-80 動畫元素");
 		return;
 	  }
 	  t80CannonOnCooldown = true;
@@ -3956,8 +4005,6 @@ function triggerT80Cannon() {
 		clearInterval(t80IdleInterval);
 		t80IdleInterval = null;
 	  }
-	  
-	  console.log("觸發 T-80 開炮：播放完整開炮動畫");
 	  // 使用 setTimeout 模擬完整 4 幀播放：每帧 250ms（總耗時約1秒）
 	  sprite.style.backgroundPosition = "0px 0"; // frame1
 	  setTimeout(() => { sprite.style.backgroundPosition = "-480px 0"; }, 250); // frame2
@@ -3974,7 +4021,6 @@ function triggerT80Cannon() {
 	  // 冷卻後允許再次開炮
 	  setTimeout(() => {
 		t80CannonOnCooldown = false;
-		console.log("T-80 裝填完成");
 		if (isBTRActive) {
 			triggerT80Cannon();
 		  }
@@ -4190,7 +4236,6 @@ function triggerT80Cannon() {
 	  const building = gameState.buildings[index];
 	  if (!building) return;
 	  closeNestedModal("upgradeModal");
-	  console.log("upgradeModal 已關閉");
 	  let confirmRemoval = confirm(`確定要拆除 ${BUILDINGS[building.type].name}？此操作不可逆！`);
 	  if (!confirmRemoval) return;
 	  
@@ -4393,7 +4438,6 @@ function triggerT80Cannon() {
 	function closeNestedModal(modalId) {
 	  var modal = document.getElementById(modalId);
 	  if (modal) {
-		console.log(`Closing modal: ${modalId}`);
 		modal.style.display = "none";
 		// 恢復 overflow
 		document.documentElement.style.overflow = '';
@@ -4408,7 +4452,6 @@ function triggerT80Cannon() {
 	  if (!modals.length) return;
 
 	  const baseTitleElem = document.querySelector('.building-system h2.section-title');
-	  console.log("基地建設標題：", baseTitleElem, baseTitleElem && baseTitleElem.getBoundingClientRect());
 	  const centerTile = document.querySelector('[data-index="4"]');
 	  if (baseTitleElem && centerTile) {
 		const titleRect = baseTitleElem.getBoundingClientRect();
@@ -4516,10 +4559,7 @@ function triggerT80Cannon() {
 		  elapsedTime: elapsedTime
 		};
 		localStorage.setItem("gameSave", JSON.stringify(saveData));
-		console.log("游戏进度已保存");
-	  } catch (err) {
-		console.error("保存游戏进度失败：", err);
-	  }
+	  } catch (err) {}
 	}
 
 	// 加载存档的函数
@@ -4541,19 +4581,15 @@ function triggerT80Cannon() {
 			unlockedAchievements = saveData.unlockedAchievements;
 			gameState.unlockedAchievements = unlockedAchievements;
 		  }
-		  if (saveData.elapsedTime) {
-			// 重设 startTime 使计时器继续走
+		 if (saveData.elapsedTime) {
 			window.startTime = Date.now() - saveData.elapsedTime;
 		  } else {
 			window.startTime = Date.now();
 		  }
-		  console.log("已恢复保存的游戏进度");
 		} catch (err) {
-		  console.error("解析游戏存档失败：", err);
 		  window.startTime = Date.now();
 		}
 	  } else {
-		console.log("无已保存进度，使用初始状态");
 		window.startTime = Date.now();
 	  }
 	}
@@ -4752,7 +4788,6 @@ function triggerT80Cannon() {
 		  else if (dept === "research") targetElem = document.getElementById("prodAnimRight");
 		  
 		  if (!targetElem) {
-			console.error("找不到部門的生產動畫容器", dept);
 			return;
 		  }
 		  
@@ -4762,13 +4797,11 @@ function triggerT80Cannon() {
 		  accidentOverlay.style.backgroundImage = "url('images/accident.png')";
 		  
 		  targetElem.appendChild(accidentOverlay);
-		  console.log("生成事故動畫覆蓋層:", accidentOverlay);
 		  
 		  // 3秒後清除動畫覆蓋層
 		  setTimeout(() => {
 			if (targetElem.contains(accidentOverlay)) {
 			  targetElem.removeChild(accidentOverlay);
-			  console.log("清除事故動畫覆蓋層");
 			}
 		  }, 3000);
 		}
@@ -4942,12 +4975,12 @@ function triggerT80Cannon() {
 		"僵尸調到全自動，進行壓制射擊"
 	  ],
 	  btr: [
-		"BTR-80A使用30mm高爆彈鏈[HE]，前出實施火力支援",
-		"BTR-80A使用30mm混合彈鏈[AP+HE+API]，對目標展開火力覆蓋",
-		"BTR-80A使用30mm對空彈鏈[API+HE+AP-T]，對目標展開精準射擊",
-		"BTR-80A使用30mm穿甲彈鏈[AP]，對敵方掩體展開集中射擊",
-		"BTR-80A使用30mm曳光彈鏈[AP-T+API+HE-T]，對敵方集群進行威懾射擊",
-		"BTR-80A使用30mm穿燃彈鏈[API]，對輕裝甲目標展開壓制射擊"
+		"BTR-80使用30mm高爆彈鏈[HE]，前出實施火力支援",
+		"BTR-80使用30mm混合彈鏈[AP+HE+API]，對目標展開火力覆蓋",
+		"BTR-80使用30mm對空彈鏈[API+HE+AP-T]，對目標展開精準射擊",
+		"BTR-80使用30mm穿甲彈鏈[AP]，對敵方掩體展開集中射擊",
+		"BTR-80使用30mm曳光彈鏈[AP-T+API+HE-T]，對敵方集群進行威懾射擊",
+		"BTR-80使用30mm穿燃彈鏈[API]，對輕裝甲目標展開壓制射擊"
 	  ],
 	  t80: [
 	    "T-80使用12.7mm高射機槍[7n34]，對目標展開精確點射",
@@ -5091,12 +5124,8 @@ function triggerT80Cannon() {
 
 	// 修改 appendBattleLogEntry 函数
 	function appendBattleLogEntry(messageObj) {
-	  // 调试信息
-	  console.log("处理日志条目:", messageObj);
-	  
 	  // 确保 messageObj 是对象
 	  if (typeof messageObj !== 'object' || messageObj === null) {
-		console.error("无效的日志对象:", messageObj);
 		return;
 	  }
 	  
@@ -5153,7 +5182,6 @@ function triggerT80Cannon() {
 	// 添加敌方伤害处理函数
 	function handleIncomingDamage(damage) {
 	  totalSelfDamage += damage;
-	  console.log(`收到敌方伤害: ${damage}, 累计己方伤害: ${totalSelfDamage}`);
 	}
 
 
@@ -5163,65 +5191,70 @@ function triggerT80Cannon() {
 	function initializeUser() {
 	  let nickname = document.getElementById("battleNickname").value.trim();
 	  if (!nickname) {
-		alert("請先輸入有效的暱稱");
 		return false;
 	  }
 	  window.myUid = nickname; // 將暱稱作為唯一標識
-	  console.log("使用者 UID 已設置為：", window.myUid);
 	  return true;
 	}
 
 	function startBattleModeFirebase() {
 	  let pin = document.getElementById("battlePin").value.trim();
 	  if (pin === "") {
-		alert("請輸入有效的 PIN 碼");
 		return;
 	  }
 	  
 	  // 使用暱稱作為 uid
 	  let currentUid = document.getElementById("battleNickname").value.trim();
 	  if (!currentUid) {
-		alert("請先輸入有效的暱稱");
-		return;
-	  }
-	  console.log("當前使用者 UID:", currentUid);
-	  
-	  if (pin === "000") {
-		// 本地模擬模式
-		battleMatched = true;
-		initBattleAnimation(true);
-		pushBattleLog("本地模擬對戰開始！");
-		startBattleTimer();
-		if (battleSpecialTimer) clearInterval(battleSpecialTimer);
 		return;
 	  }
 	  
-	 let battleRoomRef = firebase.database().ref("battles").child(pin);
-	  // 使用 once("value") 檢查房間是否存在
-	  battleRoomRef.once("value").then(function(snapshot) {
-		let battleData = snapshot.val();
-		if (battleData === null) {
-		  // 房間不存在 → 設置 userA
-		  battleRoomRef.set({
-			userA: { uid: currentUid },
-			log: {}
-		  }).then(function() {
-			joinBattleRoom(pin, "userA");
-		  });
-		} else if (battleData.userA && battleData.userA.uid === currentUid) {
-		  // 當前設備已經是 userA
-		  joinBattleRoom(pin, "userA");
-		} else if (!battleData.userB) {
-		  // 房間存在但沒有 userB → 加入成為 userB
-		  battleRoomRef.child("userB").set({ uid: currentUid }).then(function() {
-			joinBattleRoom(pin, "userB");
-		  });
-		} else if (battleData.userB && battleData.userB.uid === currentUid) {
-		  // 當前設備已經是 userB
-		  joinBattleRoom(pin, "userB");
-		} else {
-		  alert("此戰局已滿！");
+	  firebase.database().ref('pveBattles').child(pin).once('value').then((snapshot) => {
+		const pveRoomData = snapshot.val();
+		if (pveRoomData) {
+		  // 這是一個PVE房間
+		  if (pveRoomData.locked || pveRoomData.mode === 'solo') {
+			return;
+		  }
+		  
+		  if (pveRoomData.mode === 'coop' && !pveRoomData.userB) {
+			return;
+		  }
+		  
+		  // 其他情況：房間已滿或狀態異常
+		  return;
 		}
+    
+		// 不是PVE房間，繼續原有的PVP匹配邏輯
+		let battleRoomRef = firebase.database().ref("battles").child(pin);
+		// 使用 once("value") 檢查房間是否存在
+		battleRoomRef.once("value").then(function(snapshot) {
+		  let battleData = snapshot.val();
+		  if (battleData === null) {
+			// 房間不存在 → 設置 userA
+			battleRoomRef.set({
+			  userA: { uid: currentUid },
+			  log: {}
+			}).then(function() {
+			  joinBattleRoom(pin, "userA");
+			});
+		  } else if (battleData.userA && battleData.userA.uid === currentUid) {
+			// 當前設備已經是 userA
+			joinBattleRoom(pin, "userA");
+		  } else if (!battleData.userB) {
+			// 房間存在但沒有 userB → 加入成為 userB
+			battleRoomRef.child("userB").set({ uid: currentUid }).then(function() {
+			  joinBattleRoom(pin, "userB");
+			});
+		  } else if (battleData.userB && battleData.userB.uid === currentUid) {
+			// 當前設備已經是 userB
+			joinBattleRoom(pin, "userB");
+		  } else {
+			alert("此戰局已滿！");
+		  }
+		});
+	  }).catch((error) => {
+		let battleRoomRef = firebase.database().ref("battles").child(pin);
 	  });
 	}
 
@@ -5244,7 +5277,6 @@ function triggerT80Cannon() {
 	  window.currentBattleRoom = battleId;
 	  window.myRole = roleFromServer; 
 	  window.myUid = document.getElementById("battleNickname").value.trim();
-	  console.log("加入戰場成功，角色：", window.myRole, "暱稱：", window.myUid);
 	   // 清理旧结果
 	  resultData = null;
 	  resultCalculated = false;
@@ -5289,9 +5321,7 @@ function triggerT80Cannon() {
 			  message: data || "未知消息"
 			});
 		  }
-		} catch (e) {
-		  console.error("处理日志错误:", e);
-		}
+		} catch (e) {}
 	  });
 	  listenForZombieStatus();
 	  requestZombieStatus();
@@ -5319,7 +5349,6 @@ function triggerT80Cannon() {
 	function pushBattleLog(message) {
 	  if (battleEnded) return;
 	  if (!window.myRole) {
-		console.error("window.myRole 未被設定，無法上傳對戰訊息");
 		return;
 	  }
 	  
@@ -5328,21 +5357,18 @@ function triggerT80Cannon() {
 		senderRole: window.myRole,      // "userA" 或 "userB"
 		message: message                // 攻击消息
 	  };
-	  
-	  console.log("上傳對戰訊息：", data);
-	  
 	  if (window.currentBattleRoom) {
-		try {
-		  const logRef = firebase.database().ref("battles")
-								.child(window.currentBattleRoom)
-								.child("log");
-		  logRef.push(data)
-			.then(() => console.log("日志上传成功"))
-			.catch(err => console.error("日志上传失败:", err));
-		} catch (e) {
-		  console.error("日志上传异常:", e);
+		  try {
+			const logRef = firebase.database()
+			  .ref("battles")
+			  .child(window.currentBattleRoom)
+			  .child("log");
+			logRef.push(data)
+			  .catch(() => {
+			  });
+		  } catch (e) {
+		  }
 		}
-	  }
 	}
 
 
@@ -5517,9 +5543,7 @@ function triggerT80Cannon() {
 		}
 		
 		// 保存结果到Firebase
-		roomRef.child("result").set(result)
-			.then(() => console.log("[userA] 战斗结果已广播"))
-			.catch(err => console.error("[userA] 结果广播失败:", err));
+		roomRef.child("result").set(result);
 		
 		// 请求双方上传僵尸状态
 		const myStatus = {
@@ -5567,20 +5591,12 @@ function triggerT80Cannon() {
 	  statusRef.transaction(current => {
 		return myStatus; // 直接替换为新数据
 	  }, (error, committed) => {
-		if (error) {
-		  console.error(`[${window.myRole}] 狀態上傳事務失敗:`, error);
-		} else if (committed) {
-		  console.log(`[${window.myRole}] 狀態上傳成功`);
-		} else {
-		  console.log(`[${window.myRole}] 狀態上傳未提交`);
-		}
 	  }, false); 
 	}
 
 	// 添加僵尸状态监听
 	function listenForZombieStatus() {
-	  if (!window.currentBattleRoom) return;
-	  
+	  if (!window.currentBattleRoom) return; 
 	  const statusRef = firebase.database().ref("battles")
 		.child(window.currentBattleRoom)
 		.child("status");
@@ -5589,9 +5605,7 @@ function triggerT80Cannon() {
 	  statusRef.off("value");
 	  
 	  statusRef.on("value", snapshot => {
-		const statusData = snapshot.val();
-		console.log("狀態節點更新:", statusData);
-		
+		const statusData = snapshot.val();		
 		// +++ 更健壮的状态检查 +++
 		const userAReady = statusData && statusData.userA && statusData.userA.uid;
 		const userBReady = statusData && statusData.userB && statusData.userB.uid;
@@ -5603,9 +5617,6 @@ function triggerT80Cannon() {
 		   window.opponentBtrSprite = statusData[enemyRole].currentBtrSprite;
 		  
 		  initEnemyZombieSearchAnimation(window.opponentZombieSprite);
-
-		 
-		  console.log("雙方狀態已就緒");
 		  pushSystemMessage("雙方狀態已接收，開始計算資源調整");
 		  
 		  // 只有 userA 计算资源调整
@@ -5613,13 +5624,6 @@ function triggerT80Cannon() {
 			calculateResourceAdjustment(statusData);
 		  }
 		} else {
-		  // 显示当前状态
-		  let statusMessage = "等待狀態: ";
-		  statusMessage += userAReady ? "A✓ " : "A✗ ";
-		  statusMessage += userBReady ? "B✓" : "B✗";
-		  
-		  pushSystemMessage(statusMessage);
-		  
 		  // 如果是userB没准备好且我是userA，尝试重新请求
 		  if (!userBReady && window.myRole === "userA") {
 			pushSystemMessage("請求userB重新上傳狀態...");
@@ -5652,7 +5656,6 @@ function triggerT80Cannon() {
 		  // 如果userB状态不存在，且我是userB，立即上传
 		  if (window.myRole === "userB" && 
 			  (!statusData || !statusData.userB || !statusData.userB.uid)) {
-			console.log("userB狀態缺失，重新上傳");
 			requestZombieStatus();
 		  }
 		});
@@ -5678,8 +5681,7 @@ function triggerT80Cannon() {
 		const loserStatus = result.loser === statusData.userA.uid ? statusData.userA : statusData.userB;
 		
 		if (!result.winner) {
-			console.log("平局，无需资源调整");
-			pushSystemMessage("平局，双方资源保持不变");
+			pushSystemMessage("平局，雙方資源保持不變");
 			return;
 		  }
 		// 计算调整比例（10%-20%）
@@ -5752,14 +5754,11 @@ function triggerT80Cannon() {
 		
 		// 如果已经处理过这个指令，则跳过
 		if (processedCommands[commandId]) {
-		  console.log(`指令 ${commandId} 已处理，跳过`);
 		  return;
 		}
 		
 		// 标记指令已处理
 		processedCommands[commandId] = true;
-		console.log(`应用新指令 ${commandId}`);
-		
 		applyResourceAdjustment(command);
 	  });
 	}
@@ -5788,8 +5787,6 @@ function triggerT80Cannon() {
 		  displayBattleResult(result);
 		  
 		 // +++ 确保所有玩家都上传状态 +++
-		  console.log(`[${window.myRole}] 收到戰鬥結果，開始上傳僵尸狀態`);
-		  
 		  const myStatus = {
 			uid: window.myUid,
 			totalZombies: gameState.totalZombies,
@@ -5811,11 +5808,9 @@ function triggerT80Cannon() {
 		  
 		  statusRef.set(myStatus)
 			.then(() => {
-			  console.log(`[${window.myRole}] 狀態上傳失敗`);
 			  pushSystemMessage(`狀態已上傳: ${gameState.totalZombies} 僵尸`);
 			})
 			.catch(error => {
-			  console.error(`[${window.myRole}] 狀態上傳失敗:`, error);
 			  pushSystemMessage("狀態上傳失敗，請檢查網絡連接");
 			  setTimeout(() => statusRef.set(myStatus), 2000);
 			});
@@ -5910,7 +5905,7 @@ function triggerT80Cannon() {
 		  pushSystemMessage(gainMessage);
 		  
 		  // 更新UI显示
-		  updateResourceDisplay(command.resourceType);
+		  updateResourceDisplays(command.resourceType);
 		} 
 		else if (isLoser) {
 		  // 败方扣除资源（确保不低于0）
@@ -5924,7 +5919,7 @@ function triggerT80Cannon() {
 		  pushSystemMessage(lossMessage);
 		  
 		  // 更新UI显示
-		  updateResourceDisplay(command.resourceType);
+		  updateResourceDisplays(command.resourceType);
 		}
 	  }
 	  
@@ -5990,7 +5985,6 @@ function triggerT80Cannon() {
 	  
 	  // 添加到敵方動畫窗口
 	  enemyAnim.appendChild(zombieSearch);
-	  console.log("敵方僵尸搜索動畫已更新，使用精靈圖:", sprite);
 	}
 
 	
@@ -6027,7 +6021,6 @@ function triggerT80Cannon() {
 	function triggerBattleBTRAnimation() {
 	  const container = document.getElementById("battleSelfAnim");
 	  if (!container) {
-		console.error("找不到 #battleSelfAnim 容器");
 		return;
 	  }
 	  
@@ -6151,9 +6144,7 @@ function triggerT80Cannon() {
 		.child(window.currentBattleRoom)
 		.child("btrEvents");
 	  
-	  eventRef.push(eventData)
-		.then(() => console.log(`${type}事件上传成功`))
-		.catch(err => console.error(`${type}事件上传失败:`, err));
+	  eventRef.push(eventData);
 	}
 
 	// 4. 监听敌方BTR事件
@@ -6416,9 +6407,7 @@ function triggerT80Cannon() {
 		.child(window.currentBattleRoom)
 		.child("btrAttacks");
 	  
-	  attackRef.push(attackData)
-		.then(() => console.log("BTR攻击上传成功"))
-		.catch(err => console.error("BTR攻击上传失败:", err));
+	  attackRef.push(attackData);
 	}
 
 	// 9. 监听敌方攻击
@@ -6439,7 +6428,6 @@ function triggerT80Cannon() {
 		
 		if (attack.hit) {
 		  totalSelfDamage += attack.damage;
-		  console.log(`受到敵方BTR傷害: ${attack.damage}`);
 		}
 	  });
 	}
@@ -6555,7 +6543,6 @@ function triggerT80Cannon() {
 		  set.add(a.title.normalize("NFC").toLowerCase().trim());
 		}
 	  });
-	  console.log("同步後的稱號庫 (從 unlockedAchievements):", Array.from(set));
 	  return set;
 	}
 
@@ -6837,8 +6824,1850 @@ function triggerT80Cannon() {
   })();
 
 
+/* PVE模式 - 末日控制中心擴展模塊 - San1tater - 2025-06-24 17:57:16 */
+(function(){
+  // 確保 Firebase 已初始化
+  if (!window.firebase || !window.firebase.database) {
+    return;
+  }
+
+  // ======== 1. 全局變量定義 ========
+  let pveActive = false;
+  let pveMatched = false;
+  let pveInterval = null;
+  let bossAttackInterval = null;
+  let bossHp = 0;
+  let bossMaxHp = 0;
+  let playerHp = 0;
+  let playerMaxHp = 0;
+  let playerIsDown = false;
+  let totalPlayerDamage = 0;
+  let pveEnded = false;
+  let selectedBoss = "zombieKing"; 
+  let pveMode = "solo"; 
+  let battleBTRType = "";
+  let battleBTRActive = false;      // BTR/T80是否在場標志
+  let battleBTREventTimer = null;   // BTR事件觸發計時器
+  let battleBTRInterval = null;     // BTR攻擊間隔計時器
+  let t80IdleInterval = null;       // T80閒置動畫計時器
+  let t80CannonTimeout = null;      // T80開炮動畫計時器
+  let t80CannonOnCooldown = false;  // T80開炮冷卻標志
+  let currentBattleRoomRef = null;  // Firebase 房間參考
+  let processedMessages = {};       // 用於防止訊息重複顯示
+  
+  // BOSS配置
+  const bossConfigs = {
+    "zombieKing": {
+      name: "BTR-80A 「守護者」",
+      hp: 1000,
+      damageRange: {min: 25, max: 75},
+      attackInterval: 7000, 
+      singleAttackRate: 0.7,
+	  hitChance: 75,
+      sprite: "images/boss_zombie_king_sprite.png", 
+      frames: 4,  // 精靈圖幀數
+      frameWidth: 200, // 每幀寬度
+      rewards: {
+        food: 1000000,
+        materials: 3000000,
+        weapons: 5000000,
+        tech: 3000000
+      },
+      attackPhrases: {
+        single: [
+          "使用30mm混合彈鏈[AP+HE+API]，狂暴射擊",
+          "使用30mm曳光彈鏈[AP-T+API+HE-T]，嘗試鎖定",
+          "使用30mm穿燃彈鏈[API]，試圖引燃",
+		  "使用30mm穿甲彈鏈[AP]，專注破壞"
+        ],
+        aoe: [
+          "使用30mm高爆彈鏈[HE]，覆蓋射擊",
+          "釋放引擎煙霧，籠罩戰場",
+          "將引擎調到最大功率，橫衝直撞"
+        ]
+      }
+    },
+  };
+  
+  // 攻擊詞庫
+  const pveAttackPhrases = {
+    normal: [
+      "僵尸自信地打出一個長點射",
+      "僵尸使用單發點射，進行精確射擊",
+      "僵尸克制地打出兩個短點射",
+      "僵尸把槍舉過頭頂，亂射一通",
+      "僵尸調到全自動，進行壓制射擊"
+    ],
+    btr: [
+      "BTR-80使用30mm高爆彈鏈[HE]，實施火力支援",
+      "BTR-80使用30mm混合彈鏈[AP+HE+API]，展開火力覆蓋",
+      "BTR-80使用30mm對空彈鏈[API+HE+AP-T]，展開精準射擊",
+      "BTR-80使用30mm穿甲彈鏈[AP]，展開集中射擊",
+      "BTR-80使用30mm曳光彈鏈[AP-T+API+HE-T]，進行威懾射擊",
+      "BTR-80使用30mm穿燃彈鏈[API]，展開壓制射擊"
+    ],
+    t80: [
+      "T-80使用12.7mm高射機槍[7n34]，展開精確點射",
+      "T-80使用125mm高爆彈[3OF26]，實施覆蓋射擊",
+      "T-80使用125mm高爆彈[3OF26]，實施弱點破壞",
+      "T-80使用125mm穿甲彈[3BM42]，實施一般貫穿射擊",
+      "T-80採用125mm穿甲彈[3BM60]，實施強勢貫穿射擊",
+      "T-80使用125mm破甲彈[3BK18M]，實施破壞射擊",
+      "T-80使用125mm破甲彈[3BK18M]，實施削弱射擊"
+    ]
+  };
+
+  // ======== 2. 事件綁定 ========
+  document.addEventListener('DOMContentLoaded', function() {
+    // 模式選擇
+    const modeSelect = document.getElementById('battleModeSelect');
+    if (modeSelect) {
+      modeSelect.addEventListener('change', handleModeChange);
+    }
+    
+    // BOSS選擇
+    const bossList = document.getElementById('bossList');
+    if (bossList) {
+      bossList.addEventListener('change', function() {
+        selectedBoss = this.value;
+      });
+    }
+    
+    // PVE模式選擇
+    const pveModeSelect = document.getElementById('pveModeSelect');
+    if (pveModeSelect) {
+      pveModeSelect.addEventListener('change', function() {
+        pveMode = this.value;
+      });
+    }
+    
+    // 開始按鈕
+    const startBtn = document.getElementById('battleStartBtn');
+    if (startBtn) {
+      startBtn.addEventListener('click', function(e) {
+        const modeSelect = document.getElementById('battleModeSelect');
+        if (modeSelect && modeSelect.value === 'pve') {
+          startPveBattle();
+          e.preventDefault();
+          e.stopPropagation();
+          return false;
+        }
+      });
+    }
+    
+    // 退出按鈕
+    const exitBtn = document.getElementById('battleExitBtn');
+    if (exitBtn) {
+      exitBtn.addEventListener('click', function(e) {
+        if (pveActive) {
+          exitPveBattle();
+          e.preventDefault();
+          e.stopPropagation();
+          return false;
+        }
+      });
+    }
+  });
+  
+  function handleModeChange() {
+    const bossList = document.getElementById('bossList');
+    const pveModeSelect = document.getElementById('pveModeSelect');
+    
+    if (this.value === 'pve') {
+      bossList.style.display = 'inline-block';
+      pveModeSelect.style.display = 'inline-block';
+    } else {
+      bossList.style.display = 'none';
+      pveModeSelect.style.display = 'none';
+    }
+  }
+  
+  // ======== 3. 核心功能 ========
+  
+  // 添加必要的CSS樣式
+  function addPveStyles() {
+    if (document.getElementById('pve-styles')) return;
+    
+    const styleSheet = document.createElement('style');
+    styleSheet.id = 'pve-styles';
+    styleSheet.textContent = `
+      .health-bar {
+        width: 100%;
+        height: 20px;
+        background: #333;
+        border-radius: 5px;
+        margin-bottom: 10px;
+        overflow: hidden;
+        position: relative;
+      }
+      
+      .health-fill {
+        height: 100%;
+        background: var(--health-color, green);
+        width: 100%;
+        transition: width 0.5s;
+      }
+      
+      .boss-health-fill {
+        background: var(--boss-health-color, red);
+      }
+      
+      .health-text {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        text-align: center;
+        line-height: 20px;
+        font-size: 12px;
+        font-weight: bold;
+        color: white;
+        text-shadow: 0 0 2px black;
+      }
+      
+      .boss-animation {
+        position: absolute;
+        bottom: 10px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: var(--boss-frame-width);
+        height: var(--boss-frame-height);
+        background-image: url(var(--boss-sprite-url));
+        background-size: var(--boss-sprite-total-width) var(--boss-frame-height);
+        background-repeat: no-repeat;
+        animation: bossSearchAnim 1.5s steps(4) infinite;
+      }
+      
+      @keyframes bossSearchAnim {
+        from { background-position: 0 0; }
+        to { background-position: calc(-1 * var(--boss-sprite-total-width)) 0; }
+      }
+      
+      @keyframes bossPulse {
+        0% { transform: translateX(-50%) scale(1); }
+        50% { transform: translateX(-50%) scale(1.05); }
+        100% { transform: translateX(-50%) scale(1); }
+      }
+      
+      .boss-animation.attack {
+        animation: bossPulse 0.5s ease-in-out;
+      }
+      
+      .pve-background {
+        background-image: url('images/location_day_1.png');
+        background-repeat: repeat-x;
+        background-size: auto 100%;
+        background-position: center top;
+        animation: pveBgScroll 30s linear infinite;
+      }
+      
+      @keyframes pveBgScroll {
+        0% { background-position: 0 top; }
+        100% { background-position: -1000px top; }
+      }
+      
+      /* 修改容器佈局，將健康條放在底部 */
+      .battle-half {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+      }
+      
+      .battle-inner {
+        flex: 1;
+        position: relative;
+        overflow: hidden;
+      }
+      
+      .health-bars-container {
+        padding: 5px;
+        background: rgba(0,0,0,0.5);
+      }
+      
+      /* 合作模式血条样式 */
+      .coop-health-container {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+      }
+      
+      .coop-health-bar {
+        width: calc(50% - 4px); /* 减去间隔的一半 */
+        margin-bottom: 0;
+      }
+      
+      .player-down .health-fill {
+        background: #888 !important; /* 灰色表示倒地 */
+      }
+      
+      .player-down .health-text {
+        color: #ff6666;
+        font-weight: bold;
+      }
+      
+      /* 合作模式玩家B位置调整 */
+		#zombie-userA, #zombie-userB {
+		  position: absolute !important;
+		  bottom: 20% !important;
+		  top: auto !important;
+		  margin-bottom: 0 !important;
+		  transform: none !important; /* 移除所有翻转 */
+		}
+		
+		/* userA位置 */
+		#zombie-userA {
+		  left: 50% !important;
+		  transform: translateX(-50%) !important; /* 居中 */
+		}
+		
+		/* userB位置 */
+		#zombie-userB {
+		  left: 60% !important;
+		  right: auto !important;
+		}
+		
+		/* 标签样式统一 */
+		.player-name-tag {
+		  position: absolute !important;
+		  top: -20px !important;
+		  bottom: auto !important;
+		  width: 100% !important;
+		  text-align: center !important;
+		  color: #fff !important;
+		  font-size: 12px !important;
+		  text-shadow: 0 0 2px #000 !important;
+		  transform: scaleX(-1) !important;
+		}
+    `;
+    
+    document.head.appendChild(styleSheet);
+  }
+  
+  // 初始化PVE戰鬥
+  function initPveBattle() {
+    if (!pveActive) return;
+    
+    addPveStyles();
+    
+    const bossConfig = bossConfigs[selectedBoss];
+    if (!bossConfig) return;
+    
+    // 設置背景和動畫
+    setupBattleAnimation();
+    
+    // 修改：先設置健康條容器，再添加生命條和BOSS
+    addHealthBarsContainers();
+    addHealthBarsAndBoss();
+    
+    // 開始戰鬥循環
+    startCombatLoop();
+    
+    // 清除已處理消息記錄
+    processedMessages = {};
+    
+    // 推送戰鬥開始消息
+    appendBattleLogEntry({
+      sender: "系統",
+      senderRole: "system",
+      message: `戰鬥開始！挑戰 ${bossConfig.name}！`,
+      battleMode: "pve"
+    });
+  }
+  
+  // 添加健康條容器
+  function addHealthBarsContainers() {
+    const selfContainer = document.querySelector('.battle-half.left');
+    const enemyContainer = document.querySelector('.battle-half.right');
+    
+    if (!selfContainer || !enemyContainer) return;
+    
+    // 创建健康条容器 - 清除可能已存在的
+    const existingPlayerContainer = document.getElementById('player-health-container');
+    if (existingPlayerContainer) {
+      existingPlayerContainer.remove();
+    }
+    
+    const existingBossContainer = document.getElementById('boss-health-container');
+    if (existingBossContainer) {
+      existingBossContainer.remove();
+    }
+    
+    // 新建容器
+    const playerHealthContainer = document.createElement('div');
+    playerHealthContainer.id = 'player-health-container';
+    playerHealthContainer.className = 'health-bars-container';
+    
+    // 合作模式时添加特殊样式
+    if (pveMode === 'coop') {
+      playerHealthContainer.classList.add('coop-health-container');
+    }
+    
+    selfContainer.appendChild(playerHealthContainer);
+    
+    const bossHealthContainer = document.createElement('div');
+    bossHealthContainer.id = 'boss-health-container';
+    bossHealthContainer.className = 'health-bars-container';
+    enemyContainer.appendChild(bossHealthContainer);
+  }
+  
+  function setupBattleAnimation() {
+  const selfAnim = document.getElementById('battleSelfAnim');
+  const enemyAnim = document.getElementById('battleEnemyAnim');
+  
+  if (!selfAnim || !enemyAnim) return;
+  
+  // 清空现有内容
+  selfAnim.innerHTML = "";
+  enemyAnim.innerHTML = "";
+  
+  // 应用背景 - 与PVP模式一致
+  selfAnim.style.backgroundImage = "url('images/location_day_1.png')";
+  selfAnim.style.backgroundRepeat = "repeat-x";
+  selfAnim.style.backgroundSize = "auto 100%";
+  selfAnim.style.backgroundPosition = "center top";
+  selfAnim.style.animation = "scrollBgRight 30s linear infinite";
+  
+  enemyAnim.style.backgroundImage = "url('images/location_day_1.png')";
+  enemyAnim.style.backgroundRepeat = "repeat-x";
+  enemyAnim.style.backgroundSize = "auto 100%";
+  enemyAnim.style.backgroundPosition = "center top";
+  enemyAnim.style.animation = "scrollBgRight 30s linear infinite";
+  
+  // 确保容器可见
+  selfAnim.style.display = "block";
+  enemyAnim.style.display = "block";
+  
+  // 根据角色添加对应角色的动画
+  addUserCharacters(selfAnim);
+}
+
+// 修改addUserCharacters函数，确保不重复创建角色
+function addUserCharacters(container) {
+  if (!container) return;
+  
+  // 清除所有现有僵尸动画
+  const existingZombies = container.querySelectorAll('.zombie-search');
+  existingZombies.forEach(zombie => zombie.remove());
+  
+  // 添加userA的僵尸动画
+  const zombieA = document.createElement("div");
+  zombieA.className = "zombie-search";
+  zombieA.id = "zombie-userA";
+  zombieA.style.backgroundImage = "url('" + window.currentZombieSprite + "')";
+  
+  // 添加userA的名称标签
+  const nameTagA = document.createElement("div");
+  nameTagA.className = "player-name-tag";
+  nameTagA.textContent = pveMode === 'coop' ? (window.myRole === "userA" ? window.myUid : "等待玩家A...") : window.myUid;
+  zombieA.appendChild(nameTagA);
+  
+  container.appendChild(zombieA);
+  
+  // 如果是合作模式，同时添加userB的僵尸动画
+  if (pveMode === 'coop') {
+    const zombieB = document.createElement("div");
+    zombieB.className = "zombie-search";
+    zombieB.id = "zombie-userB";
+    // 初始状态 - 稍后会由updatePartnerInfo更新
+    zombieB.style.backgroundImage = "url('" + window.currentZombieSprite + "')";
+    
+    // 添加userB的名称标签
+    const nameTagB = document.createElement("div");
+    nameTagB.className = "player-name-tag";
+    nameTagB.textContent = window.myRole === "userB" ? window.myUid : "等待玩家B...";
+    zombieB.appendChild(nameTagB);
+    
+    container.appendChild(zombieB);
+    
+    // 立即尝试更新伙伴信息
+    setTimeout(() => updatePartnerInfo(), 500); // 给Firebase有时间同步数据
+  }
+}
+
+// 改进updatePartnerInfo函数
+function updatePartnerInfo() {
+  if (!currentBattleRoomRef || pveMode !== 'coop') return;
+  
+  const partnerRole = window.myRole === "userA" ? "userB" : "userA";
+  
+  currentBattleRoomRef.child(partnerRole).once('value').then((snapshot) => {
+    const partnerData = snapshot.val();
+    if (!partnerData || !partnerData.uid) return;
+    // 更新对应玩家的名称标签
+    const partnerZombieId = `zombie-${partnerRole}`;
+    const partnerZombie = document.getElementById(partnerZombieId);
+    if (partnerZombie) {
+      // 更新伙伴的精灵图
+      if (partnerData.spriteUrl) {
+        partnerZombie.style.backgroundImage = `url('${partnerData.spriteUrl}')`;
+      }
+	  if (partnerData.btrSpriteUrl) {
+        window.partnerBtrSprite = partnerData.btrSpriteUrl;
+      }
+      if (partnerData.t80SpriteUrl) {
+        window.partnerT80Sprite = partnerData.t80SpriteUrl;
+      }
+      
+      const nameTag = partnerZombie.querySelector('.player-name-tag');
+      if (nameTag && partnerData.uid) {
+        nameTag.textContent = partnerData.uid;
+      }
+    }
+  });
+}
+  
+
+  
+  // 添加生命條和BOSS
+  function addHealthBarsAndBoss() {
+    const playerHealthContainer = document.getElementById('player-health-container');
+    const bossHealthContainer = document.getElementById('boss-health-container');
+    
+    if (!playerHealthContainer || !bossHealthContainer) return;
+    
+    // 如果是合作模式，添加两个玩家生命条
+    if (pveMode === 'coop') {
+      // UserB的生命条 - 左侧
+      const userBBar = document.createElement('div');
+      userBBar.id = 'userB-health-bar';
+      userBBar.className = 'health-bar coop-health-bar';
+      userBBar.innerHTML = `
+        <div class="health-fill" style="background:green"></div>
+        <div class="health-text">等待玩家B...</div>
+      `;
+      playerHealthContainer.appendChild(userBBar);
+      
+      // UserA的生命条 - 右侧
+      const userABar = document.createElement('div');
+      userABar.id = 'userA-health-bar';
+      userABar.className = 'health-bar coop-health-bar';
+      userABar.innerHTML = `
+        <div class="health-fill" style="background:green"></div>
+        <div class="health-text">等待玩家A...</div>
+      `;
+      playerHealthContainer.appendChild(userABar);
+      
+      // 立即尝试更新生命值
+      updateCoopHealthDisplay();
+    } else {
+      // 单人模式 - 只显示自己的血条
+      const playerBar = document.createElement('div');
+      playerBar.id = 'player-health-bar';
+      playerBar.className = 'health-bar';
+      playerBar.innerHTML = `
+        <div class="health-fill" style="background:green"></div>
+        <div class="health-text">${window.myUid}: ${playerHp}/${playerMaxHp}</div>
+      `;
+      playerHealthContainer.appendChild(playerBar);
+    }
+    
+    // BOSS生命條
+    const bossBar = document.createElement('div');
+    bossBar.id = 'boss-health-bar';
+    bossBar.className = 'health-bar';
+    bossBar.innerHTML = `
+      <div class="health-fill boss-health-fill" style="background:red"></div>
+      <div class="health-text">${bossConfigs[selectedBoss].name}: 100%</div>
+    `;
+    bossHealthContainer.appendChild(bossBar);
+    
+	// 添加BOSS精灵图
+	const enemyAnim = document.getElementById('battleEnemyAnim');
+	if (enemyAnim && !document.getElementById('boss-animation')) {
+	  const bossAnim = document.createElement('div');
+	  bossAnim.id = 'boss-animation';
+	  
+	  // 使用原始CSS变量
+	  const rootStyles = getComputedStyle(document.documentElement);
+	  const frameHeight = parseFloat(rootStyles.getPropertyValue('--btr-frame-height')) || 120;
+	  const frameWidth = parseFloat(rootStyles.getPropertyValue('--btr-frame-width')) || 480;
+	  
+	  // 精灵图总宽度 (4帧)
+	  const framesTotal = 4;
+	  const totalWidth = frameWidth * framesTotal;
+	  
+	  // 设置样式
+	  bossAnim.style.position = 'absolute';
+	  bossAnim.style.left = '70%';
+	  bossAnim.style.top = '50%';
+	  bossAnim.style.marginLeft = `-${frameWidth / 2}px`;
+	  bossAnim.style.marginTop = `-${frameHeight / 2}px`;
+	  bossAnim.style.width = `${frameWidth}px`;
+	  bossAnim.style.height = `${frameHeight}px`;
+	  bossAnim.style.backgroundImage = `url(${bossConfigs[selectedBoss].sprite})`;
+	  bossAnim.style.backgroundSize = `${totalWidth}px ${frameHeight}px`;
+	  bossAnim.style.backgroundRepeat = 'no-repeat';
+	  bossAnim.style.zIndex = '10';
+	  
+	  // 创建动画
+	  const keyframesText = `
+		@keyframes bossFrameAnim {
+		  from { background-position: 0 0; }
+		  to { background-position: -${totalWidth}px 0; }
+		}
+	  `;
+	  
+	  let styleElem = document.getElementById('boss-animation-keyframes');
+	  if (!styleElem) {
+		styleElem = document.createElement('style');
+		styleElem.id = 'boss-animation-keyframes';
+		document.head.appendChild(styleElem);
+	  }
+	  styleElem.textContent = keyframesText;
+	  
+	  // 应用动画
+	  bossAnim.style.animation = 'bossFrameAnim 0.5s steps(4) infinite';
+	  
+	  enemyAnim.appendChild(bossAnim);
+	}
+    
+    // 更新生命值顯示
+    updateHealthDisplay();
+  }
+  
+  // 更新生命值顯示
+  function updateHealthDisplay() {
+    if (pveMode === 'coop') {
+      // 合作模式下更新双方血条
+      updateCoopHealthDisplay();
+    } else {
+      // 单人模式只更新自己
+      const playerBar = document.getElementById('player-health-bar');
+      if (playerBar) {
+        const percentage = Math.round((playerHp / playerMaxHp) * 100);
+        playerBar.querySelector('.health-fill').style.width = `${percentage}%`;
+        playerBar.querySelector('.health-text').textContent = `${window.myUid}: ${playerHp}/${playerMaxHp}`;
+      }
+    }
+    
+    if (pveMode === 'coop' && window.myRole === 'userB') {
+    // userB需要从Firebase读取最新值
+    if (currentBattleRoomRef) {
+      currentBattleRoomRef.child('bossHealth').once('value')
+        .then(snapshot => {
+          if (snapshot.exists()) {
+            const remoteBossHp = snapshot.val();
+            updateBossHealthBar(remoteBossHp);
+          } else {
+            updateBossHealthBar(bossHp); // 回退到本地值
+          }
+        })
+        .catch(() => {
+          updateBossHealthBar(bossHp); // 出错时使用本地值
+        });
+    }
+  } else {
+    // userA或单人模式直接使用本地值
+    updateBossHealthBar(bossHp);
+  }
+}
+	function updateBossHealthBar(currentBossHp) {
+	  const bossBar = document.getElementById('boss-health-bar');
+	  if (bossBar) {
+		const percentage = Math.round((currentBossHp / bossMaxHp) * 100);
+		bossBar.querySelector('.health-fill').style.width = `${percentage}%`;
+		bossBar.querySelector('.health-text').textContent = `${bossConfigs[selectedBoss].name}: ${percentage}%`;
+	  }
+	}
+  
+  // 合作模式下更新双方血条
+  function updateCoopHealthDisplay() {
+    if (!currentBattleRoomRef) return;
+  
+  currentBattleRoomRef.once('value').then((snapshot) => {
+    updateAllPlayerHealth(snapshot.val());
+  });
+}
+  
+  // 開始PVE戰鬥
+  function startPveBattle() {
+    // 檢查暱稱
+    let nickname = document.getElementById('battleNickname').value.trim();
+    if (!nickname) {
+      return;
+    }
+    window.myUid = nickname;
+    
+    // 檢查PIN碼
+    let pin = document.getElementById('battlePin').value.trim();
+    if (!pin) {
+      return;
+    }
+    
+    // 獲取選擇
+    selectedBoss = document.getElementById('bossList').value;
+    pveMode = document.getElementById('pveModeSelect').value;
+    
+    // 初始化生命值 - 正確讀取中心建築等級
+    initializePlayerHealth();
+    
+    // 標記PVE模式活躍
+    pveActive = true;
+    
+    // 無論單人還是合作模式，都創建Firebase房間
+    createPveRoom(pin);
+  }
+  
+  // 初始化玩家生命值 - 確保正確讀取中心建築等級
+  function initializePlayerHealth() {
+    let centerLevel = 1;
+    
+    try {
+      // 直接從全局gameState獲取中心建築等級
+      const centerBuilding = gameState.buildings.find(b => 
+        b && b.type.toLowerCase() === "center"
+      );
+      if (centerBuilding) {
+        centerLevel = centerBuilding.level || 1;
+      }
+    } catch (error) {
+      centerLevel = 1; // 出錯時使用默認值
+    }
+    
+    // 基礎生命值100，每級提升5%
+    const baseHealth = 100;
+    const healthMultiplier = Math.pow(1.05, centerLevel - 1);
+    playerMaxHp = playerHp = Math.round(baseHealth * healthMultiplier);
+    
+    // 初始化BOSS生命值
+    const bossConfig = bossConfigs[selectedBoss];
+    bossMaxHp = bossHp = bossConfig.hp;
+  }
+  
+  // 創建PVE房間
+  function createPveRoom(pin) {
+    // 確保Firebase已初始化
+    if (!firebase.database) {
+      alert("Firebase 數據庫未初始化");
+      return;
+    }
+    
+    // 創建房間參考
+    currentBattleRoomRef = firebase.database().ref('pveBattles').child(pin);
+	const playerData = {
+		uid: window.myUid,
+		health: playerHp,
+		isDown: false,
+		spriteUrl: window.currentZombieSprite, // 僵尸精灵图
+		btrSpriteUrl: window.currentBtrSprite, // BTR精灵图
+		t80SpriteUrl: window.currentT80Sprite  // T80精灵图
+	  };
+    
+    if (pveMode === 'solo') {
+      // 單人模式 - 直接創建並開始
+      currentBattleRoomRef.set({
+        bossId: selectedBoss,
+        mode: pveMode,
+        type: 'pve',         // 标记房间类型为PVE
+        locked: true,        // 锁定房间，不允许其他玩家加入
+        userA: playerData,
+        bossHealth: bossHp,
+        status: 'active',
+        startTime: firebase.database.ServerValue.TIMESTAMP
+      }).then(() => {
+	    currentBattleRoomRef.onDisconnect().remove();
+        window.myRole = "userA";
+        pveMatched = true; // 單人模式直接標記為已匹配
+		currentBattleRoomRef.child('userA').onDisconnect().remove();
+        // 保存房間ID以便後續使用
+        window.currentBattleRoom = pin;
+        // 初始化戰鬥
+        initPveBattle();
+        // 設置監聽
+        setupFirebaseListeners();
+      }).catch(error => {
+        alert('創建PVE房間失敗，請稍後再試');
+      });
+    } else {
+      // 合作模式 - 檢查是否已存在房間
+      currentBattleRoomRef.once('value').then((snapshot) => {
+        const roomData = snapshot.val();
+		if (roomData && roomData.locked) {
+		  return;
+		}
+        if (!roomData) {
+          // 創建新房間
+          currentBattleRoomRef.set({
+            bossId: selectedBoss,
+            mode: pveMode,
+            type: 'pve',     // 标记房间类型为PVE
+            userA: playerData,
+            bossHealth: bossHp,
+            status: 'waiting',
+            startTime: firebase.database.ServerValue.TIMESTAMP
+          }).then(() => {
+		    currentBattleRoomRef.onDisconnect().remove();
+            window.myRole = "userA";
+			currentBattleRoomRef.child('userA').onDisconnect().remove();
+            window.currentBattleRoom = pin;
+            // 等待另一位玩家加入
+            appendBattleLogEntry({
+              sender: "系統",
+              senderRole: "system",
+              message: "等待另一名玩家加入...",
+              battleMode: "pve"
+            });
+            // 設置監聽
+            setupFirebaseListeners();
+          }).catch(err => {
+            alert("創建合作模式房間失敗");
+          });
+        } else if (!roomData.userB) {
+          // 加入為玩家B
+          currentBattleRoomRef.child('userB').set(playerData).then(() => {
+		    currentBattleRoomRef.onDisconnect().remove();
+            window.myRole = "userB";
+			currentBattleRoomRef.child('userB').onDisconnect().remove();
+            window.currentBattleRoom = pin;
+            // 更新房間狀態
+            currentBattleRoomRef.update({ status: 'active' });
+            // 設置監聽
+            setupFirebaseListeners();
+            // 獲取BOSS信息
+            selectedBoss = roomData.bossId;
+            bossHp = bossMaxHp = roomData.bossHealth;
+            // 初始化戰鬥
+            pveMatched = true;
+            initPveBattle();
+          }).catch(err => {
+            alert("加入房間失敗");
+          });
+        } else {
+          // 房間已滿
+          alert("此戰局已滿！");
+        }
+      }).catch(error => {
+        alert('檢查房間狀態失敗，請稍後再試');
+      });
+    }
+  }
+  
+function setupFirebaseListeners() {
+  if (!currentBattleRoomRef) return;
+  
+  // 移除現有監聽器
+  currentBattleRoomRef.off();
+  currentBattleRoomRef.child('log').off();
+  currentBattleRoomRef.child('events').off();
+  
+  // 1. 监听房间状态变化 - 重要：死亡后仍需继续监听
+  currentBattleRoomRef.on('value', (snapshot) => {
+    const roomData = snapshot.val();
+    if (!roomData) return;
+    
+    // 检查游戏结束
+    if (roomData.status === 'ended') {
+      if (!pveEnded) {
+        pveEnded = true;
+        setTimeout(() => endPveBattle(roomData.result === 'victory'), 1000);
+      }
+      return;
+    }
+    
+    // 关键改进：无论任何状态，始终更新所有血量显示
+    updateAllPlayerHealth(roomData);
+      
+      // 檢查是否已有兩名玩家
+      if (roomData.status === 'active' && roomData.userA && roomData.userB) {
+        if (!pveMatched) {
+          pveMatched = true;
+          appendBattleLogEntry({
+            sender: "系統",
+            senderRole: "system",
+            message: "雙方連線成功，準備開始對戰！",
+            battleMode: "pve"
+          });
+          
+          // 如果是玩家A，初始化戰鬥
+          if (window.myRole === "userA") {
+            initPveBattle();
+          }
+          
+          // 添加伙伴角色
+          const selfAnim = document.getElementById('battleSelfAnim');
+          if (selfAnim) {
+            addUserCharacters(selfAnim);
+          }
+          
+          // 更新双方血条
+          updateCoopHealthDisplay();
+        }
+      }
+      
+      // 同步BOSS生命值
+      if (window.myRole === "userB" && roomData.bossHealth !== undefined) {
+        bossHp = roomData.bossHealth;
+        updateHealthDisplay();
+      }
+      
+      // ===== 玩家倒地检测与处理 =====
+      if (window.myRole === "userA") {
+      // 检查userA是否刚刚死亡
+      if (roomData.userA && roomData.userA.isDown) {
+        const userADownKey = `userA_${roomData.userA.uid}_down`;
+        if (!processedMessages[userADownKey]) {
+          processedMessages[userADownKey] = true;
+          
+          appendBattleLogEntry({
+            sender: "系統",
+            senderRole: "system",
+            message: `${roomData.userA.uid} 受到致命一擊，重傷倒地。`,
+            battleMode: "pve"
+          });
+		   currentBattleRoomRef.child('_processedMessages').update({
+            [userADownKey]: true
+          });
+        }
+      }
+      
+      // 检查userB是否刚刚死亡
+      if (roomData.userB && roomData.userB.isDown) {
+        const userBDownKey = `userB_${roomData.userB.uid}_down`;
+        if (!processedMessages[userBDownKey]) {
+          processedMessages[userBDownKey] = true;
+          
+          appendBattleLogEntry({
+            sender: "系統",
+            senderRole: "system",
+            message: `${roomData.userB.uid} 受到致命一擊，重傷倒地。`,
+            battleMode: "pve"
+          });
+        }
+      }
+      
+      // 检查是否双方都死亡 - 战斗失败
+      if (roomData.userA && roomData.userA.isDown && 
+          roomData.userB && roomData.userB.isDown && !pveEnded) {
+        setTimeout(() => endPveBattle(false), 1000);
+      }
+    }
+  });
+  
+  // 2. 監聽事件 - 用于同步BTR/T80支援
+  if (pveMode === 'coop') {
+    currentBattleRoomRef.child('events').on('child_added', (snapshot) => {
+      const event = snapshot.val();
+      if (event && event.type === 'btrSupport' && event.sender !== window.myRole) {
+        // 显示伙伴的BTR/T80支援
+        battleBTRType = event.btrType;
+        showPartnerBtrSupport();
+      }
+    });
+  }
+  
+  // 3. 監聽日誌 - 修復：使用唯一ID防止重複
+  currentBattleRoomRef.child('log').on('child_added', (snapshot) => {
+    if (pveEnded) return;
+    
+    const logEntry = snapshot.val();
+    if (!logEntry) return;
+    
+    const entryId = snapshot.key;
+    
+    // 檢查是否已處理過該消息
+    if (processedMessages[entryId]) {
+      return; // 跳過已處理的消息
+    }
+    
+    // 標記消息為已處理
+    processedMessages[entryId] = true;
+    
+    // 確保消息來自PVE戰鬥
+    if (logEntry.battleMode !== 'pve' && logEntry.battleMode !== undefined) {
+      return; // 跳过非PVE消息
+    }
+    
+    // 避免顯示自己本地已顯示過的消息（僅檢查發送者和角色）
+    if (logEntry.sender === window.myUid && logEntry.senderRole === window.myRole) {
+      return;
+    }
+    
+    // 顯示日誌
+    displayBattleLogEntry(logEntry);
+  });
+}
+function updateAllPlayerHealth(roomData) {
+  if (!roomData) return;
+  
+  // 获取双方玩家数据
+  const userAData = roomData.userA || {};
+  const userBData = roomData.userB || {};
+  
+  // 更新玩家A的生命条
+  const userABar = document.getElementById('userA-health-bar');
+  if (userABar) {
+    // 关键改进：倒地时强制显示为0
+    const userAHp = userAData.isDown ? 0 : (userAData.health || 0);
+    const userAMaxHp = playerMaxHp;
+    const percentage = Math.max(0, Math.min(100, Math.round((userAHp / userAMaxHp) * 100)));
+    
+    userABar.querySelector('.health-fill').style.width = `${percentage}%`;
+    userABar.querySelector('.health-text').textContent = `${userAData.uid || '玩家A'}: ${userAHp}/${userAMaxHp}`;
+    
+    if (userAData.isDown) {
+      userABar.classList.add('player-down');
+    } else {
+      userABar.classList.remove('player-down');
+    }
+  }
+  
+  // 更新玩家B的生命条
+  const userBBar = document.getElementById('userB-health-bar');
+  if (userBBar) {
+    // 关键改进：倒地时强制显示为0
+    const userBHp = userBData.isDown ? 0 : (userBData.health || 0);
+    const userBMaxHp = playerMaxHp;
+    const percentage = Math.max(0, Math.min(100, Math.round((userBHp / userBMaxHp) * 100)));
+    
+    userBBar.querySelector('.health-fill').style.width = `${percentage}%`;
+    userBBar.querySelector('.health-text').textContent = `${userBData.uid || '玩家B'}: ${userBHp}/${userBMaxHp}`;
+    
+    if (userBData.isDown) {
+      userBBar.classList.add('player-down');
+    } else {
+      userBBar.classList.remove('player-down');
+    }
+  }
+}
+
+// 显示伙伴的BTR/T80支援
+function showPartnerBtrSupport() {
+  // 获取动画容器
+  const selfAnim = document.getElementById('battleSelfAnim');
+  if (!selfAnim) return;
+  
+  // 是BTR还是T80
+  const useT80 = (battleBTRType === "t80");
+  const partnerRole = window.myRole === "userA" ? "userB" : "userA";
+  currentBattleRoomRef.child(partnerRole).once('value').then(snapshot => {
+    const partnerData = snapshot.val();
+    if (!partnerData) return;
+
+   const spriteUrl = (battleBTRType === "t80")
+        ? (partnerData.t80SpriteUrl || window.currentT80Sprite)
+        : (partnerData.btrSpriteUrl  || window.currentBtrSprite);
+  
+  // 动态计算位置
+  const containerWidth = selfAnim.clientWidth;
+  const offset = 50;
+  const rootStyles = getComputedStyle(document.documentElement);
+  
+  let frameWidth;
+  if (useT80) {
+    frameWidth = 480;
+  } else {
+    frameWidth = parseFloat(rootStyles.getPropertyValue('--btr-frame-width')) || 240;
+  }
+  
+  // 计算位置 - 在伙伴僵尸附近
+  const centerStart = containerWidth + offset + 0.5 * frameWidth;
+  const centerStop = window.myRole === "userB" ? containerWidth * 0.4 : containerWidth * 0.6; 
+  const startLeft = centerStart - 0.5 * frameWidth;
+  const stopLeft  = centerStop - 0.5 * frameWidth;
+  
+  // 创建关键帧动画
+  const keyframesText = `
+    @keyframes btrMovePartnerBattle {
+      0%   { left: ${startLeft}px; }
+      20%  { left: ${stopLeft}px; }
+      60%  { left: ${stopLeft}px; }
+      100% { left: ${startLeft}px; }
+    }
+  `;
+  
+  let styleElem = document.getElementById("btrKeyframesPartnerBattle");
+  if (!styleElem) {
+    styleElem = document.createElement("style");
+    styleElem.id = "btrKeyframesPartnerBattle";
+    document.head.appendChild(styleElem);
+  }
+  styleElem.textContent = keyframesText;
+  
+  // 创建动画容器
+  const btrWrapper = document.createElement("div");
+  btrWrapper.className = "btr-wrapper partner-btr";
+  btrWrapper.style.position = "absolute";
+  btrWrapper.style.top = "25%";
+  btrWrapper.style.left = startLeft + "px";
+  btrWrapper.style.animation = "btrMovePartnerBattle 10s ease-in-out forwards";
+  btrWrapper.style.zIndex = "5";
+  
+  let spriteElem;
+  if (useT80) {
+    // T80动画
+    const frameContainer = document.createElement("div");
+    frameContainer.className = "frameContainer";
+    frameContainer.style.width = frameWidth + "px";
+    frameContainer.style.height = rootStyles.getPropertyValue('--btr-frame-height') || "120px";
+    frameContainer.style.overflow = "hidden";
+    
+    spriteElem = document.createElement("div");
+    spriteElem.className = "t80-animation partner-t80";
+    spriteElem.style.backgroundImage = `url("${spriteUrl}")`;
+    spriteElem.style.backgroundPosition = "0px 0";
+    
+    frameContainer.appendChild(spriteElem);
+    btrWrapper.appendChild(frameContainer);
+	startT80IdleAnimation(spriteElem);
+    setTimeout(() => {
+      const originalBTRActive = battleBTRActive;
+      const originalCooldown = t80CannonOnCooldown;
+      battleBTRActive = true;
+      t80CannonOnCooldown = false;
+      triggerT80Cannon(spriteElem);
+      setTimeout(() => {
+        battleBTRActive = originalBTRActive;
+        t80CannonOnCooldown = originalCooldown;
+      }, 100);
+    }, 1000);
+  } else {
+    // BTR动画
+    spriteElem = document.createElement("div");
+    spriteElem.className = "btr-animation partner-btr";
+    spriteElem.style.backgroundImage = `url("${spriteUrl}")`;
+    btrWrapper.appendChild(spriteElem);
+  }
+  
+  selfAnim.appendChild(btrWrapper);
+  
+  // 10秒后清理
+  setTimeout(() => {
+    if (selfAnim.contains(btrWrapper)) {
+      selfAnim.removeChild(btrWrapper);
+    }
+  }, 10000);
+  });
+}
+
+// 顯示戰鬥日誌條目
+function displayBattleLogEntry(messageObj) {
+  if (typeof messageObj !== 'object' || messageObj === null) return;
+  
+  const entry = document.createElement('div');
+  entry.className = 'log-entry';
+  
+  // 根據發送者設置樣式
+  if (messageObj.senderRole === "system") {
+    // 系统事件 - 使用系统样式
+    entry.className += ' battle-system-entry';
+    entry.innerHTML = `<span>[系統] ${messageObj.message}</span>`;
+  } else if (messageObj.senderRole === "boss") {
+    // Boss事件 - 使用敌方样式
+    entry.className += ' battle-enemy-entry';
+    entry.innerHTML = `<span>[${messageObj.sender}] ${messageObj.message}</span>`;
+  } else {
+    // 玩家事件 - 使用己方样式
+    entry.className += ' battle-self-entry';
+    entry.innerHTML = `<span>[${messageObj.sender}] ${messageObj.message}</span>`;
+  }
+  
+  const logContainer = document.getElementById('battleLogContent');
+  if (logContainer) {
+    logContainer.appendChild(entry);
+    logContainer.scrollTop = logContainer.scrollHeight;
+  }
+}
+
+// 向戰鬥日誌添加條目並上傳到Firebase
+function appendBattleLogEntry(messageObj) {
+  if (typeof messageObj !== 'object' || messageObj === null) return;
+  
+  // 添加PVE标识
+  if (!messageObj.battleMode) {
+    messageObj.battleMode = "pve";
+  }
+  
+  // 顯示在本地
+  displayBattleLogEntry(messageObj);
+  
+  // 上傳到Firebase
+  if (currentBattleRoomRef) {
+    // 生成唯一ID
+    const newLogRef = currentBattleRoomRef.child('log').push();
+    const messageId = newLogRef.key;
+    
+    // 已將此消息標記為已處理，防止重複顯示
+    processedMessages[messageId] = true;
+    
+    // 上傳消息到Firebase
+    newLogRef.set(messageObj);
+  }
+}
+
+// 開始戰鬥循環
+function startCombatLoop() {
+  // 清除現有計時器
+  clearCombatTimers();
+  
+  // 玩家攻擊循環 - 每5秒
+  pveInterval = setInterval(() => {
+    if (pveEnded || playerIsDown) return;
+    triggerPlayerAttack();
+  }, 5000);
+  
+  // BOSS攻擊循環
+  const bossConfig = bossConfigs[selectedBoss];
+  bossAttackInterval = setInterval(() => {
+    if (pveEnded || playerIsDown) return;
+    triggerBossAttack();
+  }, bossConfig.attackInterval);
+  
+  // BTR/T80事件 - 每30秒檢查一次，與PVP一致
+  battleBTREventTimer = setInterval(() => {
+    if (pveEnded || playerIsDown) return;
+    checkBTREvent();
+  }, 30000);
+}
+
+// 檢查BTR事件
+function checkBTREvent() {
+  // 直接從gameState獲取裝甲車庫（拖拉機廠）
+  try {
+    const garages = gameState.buildings.filter(b => 
+      b && b.type.toLowerCase() === "armoredgarage"
+    );
+    
+    if (garages.length > 0 && BUILDINGS && BUILDINGS.armoredGarage) {
+      const garageInfo = BUILDINGS.armoredGarage.getUpgradeInfo(garages[0].level);
+      
+      // 檢查觸發機率
+      if (Math.random() < garageInfo.effect.btrChance) {
+        triggerBtrSupport();
+      }
+    }
+  } catch (error) {
+    // 靜默處理錯誤
+  }
+}
+
+// 清除戰鬥計時器
+function clearCombatTimers() {
+  if (pveInterval) clearInterval(pveInterval);
+  if (bossAttackInterval) clearInterval(bossAttackInterval);
+  if (battleBTREventTimer) clearInterval(battleBTREventTimer);
+  if (battleBTRInterval) clearInterval(battleBTRInterval);
+  if (t80IdleInterval) clearInterval(t80IdleInterval);
+  if (t80CannonTimeout) clearTimeout(t80CannonTimeout);
+  
+  pveInterval = null;
+  bossAttackInterval = null;
+  battleBTREventTimer = null;
+  battleBTRInterval = null;
+  t80IdleInterval = null;
+  t80CannonTimeout = null;
+}
+
+// 觸發玩家攻擊
+function triggerPlayerAttack() {
+  let centerLevel = 1;
+  
+  try {
+    // 直接從gameState獲取中心基地等級
+    const centerBuilding = gameState.buildings.find(b => 
+      b && b.type.toLowerCase() === "center"
+    );
+    if (centerBuilding) {
+      centerLevel = centerBuilding.level || 1;
+    }
+  } catch (error) {
+    centerLevel = 1;
+  }
+  
+  // 與PVP一致的命中率計算：40 + centerLevel * 0.5，最高85%
+  const hitChanceVal = Math.min(40 + centerLevel * 0.5, 85);
+  const hitRoll = Math.random() * 100;
+  const hit = (hitRoll < hitChanceVal);
+  
+  // 傷害計算
+  const baseDamage = hit ? (Math.floor(Math.random() * 10) + 1) : 0;
+  
+  // 僵尸指揮中心加成
+  let commandCenterLevel = 0;
+  try {
+    const commandCenter = gameState.buildings.find(b => 
+      b && b.type.toLowerCase() === "zombiecommandcenter"
+    );
+    if (commandCenter) {
+      commandCenterLevel = commandCenter.level;
+    }
+  } catch (error) {
+    commandCenterLevel = 0;
+  }
+  
+  // 傷害加成
+  const multiplier = 1 + commandCenterLevel * 0.01;
+  const damage = Math.round(baseDamage * multiplier);
+  
+  // 獲取攻擊短語
+  const phrase = pveAttackPhrases.normal[Math.floor(Math.random() * pveAttackPhrases.normal.length)];
+  
+  // 處理戰鬥結果
+  if (hit && damage > 0) {
+    appendBattleLogEntry({
+      sender: window.myUid,
+      senderRole: window.myRole,
+      message: `派遣的 ${phrase}（命中），${bossConfigs[selectedBoss].name} 受到 ${damage} 傷害`,
+      targetType: "boss",
+      battleMode: "pve"
+    });
+    
+    // 更新BOSS生命值
+    if (window.myRole === "userA") {
+      // 更新BOSS生命值
+      bossHp = Math.max(0, bossHp - damage);
+      totalPlayerDamage += damage;
+    
+    // 同步到Firebase
+    if (currentBattleRoomRef) {
+        currentBattleRoomRef.update({ 
+          bossHealth: bossHp,
+          lastDamageBy: "userA",
+          lastDamageAmount: damage,
+          lastUpdateTime: firebase.database.ServerValue.TIMESTAMP
+        });
+      }
+    
+    // 檢查BOSS是否被擊敗
+    if (bossHp <= 0) {
+        endPveBattle(true);
+      }
+    } else {
+      // userB只更新自己的本地伤害统计，不修改bossHp
+      totalPlayerDamage += damage;
+    }
+  } else {
+    appendBattleLogEntry({
+      sender: window.myUid,
+      senderRole: window.myRole,
+      message: `派遣的 ${phrase}（未命中）`,
+      targetType: "boss",
+      battleMode: "pve"
+    });
+  }
+  
+  // 更新生命值顯示
+  updateHealthDisplay();
+}
+
+// 觸發BOSS攻擊
+function triggerBossAttack() {
+  const bossConfig = bossConfigs[selectedBoss];
+  
+  // 添加BOSS攻擊動畫
+  const bossAnim = document.getElementById('boss-animation');
+  if (bossAnim) {
+    // 暫停CSS動畫，應用脈衝效果
+    const currentAnimation = bossAnim.style.animation;
+    bossAnim.style.animation = 'none';
+    
+    // 強制重排
+    void bossAnim.offsetWidth;
+    
+    // 添加攻擊動畫
+    bossAnim.classList.add('attack');
+    
+    // 500ms後移除攻擊動畫，恢復原動畫
+    setTimeout(() => {
+      bossAnim.classList.remove('attack');
+      bossAnim.style.animation = currentAnimation;
+    }, 500);
+  }
+  
+  // 命中判定
+  let hitChanceVal = bossConfig.hitChance || 75; // 默认75%命中率
+  const hitRoll = Math.random() * 100;
+  const hit = (hitRoll < hitChanceVal);
+  
+  // 傷害計算 - 只有命中才计算伤害
+  const damage = hit ? Math.floor(bossConfig.damageRange.min + 
+    Math.random() * (bossConfig.damageRange.max - bossConfig.damageRange.min)) : 0;
+  
+  // 單體攻擊
+  const phraseIndex = Math.floor(Math.random() * bossConfig.attackPhrases.single.length);
+  const attackPhrase = bossConfig.attackPhrases.single[phraseIndex];
+  
+  // 生成攻擊消息 - 添加命中/未命中标识
+  let attackMessage;
+  if (hit) {
+    attackMessage = `${attackPhrase}${window.myUid}（命中），造成 ${damage} 點傷害！`;
+  } else {
+    attackMessage = `${attackPhrase}${window.myUid}（未命中）！`;
+  }
+  
+  // 創建消息對象
+  const messageObj = {
+    sender: bossConfig.name,
+    senderRole: "boss",
+    message: attackMessage,
+    timestamp: Date.now(), // 添加時間戳使每條消息唯一
+    battleMode: "pve"
+  };
+  
+  // 使用appendBattleLogEntry避免重複處理
+  appendBattleLogEntry(messageObj);
+  
+  // 只有命中时才更新玩家生命值
+  if (hit && damage > 0) {
+    // 更新玩家生命值
+    playerHp = Math.max(0, playerHp - damage);
+    
+    // 同步到Firebase
+    if (currentBattleRoomRef) {
+      currentBattleRoomRef.child(window.myRole).update({
+        health: playerHp,
+        isDown: playerHp <= 0
+      });
+    }
+    
+    // 檢查玩家是否死亡
+    if (playerHp <= 0 && !playerIsDown) {
+      handlePlayerDown();
+    }
+  }
+  
+  // 更新生命值顯示
+  updateHealthDisplay();
+}
+
+// 觸發BTR/T80支援
+function triggerBtrSupport() {
+  // 隨機選擇T80或BTR (40%機率使用T80)
+  const useT80 = (Math.random() < 0.4);
+  battleBTRType = useT80 ? "t80" : "btr";
+  
+  // 獲取動畫容器
+  const selfAnim = document.getElementById('battleSelfAnim');
+  if (!selfAnim) return;
+  
+  // 動態計算位置
+  const containerWidth = selfAnim.clientWidth;
+  const offset = 50;
+  const rootStyles = getComputedStyle(document.documentElement);
+  
+  let frameWidth;
+  if (useT80) {
+    frameWidth = 480;
+  } else {
+    frameWidth = parseFloat(rootStyles.getPropertyValue('--btr-frame-width')) || 240;
+  }
+  const centerStart = containerWidth + offset + 0.5 * frameWidth;
+  const centerStop = window.myRole === "userA" ? containerWidth * 0.4 : containerWidth * 0.6;
+  const startLeft = centerStart - 0.5 * frameWidth;
+  const stopLeft  = centerStop - 0.5 * frameWidth;
+  
+  // 創建關鍵幀動畫
+  const keyframesText = `
+    @keyframes btrMoveDynamicBattle {
+      0%   { left: ${startLeft}px; }
+      20%  { left: ${stopLeft}px; }
+      60%  { left: ${stopLeft}px; }
+      100% { left: ${startLeft}px; }
+    }
+  `;
+  
+  let styleElem = document.getElementById("btrKeyframesBattle");
+  if (!styleElem) {
+    styleElem = document.createElement("style");
+    styleElem.id = "btrKeyframesBattle";
+    document.head.appendChild(styleElem);
+  }
+  styleElem.textContent = keyframesText;
+  
+  // 創建動畫容器
+  const btrWrapper = document.createElement("div");
+  btrWrapper.className = "btr-wrapper";
+  btrWrapper.style.position = "absolute";
+  btrWrapper.style.top = "25%";
+  btrWrapper.style.left = startLeft + "px";
+  btrWrapper.style.animation = "btrMoveDynamicBattle 10s ease-in-out forwards";
+  btrWrapper.style.zIndex = window.myRole === "userA" ? "10" : "5";
+  let spriteElem;
+  if (useT80) {
+    // T80動畫
+    const frameContainer = document.createElement("div");
+    frameContainer.className = "frameContainer";
+    frameContainer.style.width = frameWidth + "px";
+    frameContainer.style.height = rootStyles.getPropertyValue('--btr-frame-height') || "120px";
+    frameContainer.style.overflow = "hidden";
+    
+    spriteElem = document.createElement("div");
+    spriteElem.className = "t80-animation";
+    spriteElem.style.backgroundImage = "url('" + window.currentT80Sprite + "')";
+    spriteElem.style.backgroundPosition = "0px 0";
+    
+    frameContainer.appendChild(spriteElem);
+    btrWrapper.appendChild(frameContainer);
+    
+    // 啟動T-80閒置動畫
+    startT80IdleAnimation(spriteElem);
+  } else {
+    // BTR動畫
+    spriteElem = document.createElement("div");
+    spriteElem.className = "btr-animation";
+    spriteElem.style.backgroundImage = "url('" + window.currentBtrSprite + "')";
+    btrWrapper.appendChild(spriteElem);
+  }
+  
+  selfAnim.appendChild(btrWrapper);
+  
+  // 設置BTR活躍標志
+  battleBTRActive = true;
+  
+  // 啟動特殊攻擊 - 每5秒攻擊一次
+  startBtrSpecialAttack();
+  
+  if (useT80) {
+    setTimeout(() => {
+      triggerT80Cannon(spriteElem);
+    }, 1000);
+  }
+  
+  // 10秒後清理
+  setTimeout(() => {
+    battleBTRActive = false;
+    
+    if (selfAnim.contains(btrWrapper)) {
+      selfAnim.removeChild(btrWrapper);
+    }
+    
+    if (t80IdleInterval) {
+      clearInterval(t80IdleInterval);
+      t80IdleInterval = null;
+    }
+    
+    if (battleBTRInterval) {
+      clearInterval(battleBTRInterval);
+      battleBTRInterval = null;
+    }
+    
+  }, 10000);
+  
+  // 合作模式時通知伙伴
+  if (pveMode === 'coop' && currentBattleRoomRef) {
+    currentBattleRoomRef.child('events').push({
+      type: 'btrSupport',
+      btrType: battleBTRType,
+      sender: window.myRole,
+      timestamp: firebase.database.ServerValue.TIMESTAMP
+    });
+  }
+}
+
+// 啟動T80閒置動畫
+function startT80IdleAnimation(spriteElem) {
+  if (!spriteElem) return;
+  
+  // 清除現有的閒置計時器
+  if (t80IdleInterval) {
+    clearInterval(t80IdleInterval);
+  }
+  
+  // 初始設為第1幀
+  spriteElem.style.backgroundPosition = "0px 0";
+  
+  // 使用與PVP模式相同的動畫邏輯
+  let t80IdleToggle = false;
+  t80IdleInterval = setInterval(() => {
+    t80IdleToggle = !t80IdleToggle;
+    spriteElem.style.backgroundPosition = t80IdleToggle ? "-1440px 0" : "0px 0";
+  }, 250);
+}
+
+// 觸發T80開炮動畫
+function triggerT80Cannon(spriteElem) {
+  if (!spriteElem || !spriteElem.parentNode || t80CannonOnCooldown) return;
+  
+  // 設置冷卻標志
+  t80CannonOnCooldown = true;
+  
+  // 暫停閒置動畫
+  if (t80IdleInterval) {
+    clearInterval(t80IdleInterval);
+    t80IdleInterval = null;
+  }
+  
+  // 播放完整開炮動畫序列
+  spriteElem.style.backgroundPosition = "0px 0"; // frame1
+  setTimeout(() => { spriteElem.style.backgroundPosition = "-480px 0"; }, 250); // frame2
+  setTimeout(() => { spriteElem.style.backgroundPosition = "-960px 0"; }, 500); // frame3
+  setTimeout(() => { spriteElem.style.backgroundPosition = "-1440px 0"; }, 750); // frame4
+  
+  // 1秒後恢復閒置動畫
+  setTimeout(() => {
+    if (spriteElem && spriteElem.parentNode) {
+      spriteElem.style.backgroundPosition = "0px 0";
+      startT80IdleAnimation(spriteElem);
+    }
+  }, 1000);
+  
+  // 4.25秒後允許再次開炮
+  setTimeout(() => {
+    t80CannonOnCooldown = false;
+    // 如果BTR仍然活躍，且元素存在，再次開炮
+    if (battleBTRActive && spriteElem && spriteElem.parentNode) {
+      triggerT80Cannon(spriteElem);
+    }
+  }, 4250);
+}
+
+// 啟動BTR特殊攻擊
+function startBtrSpecialAttack() {
+  if (pveEnded || playerIsDown) return;
+  if (battleBTRInterval) clearInterval(battleBTRInterval);
+  
+  // 立即執行第一次攻擊
+  triggerBtrSpecialAttack();
+  
+  // 之後每5秒執行一次
+  battleBTRInterval = setInterval(() => {
+    if (!pveEnded && !playerIsDown && battleBTRActive) {
+      triggerBtrSpecialAttack();
+    }
+  }, 5000);
+}
+
+// 執行BTR特殊攻擊
+function triggerBtrSpecialAttack() {
+  if (pveEnded || !battleBTRActive) return;
+  
+  // 從gameState獲取中心建築等級計算命中率
+  let centerLevel = 1;
+  try {
+    const centerBuilding = gameState.buildings.find(b => 
+      b && b.type.toLowerCase() === "center"
+    );
+    if (centerBuilding) {
+      centerLevel = centerBuilding.level || 1;
+    }
+  } catch (error) {
+    centerLevel = 1;
+  }
+  
+  // 與PVP模式使用相同的命中率計算
+  const baseHitChance = 40;
+  const hitChanceVal = Math.min(baseHitChance + centerLevel * 0.5, 85);
+  
+  // 計算傷害
+  const hitRoll = Math.random() * 100;
+  const baseDamage = battleBTRType === "t80" ? 
+    Math.floor(Math.random() * 20) + 15 :  // T-80伤害15-35
+    Math.floor(Math.random() * 15) + 10;   // BTR伤害10-25
+  
+  // 讀取裝甲車庫等級計算加成
+  let tractorLevel = 0;
+  try {
+    const tractor = gameState.buildings.find(b => 
+      b && b.type.toLowerCase() === "armoredgarage"
+    );
+    if (tractor) {
+      tractorLevel = tractor.level;
+    }
+  } catch (error) {
+    tractorLevel = 0;
+  }
+  
+  // 每級0.5%的加成
+  const multiplier = 1 + tractorLevel * 0.005;
+  const damage = Math.round(baseDamage * multiplier);
+  
+  // 命中判定
+  const hitSuccess = hitRoll < hitChanceVal;
+  
+  // 獲取攻擊短語
+  let type = battleBTRType === "t80" ? "t80" : "btr";
+  let phrase = pveAttackPhrases[type][Math.floor(Math.random() * pveAttackPhrases[type].length)];
+  
+  if (hitSuccess) {
+    // 命中
+    appendBattleLogEntry({
+      sender: window.myUid,
+      senderRole: window.myRole,
+      message: `派遣的 ${phrase}（命中），${bossConfigs[selectedBoss].name} 受到 ${damage} 傷害`,
+      timestamp: Date.now(),
+      targetType: "boss",
+      battleMode: "pve"
+    });
+    
+    // 更新BOSS生命值
+    if (window.myRole === "userA") {
+      // 更新BOSS生命值
+      bossHp = Math.max(0, bossHp - damage);
+      totalPlayerDamage += damage;
+      
+      // 同步到Firebase
+      if (currentBattleRoomRef) {
+        currentBattleRoomRef.update({ 
+          bossHealth: bossHp,
+          lastDamageBy: "userA_btr",
+          lastDamageAmount: damage
+        });
+      }
+    
+    // 檢查BOSS是否被擊敗
+   if (bossHp <= 0) {
+        endPveBattle(true);
+      }
+    } else {
+      // userB只更新自己的伤害统计
+      totalPlayerDamage += damage;
+    }
+  } else {
+    // 未命中
+    appendBattleLogEntry({
+      sender: window.myUid,
+      senderRole: window.myRole,
+      message: `派遣的 ${phrase}（未命中）`,
+      timestamp: Date.now(),
+      targetType: "boss",
+      battleMode: "pve"
+    });
+  }
+  
+  // 更新生命值顯示
+  updateHealthDisplay();
+}
+
+// 玩家倒地處理
+function handlePlayerDown() {
+  if (playerIsDown) return; // 防止重复处理
+  
+  playerIsDown = true;
+  
+  
+  // 同步到Firebase
+  if (currentBattleRoomRef) {
+    currentBattleRoomRef.child(window.myRole).update({
+      isDown: true
+    });
+  }
+  
+  // 單人模式直接戰敗
+  if (pveMode === 'solo') {
+    endPveBattle(false);
+  }
+}
+
+// 結束PVE戰鬥
+function endPveBattle(isVictory) {
+  if (pveEnded) return;
+  pveEnded = true;
+  
+  // 停止所有計時器
+  clearCombatTimers();
+  
+  // 結算獎勵
+  const bossConfig = bossConfigs[selectedBoss];
+  let rewardRatio = isVictory ? 1.0 : Math.min(totalPlayerDamage / bossMaxHp, 0.75);
+  
+  // 計算最終獎勵
+  const rewards = {};
+  for (const resource in bossConfig.rewards) {
+    rewards[resource] = Math.round(bossConfig.rewards[resource] * rewardRatio);
+  }
+  
+  // 顯示結果
+  const damagePercentage = Math.round((totalPlayerDamage / bossMaxHp) * 100);
+  
+  let resultMessage = `戰鬥${isVictory ? '勝利' : '失敗'}！\n`;
+  resultMessage += `BOSS: ${bossConfig.name}\n`;
+  resultMessage += `造成傷害: ${totalPlayerDamage}/${bossMaxHp} (${damagePercentage}%)\n\n`;
+  resultMessage += `獎勵資源:\n`;
+  resultMessage += `食物: +${rewards.food}\n`;
+  resultMessage += `材料: +${rewards.materials}\n`;
+  resultMessage += `武器: +${rewards.weapons}\n`;
+  resultMessage += `科技: +${rewards.tech}\n`;
+  
+  appendBattleLogEntry({
+    sender: "系統",
+    senderRole: "system",
+    message: resultMessage,
+    battleMode: "pve"
+  });
+  
+   // 添加獎勵資源
+  try {
+    if (gameState && gameState.resources) {
+      gameState.resources.food += rewards.food;
+      gameState.resources.materials += rewards.materials;
+      gameState.resources.weapons += rewards.weapons;
+      gameState.resources.tech += rewards.tech;
+      
+      // 保存遊戲狀態
+      if (typeof saveGameState === 'function') {
+        saveGameState();
+      }
+      if (typeof updateResourceDisplays === 'function') {
+        updateResourceDisplays();
+      }
+    }
+  } catch (e) {}
+  
+  // 標記戰鬥結束
+  if (currentBattleRoomRef) {
+    currentBattleRoomRef.update({
+      status: 'ended',
+      result: isVictory ? 'victory' : 'defeat',
+      endTime: firebase.database.ServerValue.TIMESTAMP
+    });
+  }
+}
+async function exitPveBattle() {
+  const pin = window.currentBattleRoom;
+  if (!pin) return;
+
+  // 1) 取得房间引用并卸载所有监听
+  const roomRef = firebase.database().ref('pveBattles/' + pin);
+  roomRef.off();
+  roomRef.child('log').off();
+  roomRef.child('events').off();
+  roomRef.child('userA').off();
+  roomRef.child('userB').off();
+  roomRef.child('status').off();
+  try {
+    // 取消任何未触发的 onDisconnect 回调
+    roomRef.onDisconnect().cancel();
+  } catch (e) {
+    // 无需处理
+  }
+
+  try {
+    // 2) 删除自己在房间中的节点
+    await roomRef.child(window.myRole).remove();
+
+    // 3) 重新读取房间数据，确认是否已无任何玩家
+    const snap = await roomRef.once('value');
+    const data = snap.val() || {};
+
+    // 4) 若为单人模式 或 已无 userA/userB，就删整条节点
+    if (data.mode === 'solo' || (!data.userA && !data.userB)) {
+      await roomRef.remove();
+    }
+  } catch (err) {
+    await firebase.database().ref().update({
+      ['pveBattles/' + pin]: null
+    });
+  } finally {
+    // 5) 清理全局状态与 UI
+    window.currentBattleRoom = null;
+    window.myRole = null;
+    window.pveActive = false;
+    window.pveMatched = false;
+    window.pveEnded = false;
+    if (typeof clearCombatTimers === 'function') clearCombatTimers();
+    const overlay = document.getElementById('battleOverlay');
+    if (overlay) overlay.style.display = 'none';
+    document.body.style.overflow = '';
+    // 可选：刷新页面
+    // window.location.reload();
+  }
+}
 
 
+
+
+
+
+})();
 
 	
 	</script>
