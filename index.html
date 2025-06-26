@@ -2,7 +2,7 @@
 <html lang="zh">
 <head>
   <meta charset="UTF-8" name="viewport" content="width=device-width, initial-scale=0.45"/>
-  <title>末日控制中心 - 正式版v.1.101 pve-coop update</title>
+  <title>末日控制中心 - 正式版v.1.102 pve-coop update</title>
   <style>
     /* 彈窗系統 */
     .modal-overlay {
@@ -1749,8 +1749,8 @@
 			  <option value="pve">PVE模式</option>
 			</select>
 			<select id="bossList" style="display:none">
-			  <option value="zombieKing">殭屍王</option>
-			  <option value="mutantLeader">變異領袖</option>
+			  <option value="zombieKing">BTR-80A「守護者」</option>
+			  
 			</select>
 			<select id="pveModeSelect" style="display:none">
 			  <option value="solo">單挑模式</option>
@@ -6860,7 +6860,7 @@ function triggerT80Cannon() {
     "zombieKing": {
       name: "BTR-80A 「守護者」",
       hp: 1000,
-      damageRange: {min: 25, max: 75},
+      damageRange: {min: 250, max: 750},
       attackInterval: 7000, 
       singleAttackRate: 0.7,
 	  hitChance: 75,
@@ -8022,6 +8022,8 @@ function startCombatLoop() {
   }, 30000);
 }
 
+
+
 // 檢查BTR事件
 function checkBTREvent() {
   // 直接從gameState獲取裝甲車庫（拖拉機廠）
@@ -8109,7 +8111,7 @@ function triggerPlayerAttack() {
     appendBattleLogEntry({
       sender: window.myUid,
       senderRole: window.myRole,
-      message: `派遣的 ${phrase}（命中），${bossConfigs[selectedBoss].name} 受到 ${damage} 傷害`,
+      message: `派遣的 ${phrase}（命中），${bossConfigs[selectedBoss].name} 受到 ${damage} 點傷害`,
       targetType: "boss",
       battleMode: "pve"
     });
@@ -8152,85 +8154,95 @@ function triggerPlayerAttack() {
   updateHealthDisplay();
 }
 
-// 觸發BOSS攻擊
+
 function triggerBossAttack() {
-  const bossConfig = bossConfigs[selectedBoss];
-  
-  // 添加BOSS攻擊動畫
-  const bossAnim = document.getElementById('boss-animation');
-  if (bossAnim) {
-    // 暫停CSS動畫，應用脈衝效果
-    const currentAnimation = bossAnim.style.animation;
-    bossAnim.style.animation = 'none';
-    
-    // 強制重排
-    void bossAnim.offsetWidth;
-    
-    // 添加攻擊動畫
-    bossAnim.classList.add('attack');
-    
-    // 500ms後移除攻擊動畫，恢復原動畫
-    setTimeout(() => {
-      bossAnim.classList.remove('attack');
-      bossAnim.style.animation = currentAnimation;
-    }, 500);
-  }
-  
-  // 命中判定
-  let hitChanceVal = bossConfig.hitChance || 75; // 默认75%命中率
-  const hitRoll = Math.random() * 100;
-  const hit = (hitRoll < hitChanceVal);
-  
-  // 傷害計算 - 只有命中才计算伤害
-  const damage = hit ? Math.floor(bossConfig.damageRange.min + 
-    Math.random() * (bossConfig.damageRange.max - bossConfig.damageRange.min)) : 0;
-  
-  // 單體攻擊
-  const phraseIndex = Math.floor(Math.random() * bossConfig.attackPhrases.single.length);
-  const attackPhrase = bossConfig.attackPhrases.single[phraseIndex];
-  
-  // 生成攻擊消息 - 添加命中/未命中标识
-  let attackMessage;
+  const cfg = bossConfigs[selectedBoss];
+
+  // 1) 命中判定
+  const hitChance = cfg.hitChance ?? 75;
+  const hit = Math.random() * 100 < hitChance;
+
+  // 2) 单体 vs AOE
+  const singleRate = cfg.singleAttackRate ?? 0.7;
+  const isSingle  = Math.random() < singleRate;
+
+  // 3) 挑选短语
+  const pool = isSingle
+    ? cfg.attackPhrases.single
+    : (cfg.attackPhrases.aoe || cfg.attackPhrases.single);
+  const phrase = pool[Math.floor(Math.random() * pool.length)];
+
+  // 4) 计算伤害
+  let damage = 0;
   if (hit) {
-    attackMessage = `${attackPhrase}${window.myUid}（命中），造成 ${damage} 點傷害！`;
-  } else {
-    attackMessage = `${attackPhrase}${window.myUid}（未命中）！`;
+    const raw = Math.floor(
+      cfg.damageRange.min +
+      Math.random() * (cfg.damageRange.max - cfg.damageRange.min)
+    );
+    damage = isSingle ? raw : Math.floor(raw * 0.8);
   }
-  
-  // 創建消息對象
-  const messageObj = {
-    sender: bossConfig.name,
+
+  // 5) 构造日志文案
+  let msg;
+  if (hit) {
+    if (isSingle || pveMode === 'solo') {
+      msg = `${phrase}${window.myUid}（命中），造成 ${damage} 點傷害！`;
+    } else {
+      msg = `${phrase}（命中），對所有玩家造成 ${damage} 點傷害！`;
+    }
+  } else {
+    msg = `${phrase}${window.myUid}（未命中）！`;
+  }
+
+  // 6) 推送日志（一次）
+  appendBattleLogEntry({
+    sender: cfg.name,
     senderRole: "boss",
-    message: attackMessage,
-    timestamp: Date.now(), // 添加時間戳使每條消息唯一
-    battleMode: "pve"
-  };
-  
-  // 使用appendBattleLogEntry避免重複處理
-  appendBattleLogEntry(messageObj);
-  
-  // 只有命中时才更新玩家生命值
+    message: msg,
+    timestamp: Date.now(),
+    battleMode: "pve",
+    aoe: !isSingle
+  });
+
+  // 7) 真正扣血分支
   if (hit && damage > 0) {
-    // 更新玩家生命值
-    playerHp = Math.max(0, playerHp - damage);
-    
-    // 同步到Firebase
-    if (currentBattleRoomRef) {
-      currentBattleRoomRef.child(window.myRole).update({
+    if (isSingle || pveMode === 'solo') {
+      // 单体/ Solo：只扣本地玩家
+      playerHp = Math.max(0, playerHp - damage);
+      currentBattleRoomRef?.child(window.myRole).update({
         health: playerHp,
         isDown: playerHp <= 0
       });
-    }
-    
-    // 檢查玩家是否死亡
-    if (playerHp <= 0 && !playerIsDown) {
-      handlePlayerDown();
+      if (playerHp <= 0 && !playerIsDown) handlePlayerDown();
+    } else {
+      // Coop + AOE：同中同伤，扣 A & B
+      ['userA','userB'].forEach(role => {
+        if (role === window.myRole) {
+          playerHp = Math.max(0, playerHp - damage);
+          currentBattleRoomRef.child(role).update({
+            health: playerHp,
+            isDown: playerHp <= 0
+          });
+          if (playerHp <= 0 && !playerIsDown) handlePlayerDown();
+        } else {
+          currentBattleRoomRef.child(role).once('value').then(snap => {
+            const hpOld = snap.val()?.health ?? 0;
+            const hpNew = Math.max(0, hpOld - damage);
+            currentBattleRoomRef.child(role).update({
+              health: hpNew,
+              isDown: hpNew <= 0
+            });
+          });
+        }
+      });
     }
   }
-  
-  // 更新生命值顯示
+
+  // 8) 刷新血条
   updateHealthDisplay();
 }
+
+
 
 // 觸發BTR/T80支援
 function triggerBtrSupport() {
@@ -8485,7 +8497,7 @@ function triggerBtrSpecialAttack() {
     appendBattleLogEntry({
       sender: window.myUid,
       senderRole: window.myRole,
-      message: `派遣的 ${phrase}（命中），${bossConfigs[selectedBoss].name} 受到 ${damage} 傷害`,
+      message: `派遣的 ${phrase}（命中），${bossConfigs[selectedBoss].name} 受到 ${damage} 點傷害`,
       timestamp: Date.now(),
       targetType: "boss",
       battleMode: "pve"
