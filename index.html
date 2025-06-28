@@ -2817,7 +2817,7 @@
         gameState.allocations.farming += toFarming;
         gameState.allocations.recycling += toRecycling;
         gameState.allocations.research += toResearch;
-        addEventLog(`兵營生產：新增⚡ ${gained} 僵尸，探索+ ${toExploration}, 種植+${toFarming}, 回收+${toRecycling}, 科研+${toResearch}`, 'uncommon', 'zombie');
+        addEventLog(`兵營生產：⚡新增 ${gained} 僵尸，探索+ ${toExploration}, 種植+${toFarming}, 回收+${toRecycling}, 科研+${toResearch}`, 'uncommon', 'zombie');
       }
       updateResourceDisplays();
     }
@@ -8265,7 +8265,7 @@ function triggerBossAttack() {
     appendBattleLogEntry({
       sender: cfg.name,
       senderRole: "boss",
-      message: `${phrase}（未命中）！`,
+      message: `${phrase}${uid}（未命中）！`,
       timestamp: Date.now(),
       battleMode: "pve",
       aoe: !useSinglePool
