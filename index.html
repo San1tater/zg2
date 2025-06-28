@@ -7329,58 +7329,48 @@ function updatePartnerInfo() {
   
   // 添加生命條和BOSS
   function addHealthBarsAndBoss() {
-    const playerHealthContainer = document.getElementById('player-health-container');
-    const bossHealthContainer = document.getElementById('boss-health-container');
-    
-    if (!playerHealthContainer || !bossHealthContainer) return;
-    
-    // 如果是合作模式，添加两个玩家生命条
-    if (pveMode === 'coop') {
-      // UserB的生命条 - 左侧
-      const userBBar = document.createElement('div');
-      userBBar.id = 'userB-health-bar';
-      userBBar.className = 'health-bar coop-health-bar';
-      userBBar.innerHTML = `
-        <div class="health-fill" style="background:green"></div>
-        <div class="health-text">等待玩家B...</div>
-      `;
-      playerHealthContainer.appendChild(userBBar);
-      
-      // UserA的生命条 - 右侧
-      const userABar = document.createElement('div');
-      userABar.id = 'userA-health-bar';
-      userABar.className = 'health-bar coop-health-bar';
-      userABar.innerHTML = `
-        <div class="health-fill" style="background:green"></div>
-        <div class="health-text">等待玩家A...</div>
-      `;
-      playerHealthContainer.appendChild(userABar);
-      
-      // 立即尝试更新生命值
-      updateCoopHealthDisplay();
-    } else {
-      // 单人模式 - 只显示自己的血条
-      const playerBar = document.createElement('div');
-      playerBar.id = 'player-health-bar';
-      playerBar.className = 'health-bar';
-      playerBar.innerHTML = `
-        <div class="health-fill" style="background:green"></div>
-        <div class="health-text">${window.myUid}: ${playerHp}/${playerMaxHp}</div>
-      `;
-      playerHealthContainer.appendChild(playerBar);
-    }
-    
-    // BOSS生命條
-    const bossBar = document.createElement('div');
-    bossBar.id = 'boss-health-bar';
-    bossBar.className = 'health-bar';
-    bossBar.innerHTML = `
-      <div class="health-fill boss-health-fill" style="background:red"></div>
-      <div class="health-text">${bossConfigs[selectedBoss].name}: 100%</div>
+  const playerHealthContainer = document.getElementById('player-health-container');
+  const bossHealthContainer   = document.getElementById('boss-health-container');
+  if (!playerHealthContainer || !bossHealthContainer) return;
+
+  // 先清空旧条
+  playerHealthContainer.innerHTML = '';
+  bossHealthContainer.innerHTML   = '';
+
+  // —— Solo 与 Coop 统一使用 userA/userB ——  
+  // 玩家 A 血条
+  const barA = document.createElement('div');
+  barA.id = 'userA-health-bar';
+  barA.className = 'health-bar';
+  barA.innerHTML = `
+    <div class="health-fill" style="width:100%;background:green"></div>
+    <div class="health-text">${window.myUid}: ${playerHp}/${playerMaxHp}</div>
+  `;
+  playerHealthContainer.appendChild(barA);
+
+  // 合作模式再加入玩家 B 血条
+  if (pveMode === 'coop') {
+    const barB = document.createElement('div');
+    barB.id = 'userB-health-bar';
+    barB.className = 'health-bar';
+    barB.innerHTML = `
+      <div class="health-fill" style="width:100%;background:green"></div>
+      <div class="health-text">玩家B: ${playerHp}/${playerMaxHp}</div>
     `;
-    bossHealthContainer.appendChild(bossBar);
-    
-	// 添加BOSS精灵图
+    playerHealthContainer.appendChild(barB);
+  }
+
+  // Boss 血条
+  const bossBar = document.createElement('div');
+  bossBar.id = 'boss-health-bar';
+  bossBar.className = 'health-bar';
+  bossBar.innerHTML = `
+    <div class="health-fill boss-health-fill" style="width:100%;background:red"></div>
+    <div class="health-text">${bossConfigs[selectedBoss].name}: 100%</div>
+  `;
+  bossHealthContainer.appendChild(bossBar);
+
+  // 添加BOSS精灵图
 	const enemyAnim = document.getElementById('battleEnemyAnim');
 	if (enemyAnim && !document.getElementById('boss-animation')) {
 	  const bossAnim = document.createElement('div');
@@ -7433,6 +7423,7 @@ function updatePartnerInfo() {
     // 更新生命值顯示
     updateHealthDisplay();
   }
+
   
   // 更新生命值顯示
   function updateHealthDisplay() {
@@ -7556,6 +7547,7 @@ function updatePartnerInfo() {
 	const playerData = {
 		uid: window.myUid,
 		health: playerHp,
+		maxHp: playerMaxHp,
 		isDown: false,
 		spriteUrl: window.currentZombieSprite, // 僵尸精灵图
 		btrSpriteUrl: window.currentBtrSprite, // BTR精灵图
@@ -7805,45 +7797,29 @@ function setupFirebaseListeners() {
 }
 function updateAllPlayerHealth(roomData) {
   if (!roomData) return;
-  
-  // 获取双方玩家数据
-  const userAData = roomData.userA || {};
-  const userBData = roomData.userB || {};
-  
-  // 更新玩家A的生命条
-  const userABar = document.getElementById('userA-health-bar');
-  if (userABar) {
-    // 关键改进：倒地时强制显示为0
-    const userAHp = userAData.isDown ? 0 : (userAData.health || 0);
-    const userAMaxHp = playerMaxHp;
-    const percentage = Math.max(0, Math.min(100, Math.round((userAHp / userAMaxHp) * 100)));
-    
-    userABar.querySelector('.health-fill').style.width = `${percentage}%`;
-    userABar.querySelector('.health-text').textContent = `${userAData.uid || '玩家A'}: ${userAHp}/${userAMaxHp}`;
-    
-    if (userAData.isDown) {
-      userABar.classList.add('player-down');
-    } else {
-      userABar.classList.remove('player-down');
-    }
+  // 玩家A
+  const a = roomData.userA || {};
+  const barA = document.getElementById('userA-health-bar');
+  if (barA) {
+    const maxHpA = a.maxHp != null ? a.maxHp : playerMaxHp;
+    const hpA    = a.health != null ? a.health : 0;
+    const pctA   = Math.round(hpA / maxHpA * 100);
+    barA.querySelector('.health-fill').style.width = pctA + '%';
+    barA.querySelector('.health-text').textContent =
+      `${a.uid || '玩家A'}: ${hpA}/${maxHpA}`;
+    barA.classList.toggle('player-down', a.isDown);
   }
-  
-  // 更新玩家B的生命条
-  const userBBar = document.getElementById('userB-health-bar');
-  if (userBBar) {
-    // 关键改进：倒地时强制显示为0
-    const userBHp = userBData.isDown ? 0 : (userBData.health || 0);
-    const userBMaxHp = playerMaxHp;
-    const percentage = Math.max(0, Math.min(100, Math.round((userBHp / userBMaxHp) * 100)));
-    
-    userBBar.querySelector('.health-fill').style.width = `${percentage}%`;
-    userBBar.querySelector('.health-text').textContent = `${userBData.uid || '玩家B'}: ${userBHp}/${userBMaxHp}`;
-    
-    if (userBData.isDown) {
-      userBBar.classList.add('player-down');
-    } else {
-      userBBar.classList.remove('player-down');
-    }
+  // 玩家B（Coop 模式才顯示）
+  const b = roomData.userB || {};
+  const barB = document.getElementById('userB-health-bar');
+  if (barB) {
+    const maxHpB = b.maxHp != null ? b.maxHp : playerMaxHp;
+    const hpB    = b.health != null ? b.health : 0;
+    const pctB   = Math.round(hpB / maxHpB * 100);
+    barB.querySelector('.health-fill').style.width = pctB + '%';
+    barB.querySelector('.health-text').textContent =
+      `${b.uid || '玩家B'}: ${hpB}/${maxHpB}`;
+    barB.classList.toggle('player-down', b.isDown);
   }
 }
 
@@ -8253,7 +8229,7 @@ function triggerBossAttack() {
 		if (data.isDown) return;
         const prev = snap.val()||{};
         const newHp = Math.max(0, (prev.health||playerMaxHp) - damage);
-        ref.update({ health: newHp, isDown: newHp<=0 });
+        ref.update({ health: newHp, maxHp: data.maxHp || playerMaxHp, isDown: newHp<=0 });
         if (role === window.myRole && newHp <= 0 && !playerIsDown) {
           handlePlayerDown();
         }
@@ -8277,7 +8253,7 @@ function triggerBossAttack() {
 		  if (data.isDown) return; 
           const prev = snap.val()||{};
           const newHp = Math.max(0, (prev.health||playerMaxHp) - damage);
-          ref.update({ health: newHp, isDown: newHp<=0 });
+          ref.update({ health: newHp, maxHp: data.maxHp || playerMaxHp, isDown: newHp<=0 });
           if (role === window.myRole && newHp <= 0 && !playerIsDown) {
             handlePlayerDown();
           }
