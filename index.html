@@ -7673,7 +7673,31 @@ function setupFirebaseListeners() {
           updatePlayerSpriteToDead('userB');
         }
       }
+    currentBattleRoomRef.on('child_removed', snapshot => {
+    const role = snapshot.key;  // 'userA' 或 'userB'
+    if (role !== 'userA' && role !== 'userB') return;
+    // 避免重复执行
+    const flag = `${role}_exit_death`;
+    if (processedMessages[flag]) return;
+    processedMessages[flag] = true;
+
+    // 1) 切死亡精灵
+    updatePlayerSpriteToDead(role);
+
+    // 2) 更新血条：该玩家血量归零
+    const rem = snapshot.val() || {};
+    const fakeData = {
+      userA: role==='userA'
+        ? { uid: rem.uid || '玩家A', health: 0, maxHp: rem.maxHp || playerMaxHp, isDown: true }
+        : latestRoomData.userA,
+      userB: role==='userB'
+        ? { uid: rem.uid || '玩家B', health: 0, maxHp: rem.maxHp || playerMaxHp, isDown: true }
+        : latestRoomData.userB
+    };
+    updateAllPlayerHealth(fakeData);
+  });
     
+	    
     // 检查游戏结束
     if (roomData.status === 'ended') {
       if (!pveEnded) {
@@ -8677,53 +8701,35 @@ function endPveBattle(isVictory) {
 async function exitPveBattle() {
   const pin = window.currentBattleRoom;
   if (!pin) return;
+  const roomRef = firebase.database().ref(`pveBattles/${pin}`);
 
-  // 1) 取得房间引用并卸载所有监听
-  const roomRef = firebase.database().ref('pveBattles/' + pin);
+  // 1) 取消监听
   roomRef.off();
   roomRef.child('log').off();
   roomRef.child('events').off();
-  roomRef.child('userA').off();
-  roomRef.child('userB').off();
-  roomRef.child('status').off();
-  try {
-    // 取消任何未触发的 onDisconnect 回调
-    roomRef.onDisconnect().cancel();
-  } catch (e) {
-    // 无需处理
+
+  // 2) 真删除自己 userA/userB 节点
+  await roomRef.child(window.myRole).remove();
+
+  // 3) 检查剩余玩家，若都不存在则删房间
+  const snap = await roomRef.once('value');
+  const data = snap.val() || {};
+  if (!data.userA && !data.userB) {
+    await roomRef.remove();
   }
 
-  try {
-    // 2) 删除自己在房间中的节点
-    await roomRef.child(window.myRole).remove();
-
-    // 3) 重新读取房间数据，确认是否已无任何玩家
-    const snap = await roomRef.once('value');
-    const data = snap.val() || {};
-
-    // 4) 若为单人模式 或 已无 userA/userB，就删整条节点
-    if (data.mode === 'solo' || (!data.userA && !data.userB)) {
-      await roomRef.remove();
-    }
-  } catch (err) {
-    await firebase.database().ref().update({
-      ['pveBattles/' + pin]: null
-    });
-  } finally {
-    // 5) 清理全局状态与 UI
-    window.currentBattleRoom = null;
-    window.myRole = null;
-    window.pveActive = false;
-    window.pveMatched = false;
-    window.pveEnded = false;
-    if (typeof clearCombatTimers === 'function') clearCombatTimers();
-    const overlay = document.getElementById('battleOverlay');
-    if (overlay) overlay.style.display = 'none';
-    document.body.style.overflow = '';
-    // 可选：刷新页面
-    // window.location.reload();
-  }
+  // 4) 本地清理
+  clearCombatTimers();
+  document.getElementById('battleOverlay').style.display = 'none';
+  document.body.style.overflow = '';
+  pveActive   = false;
+  pveMatched  = false;
+  pveEnded    = false;
+  playerIsDown= false;
+  window.currentBattleRoom = null;
+  window.myRole            = null;
 }
+
 
 })();
 
