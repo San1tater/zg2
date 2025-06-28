@@ -7556,6 +7556,7 @@ function updatePartnerInfo() {
 	const playerData = {
 		uid: window.myUid,
 		health: playerHp,
+		maxHp: playerMaxHp,
 		isDown: false,
 		spriteUrl: window.currentZombieSprite, // 僵尸精灵图
 		btrSpriteUrl: window.currentBtrSprite, // BTR精灵图
@@ -7803,49 +7804,40 @@ function setupFirebaseListeners() {
     displayBattleLogEntry(logEntry);
   });
 }
+
 function updateAllPlayerHealth(roomData) {
   if (!roomData) return;
-  
-  // 获取双方玩家数据
-  const userAData = roomData.userA || {};
-  const userBData = roomData.userB || {};
-  
-  // 更新玩家A的生命条
-  const userABar = document.getElementById('userA-health-bar');
-  if (userABar) {
-    // 关键改进：倒地时强制显示为0
-    const userAHp = userAData.isDown ? 0 : (userAData.health || 0);
-    const userAMaxHp = playerMaxHp;
-    const percentage = Math.max(0, Math.min(100, Math.round((userAHp / userAMaxHp) * 100)));
-    
-    userABar.querySelector('.health-fill').style.width = `${percentage}%`;
-    userABar.querySelector('.health-text').textContent = `${userAData.uid || '玩家A'}: ${userAHp}/${userAMaxHp}`;
-    
-    if (userAData.isDown) {
-      userABar.classList.add('player-down');
-    } else {
-      userABar.classList.remove('player-down');
-    }
+
+  // 玩家 A 的血条
+  const userA = roomData.userA || {};
+  const barA  = document.getElementById('userA-health-bar');
+  if (barA) {
+    // 如果 roomData 中存了 maxHp 就用它，否则回退到本地 playerMaxHp
+    const maxHpA = userA.maxHp != null ? userA.maxHp : playerMaxHp;
+    const hpA    = userA.health != null ? userA.health : 0;
+    const pctA   = maxHpA > 0 ? Math.round((hpA / maxHpA) * 100) : 0;
+
+    barA.querySelector('.health-fill').style.width       = pctA + '%';
+    barA.querySelector('.health-text').textContent       =
+      `${userA.uid || '玩家A'}: ${hpA}/${maxHpA}`;
+    barA.classList.toggle('player-down', !!userA.isDown);
   }
-  
-  // 更新玩家B的生命条
-  const userBBar = document.getElementById('userB-health-bar');
-  if (userBBar) {
-    // 关键改进：倒地时强制显示为0
-    const userBHp = userBData.isDown ? 0 : (userBData.health || 0);
-    const userBMaxHp = playerMaxHp;
-    const percentage = Math.max(0, Math.min(100, Math.round((userBHp / userBMaxHp) * 100)));
-    
-    userBBar.querySelector('.health-fill').style.width = `${percentage}%`;
-    userBBar.querySelector('.health-text').textContent = `${userBData.uid || '玩家B'}: ${userBHp}/${userBMaxHp}`;
-    
-    if (userBData.isDown) {
-      userBBar.classList.add('player-down');
-    } else {
-      userBBar.classList.remove('player-down');
-    }
+
+  // 玩家 B 的血条（Coop 模式下才会有）
+  const userB = roomData.userB || {};
+  const barB  = document.getElementById('userB-health-bar');
+  if (barB) {
+    const maxHpB = userB.maxHp != null ? userB.maxHp : playerMaxHp;
+    const hpB    = userB.health != null ? userB.health : 0;
+    const pctB   = maxHpB > 0 ? Math.round((hpB / maxHpB) * 100) : 0;
+
+    barB.querySelector('.health-fill').style.width       = pctB + '%';
+    barB.querySelector('.health-text').textContent       =
+      `${userB.uid || '玩家B'}: ${hpB}/${maxHpB}`;
+    barB.classList.toggle('player-down', !!userB.isDown);
   }
 }
+
 
 // 显示伙伴的BTR/T80支援
 function showPartnerBtrSupport() {
@@ -8297,7 +8289,7 @@ function triggerBossAttack() {
   }
 
   // 6) 刷新血条
-  updateHealthDisplay();
+  updateAllPlayerHealth(latestRoomData || { userA:{ health:playerHp, maxHp:playerMaxHp, isDown:playerIsDown, uid:window.myUid } });
 }
 
 
