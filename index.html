@@ -7556,7 +7556,6 @@ function updatePartnerInfo() {
 	const playerData = {
 		uid: window.myUid,
 		health: playerHp,
-		maxHp: playerMaxHp,
 		isDown: false,
 		spriteUrl: window.currentZombieSprite, // 僵尸精灵图
 		btrSpriteUrl: window.currentBtrSprite, // BTR精灵图
@@ -7658,7 +7657,6 @@ function setupFirebaseListeners() {
     const roomData = snapshot.val();
     if (!roomData) return;
 	latestRoomData = roomData;
-	updateAllPlayerHealth(roomData);
 	if (pveMode === 'coop') {
 		if (roomData.userA?.isDown && !processedMessages['bossLoop_taken']) {
           processedMessages['bossLoop_taken'] = true;
@@ -7673,31 +7671,7 @@ function setupFirebaseListeners() {
           updatePlayerSpriteToDead('userB');
         }
       }
-    currentBattleRoomRef.on('child_removed', snapshot => {
-    const role = snapshot.key;  // 'userA' 或 'userB'
-    if (role !== 'userA' && role !== 'userB') return;
-    // 避免重复执行
-    const flag = `${role}_exit_death`;
-    if (processedMessages[flag]) return;
-    processedMessages[flag] = true;
-
-    // 1) 切死亡精灵
-    updatePlayerSpriteToDead(role);
-
-    // 2) 更新血条：该玩家血量归零
-    const rem = snapshot.val() || {};
-    const fakeData = {
-      userA: role==='userA'
-        ? { uid: rem.uid || '玩家A', health: 0, maxHp: rem.maxHp || playerMaxHp, isDown: true }
-        : latestRoomData.userA,
-      userB: role==='userB'
-        ? { uid: rem.uid || '玩家B', health: 0, maxHp: rem.maxHp || playerMaxHp, isDown: true }
-        : latestRoomData.userB
-    };
-    updateAllPlayerHealth(fakeData);
-  });
     
-	    
     // 检查游戏结束
     if (roomData.status === 'ended') {
       if (!pveEnded) {
@@ -7829,40 +7803,49 @@ function setupFirebaseListeners() {
     displayBattleLogEntry(logEntry);
   });
 }
-
 function updateAllPlayerHealth(roomData) {
   if (!roomData) return;
-
-  // 玩家 A 的血条
-  const userA = roomData.userA || {};
-  const barA  = document.getElementById('userA-health-bar');
-  if (barA) {
-    // 如果 roomData 中存了 maxHp 就用它，否则回退到本地 playerMaxHp
-    const maxHpA = userA.maxHp != null ? userA.maxHp : playerMaxHp;
-    const hpA    = userA.health != null ? userA.health : 0;
-    const pctA   = maxHpA > 0 ? Math.round((hpA / maxHpA) * 100) : 0;
-
-    barA.querySelector('.health-fill').style.width       = pctA + '%';
-    barA.querySelector('.health-text').textContent       =
-      `${userA.uid || '玩家A'}: ${hpA}/${maxHpA}`;
-    barA.classList.toggle('player-down', !!userA.isDown);
+  
+  // 获取双方玩家数据
+  const userAData = roomData.userA || {};
+  const userBData = roomData.userB || {};
+  
+  // 更新玩家A的生命条
+  const userABar = document.getElementById('userA-health-bar');
+  if (userABar) {
+    // 关键改进：倒地时强制显示为0
+    const userAHp = userAData.isDown ? 0 : (userAData.health || 0);
+    const userAMaxHp = playerMaxHp;
+    const percentage = Math.max(0, Math.min(100, Math.round((userAHp / userAMaxHp) * 100)));
+    
+    userABar.querySelector('.health-fill').style.width = `${percentage}%`;
+    userABar.querySelector('.health-text').textContent = `${userAData.uid || '玩家A'}: ${userAHp}/${userAMaxHp}`;
+    
+    if (userAData.isDown) {
+      userABar.classList.add('player-down');
+    } else {
+      userABar.classList.remove('player-down');
+    }
   }
-
-  // 玩家 B 的血条（Coop 模式下才会有）
-  const userB = roomData.userB || {};
-  const barB  = document.getElementById('userB-health-bar');
-  if (barB) {
-    const maxHpB = userB.maxHp != null ? userB.maxHp : playerMaxHp;
-    const hpB    = userB.health != null ? userB.health : 0;
-    const pctB   = maxHpB > 0 ? Math.round((hpB / maxHpB) * 100) : 0;
-
-    barB.querySelector('.health-fill').style.width       = pctB + '%';
-    barB.querySelector('.health-text').textContent       =
-      `${userB.uid || '玩家B'}: ${hpB}/${maxHpB}`;
-    barB.classList.toggle('player-down', !!userB.isDown);
+  
+  // 更新玩家B的生命条
+  const userBBar = document.getElementById('userB-health-bar');
+  if (userBBar) {
+    // 关键改进：倒地时强制显示为0
+    const userBHp = userBData.isDown ? 0 : (userBData.health || 0);
+    const userBMaxHp = playerMaxHp;
+    const percentage = Math.max(0, Math.min(100, Math.round((userBHp / userBMaxHp) * 100)));
+    
+    userBBar.querySelector('.health-fill').style.width = `${percentage}%`;
+    userBBar.querySelector('.health-text').textContent = `${userBData.uid || '玩家B'}: ${userBHp}/${userBMaxHp}`;
+    
+    if (userBData.isDown) {
+      userBBar.classList.add('player-down');
+    } else {
+      userBBar.classList.remove('player-down');
+    }
   }
 }
-
 
 // 显示伙伴的BTR/T80支援
 function showPartnerBtrSupport() {
@@ -8314,7 +8297,7 @@ function triggerBossAttack() {
   }
 
   // 6) 刷新血条
-  updateAllPlayerHealth(latestRoomData || { userA:{ health:playerHp, maxHp:playerMaxHp, isDown:playerIsDown, uid:window.myUid } });
+  updateHealthDisplay();
 }
 
 
@@ -8701,35 +8684,53 @@ function endPveBattle(isVictory) {
 async function exitPveBattle() {
   const pin = window.currentBattleRoom;
   if (!pin) return;
-  const roomRef = firebase.database().ref(`pveBattles/${pin}`);
 
-  // 1) 取消监听
+  // 1) 取得房间引用并卸载所有监听
+  const roomRef = firebase.database().ref('pveBattles/' + pin);
   roomRef.off();
   roomRef.child('log').off();
   roomRef.child('events').off();
-
-  // 2) 真删除自己 userA/userB 节点
-  await roomRef.child(window.myRole).remove();
-
-  // 3) 检查剩余玩家，若都不存在则删房间
-  const snap = await roomRef.once('value');
-  const data = snap.val() || {};
-  if (!data.userA && !data.userB) {
-    await roomRef.remove();
+  roomRef.child('userA').off();
+  roomRef.child('userB').off();
+  roomRef.child('status').off();
+  try {
+    // 取消任何未触发的 onDisconnect 回调
+    roomRef.onDisconnect().cancel();
+  } catch (e) {
+    // 无需处理
   }
 
-  // 4) 本地清理
-  clearCombatTimers();
-  document.getElementById('battleOverlay').style.display = 'none';
-  document.body.style.overflow = '';
-  pveActive   = false;
-  pveMatched  = false;
-  pveEnded    = false;
-  playerIsDown= false;
-  window.currentBattleRoom = null;
-  window.myRole            = null;
-}
+  try {
+    // 2) 删除自己在房间中的节点
+    await roomRef.child(window.myRole).remove();
 
+    // 3) 重新读取房间数据，确认是否已无任何玩家
+    const snap = await roomRef.once('value');
+    const data = snap.val() || {};
+
+    // 4) 若为单人模式 或 已无 userA/userB，就删整条节点
+    if (data.mode === 'solo' || (!data.userA && !data.userB)) {
+      await roomRef.remove();
+    }
+  } catch (err) {
+    await firebase.database().ref().update({
+      ['pveBattles/' + pin]: null
+    });
+  } finally {
+    // 5) 清理全局状态与 UI
+    window.currentBattleRoom = null;
+    window.myRole = null;
+    window.pveActive = false;
+    window.pveMatched = false;
+    window.pveEnded = false;
+    if (typeof clearCombatTimers === 'function') clearCombatTimers();
+    const overlay = document.getElementById('battleOverlay');
+    if (overlay) overlay.style.display = 'none';
+    document.body.style.overflow = '';
+    // 可选：刷新页面
+    // window.location.reload();
+  }
+}
 
 })();
 
