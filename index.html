@@ -7658,6 +7658,7 @@ function setupFirebaseListeners() {
     const roomData = snapshot.val();
     if (!roomData) return;
 	latestRoomData = roomData;
+	updateAllPlayerHealth(roomData);
 	if (pveMode === 'coop') {
 		if (roomData.userA?.isDown && !processedMessages['bossLoop_taken']) {
           processedMessages['bossLoop_taken'] = true;
