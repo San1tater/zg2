@@ -6862,14 +6862,13 @@ function triggerT80Cannon() {
   let t80CannonOnCooldown = false;  // T80開炮冷卻標志
   let currentBattleRoomRef = null;  // Firebase 房間參考
   let processedMessages = {};       // 用於防止訊息重複顯示
-  let latestRoomData = null;
   
   // BOSS配置
   const bossConfigs = {
     "zombieKing": {
       name: "BTR-80A 「守護者」",
-      hp: 1000,
-      damageRange: {min: 25, max: 75},
+      hp: 600,
+      damageRange: {min: 25, max: 150},
       attackInterval: 7000, 
       singleAttackRate: 0.7,
 	  hitChance: 75,
@@ -7098,6 +7097,7 @@ function triggerT80Cannon() {
         display: flex;
         justify-content: space-between;
         gap: 8px;
+		flex-direction: row-reverse;
       }
       
       .coop-health-bar {
@@ -7648,21 +7648,30 @@ function setupFirebaseListeners() {
   currentBattleRoomRef.on('value', (snapshot) => {
     const roomData = snapshot.val();
     if (!roomData) return;
-	latestRoomData = roomData;
-	if (pveMode === 'coop') {
-		if (roomData.userA?.isDown && !processedMessages['bossLoop_taken']) {
-          processedMessages['bossLoop_taken'] = true;
-          enableBossLoop();
-        }
-        if (roomData.userA?.isDown && !processedMessages['userA_death']) {
-          processedMessages['userA_death'] = true;
-          updatePlayerSpriteToDead('userA');
-        }
-        if (roomData.userB?.isDown && !processedMessages['userB_death']) {
-          processedMessages['userB_death'] = true;
-          updatePlayerSpriteToDead('userB');
-        }
+    
+    // 關鍵修復：同步本地倒地狀態
+    if (roomData[window.myRole] && roomData[window.myRole].isDown && !playerIsDown) {
+      playerIsDown = true;
+      updatePlayerSpriteToDead(window.myRole);
+    }
+    
+    // 檢查倒地玩家視覺效果
+    if (pveMode === 'coop') {
+      if (roomData.userA?.isDown && !processedMessages['userA_death']) {
+        processedMessages['userA_death'] = true;
+        updatePlayerSpriteToDead('userA');
       }
+      if (roomData.userB?.isDown && !processedMessages['userB_death']) {
+        processedMessages['userB_death'] = true;
+        updatePlayerSpriteToDead('userB');
+      }
+      
+      // 如果玩家A倒地，則玩家B接管boss攻擊循環
+      if (roomData.userA?.isDown && !processedMessages['bossLoop_taken']) {
+        processedMessages['bossLoop_taken'] = true;
+        enableBossLoop();
+      }
+    }
     
     // 检查游戏结束
     if (roomData.status === 'ended') {
@@ -7676,41 +7685,41 @@ function setupFirebaseListeners() {
     // 关键改进：无论任何状态，始终更新所有血量显示
     updateAllPlayerHealth(roomData);
       
-      // 檢查是否已有兩名玩家
-      if (roomData.status === 'active' && roomData.userA && roomData.userB) {
-        if (!pveMatched) {
-          pveMatched = true;
-          appendBattleLogEntry({
-            sender: "系統",
-            senderRole: "system",
-            message: "雙方連線成功，準備開始對戰！",
-            battleMode: "pve"
-          });
-          
-          // 如果是玩家A，初始化戰鬥
-          if (window.myRole === "userA") {
-            initPveBattle();
-          }
-          
-          // 添加伙伴角色
-          const selfAnim = document.getElementById('battleSelfAnim');
-          if (selfAnim) {
-            addUserCharacters(selfAnim);
-          }
-          
-          // 更新双方血条
-          updateCoopHealthDisplay();
+    // 檢查是否已有兩名玩家
+    if (roomData.status === 'active' && roomData.userA && roomData.userB) {
+      if (!pveMatched) {
+        pveMatched = true;
+        appendBattleLogEntry({
+          sender: "系統",
+          senderRole: "system",
+          message: "雙方連線成功，準備開始對戰！",
+          battleMode: "pve"
+        });
+        
+        // 如果是玩家A，初始化戰鬥
+        if (window.myRole === "userA") {
+          initPveBattle();
         }
+        
+        // 添加伙伴角色
+        const selfAnim = document.getElementById('battleSelfAnim');
+        if (selfAnim) {
+          addUserCharacters(selfAnim);
+        }
+        
+        // 更新双方血条
+        updateCoopHealthDisplay();
       }
-      
-      // 同步BOSS生命值
-      if (window.myRole === "userB" && roomData.bossHealth !== undefined) {
-        bossHp = roomData.bossHealth;
-        updateHealthDisplay();
-      }
-      
-      // ===== 玩家倒地检测与处理 =====
-      if (window.myRole === "userA") {
+    }
+    
+    // 同步BOSS生命值
+    if (window.myRole === "userB" && roomData.bossHealth !== undefined) {
+      bossHp = roomData.bossHealth;
+      updateHealthDisplay();
+    }
+    
+    // ===== 玩家倒地检测与处理 =====
+    if (window.myRole === "userA") {
       // 检查userA是否刚刚死亡
       if (roomData.userA && roomData.userA.isDown) {
         const userADownKey = `userA_${roomData.userA.uid}_down`;
@@ -7723,7 +7732,7 @@ function setupFirebaseListeners() {
             message: `${roomData.userA.uid} 受到致命一擊，重傷倒地。`,
             battleMode: "pve"
           });
-		   currentBattleRoomRef.child('_processedMessages').update({
+          currentBattleRoomRef.child('_processedMessages').update({
             [userADownKey]: true
           });
         }
@@ -7990,23 +7999,38 @@ function appendBattleLogEntry(messageObj) {
   }
 }
 function enableBossLoop() {
-    if (bossAttackInterval) return; // 已经在运行
-    const cfg = bossConfigs[selectedBoss];
-    // Solo：userA 执行；Coop：只有 userA 活着或 userB 接手后才执行
-    if (
-      pveMode === 'solo' && window.myRole === 'userA'
-      || pveMode === 'coop' && (
-           !latestRoomData.userA?.isDown && window.myRole === 'userA'
-        ||  latestRoomData.userA?.isDown && window.myRole === 'userB'
-      )
-    ) {
-      bossAttackInterval = setInterval(() => {
-        // 如果游戏结束或自己已倒地，跳过
-        if (pveEnded || latestRoomData?.[window.myRole]?.isDown) return;
-        triggerBossAttack();
-      }, cfg.attackInterval);
-    }
+  if (bossAttackInterval) return; // 已经在运行
+  const cfg = bossConfigs[selectedBoss];
+  
+  // Solo模式直接由userA執行
+  if (pveMode === 'solo' && window.myRole === 'userA') {
+    bossAttackInterval = setInterval(() => {
+      if (pveEnded || playerIsDown) return;
+      triggerBossAttack();
+    }, cfg.attackInterval);
+    return;
   }
+  
+  // 合作模式：需要檢查玩家狀態
+  if (pveMode === 'coop') {
+    currentBattleRoomRef.once('value').then(snapshot => {
+      const roomData = snapshot.val();
+      if (!roomData) return;
+      
+      // userA未倒地時由userA執行，userA倒地後由userB執行
+      const shouldHandle = 
+        (window.myRole === 'userA' && !roomData.userA?.isDown) || 
+        (window.myRole === 'userB' && roomData.userA?.isDown && !roomData.userB?.isDown);
+        
+      if (shouldHandle) {
+        bossAttackInterval = setInterval(() => {
+          if (pveEnded || playerIsDown) return;
+          triggerBossAttack();
+        }, cfg.attackInterval);
+      }
+    });
+  }
+}
 // 開始戰鬥循環
 function startCombatLoop() {
   // 清除現有計時器
@@ -8070,210 +8094,302 @@ function clearCombatTimers() {
 
 // 觸發玩家攻擊
 function triggerPlayerAttack() {
-  let centerLevel = 1;
+  // 如果已倒地，不執行攻擊
+  if (playerIsDown) return;
   
-  try {
-    // 直接從gameState獲取中心基地等級
-    const centerBuilding = gameState.buildings.find(b => 
-      b && b.type.toLowerCase() === "center"
-    );
-    if (centerBuilding) {
-      centerLevel = centerBuilding.level || 1;
-    }
-  } catch (error) {
-    centerLevel = 1;
-  }
-  
-  // 與PVP一致的命中率計算：40 + centerLevel * 0.5，最高85%
-  const hitChanceVal = Math.min(40 + centerLevel * 0.5, 85);
-  const hitRoll = Math.random() * 100;
-  const hit = (hitRoll < hitChanceVal);
-  
-  // 傷害計算
-  const baseDamage = hit ? (Math.floor(Math.random() * 10) + 1) : 0;
-  
-  // 僵尸指揮中心加成
-  let commandCenterLevel = 0;
-  try {
-    const commandCenter = gameState.buildings.find(b => 
-      b && b.type.toLowerCase() === "zombiecommandcenter"
-    );
-    if (commandCenter) {
-      commandCenterLevel = commandCenter.level;
-    }
-  } catch (error) {
-    commandCenterLevel = 0;
-  }
-  
-  // 傷害加成
-  const multiplier = 1 + commandCenterLevel * 0.01;
-  const damage = Math.round(baseDamage * multiplier);
-  
-  // 獲取攻擊短語
-  const phrase = pveAttackPhrases.normal[Math.floor(Math.random() * pveAttackPhrases.normal.length)];
-  
-  // 處理戰鬥結果
-  if (hit && damage > 0) {
-    appendBattleLogEntry({
-      sender: window.myUid,
-      senderRole: window.myRole,
-      message: `派遣的 ${phrase}（命中），${bossConfigs[selectedBoss].name} 受到 ${damage} 點傷害`,
-      targetType: "boss",
-      battleMode: "pve"
-    });
-    
-    // 更新BOSS生命值
-    if (window.myRole === "userA") {
-      // 更新BOSS生命值
-      bossHp = Math.max(0, bossHp - damage);
-      totalPlayerDamage += damage;
-    
-    // 同步到Firebase
-    if (currentBattleRoomRef) {
-        currentBattleRoomRef.update({ 
-          bossHealth: bossHp,
-          lastDamageBy: "userA",
-          lastDamageAmount: damage,
-          lastUpdateTime: firebase.database.ServerValue.TIMESTAMP
-        });
+  // 合作模式：實時檢查是否倒地
+  if (pveMode === 'coop') {
+    currentBattleRoomRef.child(window.myRole).once('value').then(snapshot => {
+      const data = snapshot.val();
+      if (data && data.isDown) {
+        playerIsDown = true;
+        return;
       }
+      
+      // 未倒地則繼續攻擊
+      executePlayerAttack();
+    });
+  } else {
+    // 單人模式直接執行
+    executePlayerAttack();
+  }
+  
+  function executePlayerAttack() {
+    let centerLevel = 1;
+    try {
+      // 直接從gameState獲取中心基地等級
+      const centerBuilding = gameState.buildings.find(b => 
+        b && b.type.toLowerCase() === "center"
+      );
+      if (centerBuilding) {
+        centerLevel = centerBuilding.level || 1;
+      }
+    } catch (error) {
+      centerLevel = 1;
+    }
     
-    // 檢查BOSS是否被擊敗
-    if (bossHp <= 0) {
-        endPveBattle(true);
+    // 與PVP一致的命中率計算：40 + centerLevel * 0.5，最高85%
+    const hitChanceVal = Math.min(40 + centerLevel * 0.5, 85);
+    const hitRoll = Math.random() * 100;
+    const hit = (hitRoll < hitChanceVal);
+    
+    // 傷害計算
+    const baseDamage = hit ? (Math.floor(Math.random() * 10) + 1) : 0;
+    
+    // 僵尸指揮中心加成
+    let commandCenterLevel = 0;
+    try {
+      const commandCenter = gameState.buildings.find(b => 
+        b && b.type.toLowerCase() === "zombiecommandcenter"
+      );
+      if (commandCenter) {
+        commandCenterLevel = commandCenter.level;
+      }
+    } catch (error) {
+      commandCenterLevel = 0;
+    }
+    
+    // 傷害加成
+    const multiplier = 1 + commandCenterLevel * 0.01;
+    const damage = Math.round(baseDamage * multiplier);
+    
+    // 獲取攻擊短語
+    const phrase = pveAttackPhrases.normal[Math.floor(Math.random() * pveAttackPhrases.normal.length)];
+    
+    // 處理戰鬥結果
+    if (hit && damage > 0) {
+      appendBattleLogEntry({
+        sender: window.myUid,
+        senderRole: window.myRole,
+        message: `派遣的 ${phrase}（命中），${bossConfigs[selectedBoss].name} 受到 ${damage} 點傷害`,
+        targetType: "boss",
+        battleMode: "pve"
+      });
+      
+      // 更新BOSS生命值
+      if (window.myRole === "userA") {
+        // 更新BOSS生命值
+        bossHp = Math.max(0, bossHp - damage);
+        totalPlayerDamage += damage;
+      
+        // 同步到Firebase
+        if (currentBattleRoomRef) {
+          currentBattleRoomRef.update({ 
+            bossHealth: bossHp,
+            lastDamageBy: "userA",
+            lastDamageAmount: damage,
+            lastUpdateTime: firebase.database.ServerValue.TIMESTAMP
+          });
+        }
+      
+        // 檢查BOSS是否被擊敗
+        if (bossHp <= 0) {
+          endPveBattle(true);
+        }
+      } else {
+        // userB只更新自己的本地伤害统计，不修改bossHp
+        totalPlayerDamage += damage;
       }
     } else {
-      // userB只更新自己的本地伤害统计，不修改bossHp
-      totalPlayerDamage += damage;
+      appendBattleLogEntry({
+        sender: window.myUid,
+        senderRole: window.myRole,
+        message: `派遣的 ${phrase}（未命中）`,
+        targetType: "boss",
+        battleMode: "pve"
+      });
     }
-  } else {
-    appendBattleLogEntry({
-      sender: window.myUid,
-      senderRole: window.myRole,
-      message: `派遣的 ${phrase}（未命中）`,
-      targetType: "boss",
-      battleMode: "pve"
-    });
+    
+    // 更新生命值顯示
+    updateHealthDisplay();
   }
-  
-  // 更新生命值顯示
-  updateHealthDisplay();
 }
 
 
 function triggerBossAttack() {
-  const cfg = bossConfigs[selectedBoss];
-
-  // Solo：只让 userA 发起；Coop：由存活者接手
-  if (pveMode === 'solo') {
-    if (window.myRole !== 'userA') return;
+  // 如果已倒地，不執行攻擊
+  if (playerIsDown) return;
+  
+  // 合作模式：需要實時檢查是否應該執行攻擊
+  if (pveMode === 'coop') {
+    currentBattleRoomRef.once('value').then(snapshot => {
+      const roomData = snapshot.val();
+      if (!roomData) return;
+      
+      // 確認自己是否應該執行攻擊
+      const shouldAttack = 
+        (window.myRole === 'userA' && !roomData.userA?.isDown) || 
+        (window.myRole === 'userB' && roomData.userA?.isDown && !roomData.userB?.isDown);
+        
+      if (!shouldAttack) return;
+      
+      // 執行攻擊邏輯
+      executeBossAttack();
+    });
   } else {
-    if (latestRoomData?.[window.myRole]?.isDown) return;
-    if (latestRoomData.userA?.isDown && latestRoomData.userB?.isDown) return;
+    // 單人模式直接執行
+    executeBossAttack();
   }
+  
+  function executeBossAttack() {
+    const cfg = bossConfigs[selectedBoss];
 
-  // 1) 命中判定
-  const hitChance = cfg.hitChance ?? 75;
-  const hit = Math.random() * 100 < hitChance;
+    // 1) 命中判定
+    const hitChance = cfg.hitChance ?? 75;
+    const hit = Math.random() * 100 < hitChance;
 
-  // 2) 单体 vs AOE
-  const singleRate = cfg.singleAttackRate ?? 0.7;
-  const isSingle  = Math.random() < singleRate;
+    // 2) 单体 vs AOE
+    const singleRate = cfg.singleAttackRate ?? 0.7;
+    const isSingle  = Math.random() < singleRate;
 
-  // —— 3) 选词库：单体攻击（或 Solo 模式）一定取 single 词库 —— 
-  const useSinglePool = isSingle || pveMode === 'solo';
-  const pool = useSinglePool
-    ? cfg.attackPhrases.single
-    : (cfg.attackPhrases.aoe || cfg.attackPhrases.single);
-  const phrase = pool[Math.floor(Math.random() * pool.length)];
+    // —— 3) 选词库：单体攻击（或 Solo 模式）一定取 single 词库 —— 
+    const useSinglePool = isSingle || pveMode === 'solo';
+    const pool = useSinglePool
+      ? cfg.attackPhrases.single
+      : (cfg.attackPhrases.aoe || cfg.attackPhrases.single);
+    const phrase = pool[Math.floor(Math.random() * pool.length)];
 
-  // 4) 计算伤害
-  let damage = 0;
-  if (hit) {
-    const raw = Math.floor(
-      cfg.damageRange.min +
-      Math.random() * (cfg.damageRange.max - cfg.damageRange.min)
-    );
-    damage = isSingle ? raw : Math.floor(raw * 0.8);
-  }
+    // 4) 计算伤害
+    let damage = 0;
+    if (hit) {
+      const raw = Math.floor(
+        cfg.damageRange.min +
+        Math.random() * (cfg.damageRange.max - cfg.damageRange.min)
+      );
+      damage = isSingle ? raw : Math.floor(raw * 0.8);
+    }
 
-  // 5) 扣血 & 日志
-  if (hit && damage > 0) {
-    if (useSinglePool) {
-      // 单体：随机选个存活玩家或 Solo
-      let targets = [];
-      if (pveMode === 'solo') {
-        targets.push('userA');
-      } else {
-        if (!latestRoomData.userA?.isDown) targets.push('userA');
-        if (!latestRoomData.userB?.isDown) targets.push('userB');
-      }
-      if (targets.length === 0) return;
-
-      const role = targets[Math.floor(Math.random() * targets.length)];
-      const uid  = latestRoomData[role].uid;
-
-      appendBattleLogEntry({
-        sender: cfg.name,
-        senderRole: 'boss',
-        message: `${phrase}${uid}（命中），造成 ${damage} 點傷害！`,
-        timestamp: Date.now(),
-        battleMode: 'pve',
-        aoe: false
-      });
-
-      // 扣血
-      const ref = currentBattleRoomRef.child(role);
-      ref.once('value').then(snap => {
-	    const data = snap.val() || {};
-		if (data.isDown) return;
-        const prev = snap.val()||{};
-        const newHp = Math.max(0, (prev.health||playerMaxHp) - damage);
-        ref.update({ health: newHp, maxHp: data.maxHp || playerMaxHp, isDown: newHp<=0 });
-        if (role === window.myRole && newHp <= 0 && !playerIsDown) {
-          handlePlayerDown();
-        }
-      });
-    } else {
-      // 群体
-      appendBattleLogEntry({
-        sender: cfg.name,
-        senderRole: 'boss',
-        message: `${phrase}（範圍攻擊）→ 我方各受 ${damage} 點傷害！`,
-        timestamp: Date.now(),
-        battleMode: 'pve',
-        aoe: true
-      });
-
-      ['userA','userB'].forEach(role => {
-        if (pveMode==='solo' && role!=='userA') return;
-        const ref = currentBattleRoomRef.child(role);
-        ref.once('value').then(snap => {
-		  const data = snap.val() || {};
-		  if (data.isDown) return; 
-          const prev = snap.val()||{};
-          const newHp = Math.max(0, (prev.health||playerMaxHp) - damage);
-          ref.update({ health: newHp, maxHp: data.maxHp || playerMaxHp, isDown: newHp<=0 });
-          if (role === window.myRole && newHp <= 0 && !playerIsDown) {
-            handlePlayerDown();
+    // 5) 扣血 & 日志
+    if (hit && damage > 0) {
+      if (useSinglePool) {
+        // 单体：实时查询可攻击目标
+        currentBattleRoomRef.once('value').then(snapshot => {
+          const data = snapshot.val() || {};
+          let targets = [];
+          
+          if (pveMode === 'solo') {
+            targets.push('userA');
+          } else {
+            if (data.userA && !data.userA.isDown) targets.push('userA');
+            if (data.userB && !data.userB.isDown) targets.push('userB');
           }
+          
+          if (targets.length === 0) return;
+
+          const role = targets[Math.floor(Math.random() * targets.length)];
+          const uid  = data[role]?.uid || '玩家';
+
+          appendBattleLogEntry({
+            sender: cfg.name,
+            senderRole: 'boss',
+            message: `${phrase}${uid}（命中），造成 ${damage} 點傷害！`,
+            timestamp: Date.now(),
+            battleMode: 'pve',
+            aoe: false
+          });
+
+          // 扣血
+          const ref = currentBattleRoomRef.child(role);
+          ref.once('value').then(snap => {
+            const data = snap.val() || {};
+            if (data.isDown) return;
+            const newHp = Math.max(0, (data.health || playerMaxHp) - damage);
+            const isNowDown = newHp <= 0;
+            
+            // 寫入 Firebase
+            ref.update({ 
+              health: newHp, 
+              maxHp: data.maxHp || playerMaxHp, 
+              isDown: isNowDown 
+            });
+            
+            // 關鍵修改：如果是自己被攻擊，立即更新自己的健康條
+            if (role === window.myRole) {
+              // 更新本地狀態
+              playerHp = newHp;
+              
+              // 如果致命傷，處理倒地
+              if (isNowDown && !playerIsDown) {
+                handlePlayerDown();
+              } else {
+                // 非致命傷，只更新健康條
+                const healthBar = document.getElementById(`${role}-health-bar`);
+                if (healthBar) {
+                  const maxHp = data.maxHp || playerMaxHp;
+                  const pct = Math.max(0, Math.round((newHp / maxHp) * 100));
+                  healthBar.querySelector('.health-fill').style.width = pct + '%';
+                  healthBar.querySelector('.health-text').textContent = 
+                    `${data.uid || '玩家'}: ${newHp}/${maxHp}`;
+                }
+              }
+            }
+          });
         });
+      } else {
+        // 群体攻击
+        appendBattleLogEntry({
+          sender: cfg.name,
+          senderRole: 'boss',
+          message: `${phrase}（範圍攻擊）→ 我方各受 ${damage} 點傷害！`,
+          timestamp: Date.now(),
+          battleMode: 'pve',
+          aoe: true
+        });
+
+        ['userA','userB'].forEach(role => {
+          if (pveMode === 'solo' && role !== 'userA') return;
+          const ref = currentBattleRoomRef.child(role);
+          ref.once('value').then(snap => {
+            const data = snap.val() || {};
+            if (data.isDown) return; 
+            const newHp = Math.max(0, (data.health || playerMaxHp) - damage);
+            const isNowDown = newHp <= 0;
+            
+            // 寫入 Firebase
+            ref.update({ 
+              health: newHp, 
+              maxHp: data.maxHp || playerMaxHp, 
+              isDown: isNowDown 
+            });
+            
+            // 關鍵修改：如果是自己被攻擊，立即更新自己的健康條
+            if (role === window.myRole) {
+              // 更新本地狀態
+              playerHp = newHp;
+              
+              // 如果致命傷，處理倒地
+              if (isNowDown && !playerIsDown) {
+                handlePlayerDown();
+              } else {
+                // 非致命傷，只更新健康條
+                const healthBar = document.getElementById(`${role}-health-bar`);
+                if (healthBar) {
+                  const maxHp = data.maxHp || playerMaxHp;
+                  const pct = Math.max(0, Math.round((newHp / maxHp) * 100));
+                  healthBar.querySelector('.health-fill').style.width = pct + '%';
+                  healthBar.querySelector('.health-text').textContent = 
+                    `${data.uid || '玩家'}: ${newHp}/${maxHp}`;
+                }
+              }
+            }
+          });
+        });
+      }
+    } else {
+      // 未命中
+      appendBattleLogEntry({
+        sender: cfg.name,
+        senderRole: "boss",
+        message: `${phrase}${window.myUid}（未命中）！`,
+        timestamp: Date.now(),
+        battleMode: "pve",
+        aoe: !useSinglePool
       });
     }
-  } else {
-    // 未命中也走同一 pool
-    appendBattleLogEntry({
-      sender: cfg.name,
-      senderRole: "boss",
-      message: `${phrase}${uid}（未命中）！`,
-      timestamp: Date.now(),
-      battleMode: "pve",
-      aoe: !useSinglePool
-    });
-  }
 
-  // 6) 刷新血条
-  updateHealthDisplay();
+    // 刷新血条
+    updateHealthDisplay();
+  }
 }
 
 
@@ -8580,13 +8696,17 @@ function triggerBtrSpecialAttack() {
 function handlePlayerDown() {
   if (playerIsDown) return; // 防止重复处理
   playerIsDown = true;
+  
+  // 更新倒地視覺效果
   updatePlayerSpriteToDead(window.myRole);
+  
   // 同步到Firebase
   if (currentBattleRoomRef) {
     currentBattleRoomRef.child(window.myRole).update({
       isDown: true
     });
   }
+  
   // 單人模式直接戰敗
   if (pveMode === 'solo') {
     endPveBattle(false);
@@ -8595,13 +8715,14 @@ function handlePlayerDown() {
 
 // 結束PVE戰鬥
 function endPveBattle(isVictory) {
+  // 避免重複結算
   if (pveEnded) return;
   pveEnded = true;
   
   // 停止所有計時器
   clearCombatTimers();
   
-  // 結算獎勵
+  // 計算獎勵 (與原來的邏輯相同)
   const bossConfig = bossConfigs[selectedBoss];
   let rewardRatio = isVictory ? 1.0 : Math.min(totalPlayerDamage / bossMaxHp, 0.75);
   
@@ -8611,7 +8732,44 @@ function endPveBattle(isVictory) {
     rewards[resource] = Math.round(bossConfig.rewards[resource] * rewardRatio);
   }
   
-  // 顯示結果
+  // 顯示結果訊息
+  const resultMessage = generateBattleResultMessage(isVictory, rewards);
+  
+  // 關鍵修復：直接顯示結果，不依賴 Firebase 回調
+  appendBattleLogEntry({
+    sender: "系統",
+    senderRole: "system",
+    message: resultMessage,
+    battleMode: "pve"
+  });
+  
+  // 添加獎勵資源
+  if (gameState && gameState.resources) {
+    gameState.resources.food += rewards.food;
+    gameState.resources.materials += rewards.materials;
+    gameState.resources.weapons += rewards.weapons;
+    gameState.resources.tech += rewards.tech;
+    
+    // 保存遊戲狀態
+    if (typeof saveGameState === 'function') saveGameState();
+    if (typeof updateResourceDisplays === 'function') updateResourceDisplays();
+  }
+  
+  // 更新 Firebase 狀態
+  if (currentBattleRoomRef) {
+    currentBattleRoomRef.update({
+      status: 'ended',
+      result: isVictory ? 'victory' : 'defeat',
+      endTime: firebase.database.ServerValue.TIMESTAMP,
+      finalDamage: totalPlayerDamage,
+      finalRewards: rewards
+    });
+  }
+}
+
+// 輔助函數，生成戰鬥結果訊息
+function generateBattleResultMessage(isVictory, rewards) {
+  const bossConfig = bossConfigs[selectedBoss];
   const damagePercentage = Math.round((totalPlayerDamage / bossMaxHp) * 100);
   
   let resultMessage = `戰鬥${isVictory ? '勝利' : '失敗'}！\n`;
@@ -8623,39 +8781,7 @@ function endPveBattle(isVictory) {
   resultMessage += `武器: +${rewards.weapons}\n`;
   resultMessage += `科技: +${rewards.tech}\n`;
   
-  appendBattleLogEntry({
-    sender: "系統",
-    senderRole: "system",
-    message: resultMessage,
-    battleMode: "pve"
-  });
-  
-   // 添加獎勵資源
-  try {
-    if (gameState && gameState.resources) {
-      gameState.resources.food += rewards.food;
-      gameState.resources.materials += rewards.materials;
-      gameState.resources.weapons += rewards.weapons;
-      gameState.resources.tech += rewards.tech;
-      
-      // 保存遊戲狀態
-      if (typeof saveGameState === 'function') {
-        saveGameState();
-      }
-      if (typeof updateResourceDisplays === 'function') {
-        updateResourceDisplays();
-      }
-    }
-  } catch (e) {}
-  
-  // 標記戰鬥結束
-  if (currentBattleRoomRef) {
-    currentBattleRoomRef.update({
-      status: 'ended',
-      result: isVictory ? 'victory' : 'defeat',
-      endTime: firebase.database.ServerValue.TIMESTAMP
-    });
-  }
+  return resultMessage;
 }
 async function exitPveBattle() {
   const pin = window.currentBattleRoom;
