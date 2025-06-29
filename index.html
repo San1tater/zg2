@@ -920,20 +920,6 @@
       animation: none !important;
     }
 
-    
-    @keyframes zombieEntryFrames {
-      0% { background-position: 0 0; }
-      100% { background-position: calc(-1 * var(--zombie-sprite-total-width)) 0; }
-    }
-
-    /* 防止其他样式影响 */
-    .zombie-entry * {
-      animation: none !important;
-    }
-
-    
-	
-
 	/* 1.4 僵尸倒地动画（僵尸减少事件触发） */
 	.zombie-lying {
 	  position: absolute;
@@ -3284,11 +3270,7 @@
 		  return "";
 	  }
 	}
-	// 檢查建築成就是否已解鎖（根據 category "building" 與成就 title 來判斷）
-	function isBuildingAchievementUnlocked(title) {
-	  return unlockedAchievements.some(a => a.category === "building" && a.title === title);
-	}
-
+	
 	// 解鎖建築類成就。參數：title（成就名稱）、details（成就說明）、rarity（成就稀有度標記，例如 "uncommon"、"rare"、"legendary"）
 	function awardBuildingAchievement(title, details, level) {
 	  if (isBuildingAchievementUnlocked(title)) return;
@@ -3654,37 +3636,6 @@
 		buildMenuUpdateTimer = null;
 	  }
 	}
-
-
-	// 每 5 秒檢查一次，如果建造或升級彈窗打開，則刷新其內容
-	setInterval(function() {
-	  // 檢查建造彈窗（buildModal）的狀態
-	  var buildModal = document.getElementById("buildModal");
-	  if (buildModal && buildModal.style.display !== "none" && typeof currentBuildIndex !== "undefined") {
-		updateBuildMenuContent(currentBuildIndex);
-	  }
-	  
-	  // 檢查升級彈窗（upgradeModal）的狀態
-	  var upgradeModal = document.getElementById("upgradeModal");
-	  if (upgradeModal && upgradeModal.style.display !== "none" && typeof currentUpgradeIndex !== "undefined") {
-		updateUpgradeMenuContent(currentUpgradeIndex);
-	  }
-	  
-	  const prodModal = document.getElementById("productionCollectionModal");
-	  if (prodModal && window.getComputedStyle(prodModal).display !== "none") {
-		showProductionCollection();
-	  }
-
-	  const favModal = document.getElementById("favoritesModal");
-	  if (favModal && window.getComputedStyle(favModal).display !== "none") {
-		showCollection();
-	  }
-	}, 5000);
-
-	
-
-
-
 
 	function getBuildItems() {
 	  // 從 BUILDINGS 過濾出具建造成本且非中心基地的項目
@@ -4898,9 +4849,6 @@ function triggerT80Cannon() {
 		  favBtn.addEventListener("click", showCollection);
 		}
 
-		// 每秒更新一次
-		setInterval(updateTimer, 1000);
-		
 		function gameLoop() {
 		  checkAchievements();  // 每次循環檢查成就條件
 		  // 資源生產、僵尸生產、食物消耗、探索等操作集中執行
