@@ -2,7 +2,7 @@
 <html lang="zh">
 <head>
   <meta charset="UTF-8" name="viewport" content="width=device-width, initial-scale=0.45"/>
-  <title>末日控制中心 - 正式版v.1.113 pve-coop update</title>
+  <title>末日控制中心 - 正式版v.1.114 pve-coop update</title>
   <style>
     /* 彈窗系統 */
     .modal-overlay {
@@ -1735,6 +1735,7 @@
 			  <option value="pve">PVE模式</option>
 			</select>
 			<select id="bossList" style="display:none">
+			  <option value="zombieController">流浪科學家</option>
 			  <option value="zombieKing">BTR-80A「守護者」</option>
 			  
 			</select>
@@ -6437,6 +6438,37 @@ function triggerT80Cannon() {
   
   // BOSS配置
   const bossConfigs = {
+	"zombieController": {
+      name: "流浪科學家",
+      hp: 2000,
+      damageRange: {min: 15, max: 75},
+      attackInterval: 3000, 
+      singleAttackRate: 0.9,
+	  hitChance: 65,
+      sprite: "images/boss_zombie_controller_sprite.png", 
+	  deathSprite: "images/boss_zombie_controller_dead_sprite.png",
+      frames: 4,  // 精靈圖幀數
+      frameWidth: 200, // 每幀寬度
+      rewards: {
+        food: 50000000,
+        materials: 100000000,
+        weapons: 10000000,
+        tech: 50000000
+      },
+      attackPhrases: {
+        single: [
+          "操控的僵尸縱身一躍，使用拳頭猛擊",
+          "操控的僵尸縱身一躍，使用牙齒撕咬",
+          "操控的僵尸垂直下落，使用頭槌打擊",
+		  "操控的僵尸連續躍進，製造近距離爆炸，目標："
+        ],
+        aoe: [
+          "操控的僵尸連續躍進，製造近距離爆炸",
+          "操控的僵尸戰術後退，施放強力爆炸",
+          "操控的僵尸往復跳躍，左右開弓施展近身攻擊"
+        ]
+      }
+    },
     "zombieKing": {
       name: "BTR-80A 「守護者」",
       hp: 3000,
@@ -6468,6 +6500,7 @@ function triggerT80Cannon() {
         ]
       }
     },
+	
   };
   
   // 攻擊詞庫
@@ -6610,14 +6643,6 @@ function triggerT80Cannon() {
       @keyframes bossSearchAnim {
         from { background-position: 0 0; }
         to { background-position: calc(-1 * var(--boss-sprite-total-width)) 0; }
-      }
-      @keyframes bossPulse {
-        0% { transform: translateX(-50%) scale(1); }
-        50% { transform: translateX(-50%) scale(1.05); }
-        100% { transform: translateX(-50%) scale(1); }
-      }
-      .boss-animation.attack {
-        animation: bossPulse 0.5s ease-in-out;
       }
       .pve-background {
         background-image: url('images/location_day_1.png');
