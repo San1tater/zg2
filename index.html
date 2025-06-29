@@ -2,7 +2,7 @@
 <html lang="zh">
 <head>
   <meta charset="UTF-8" name="viewport" content="width=device-width, initial-scale=0.45"/>
-  <title>末日控制中心 - 正式版v.1.11 pve-coop update</title>
+  <title>末日控制中心 - 正式版v.1.111 pve-coop update</title>
   <style>
     /* 彈窗系統 */
     .modal-overlay {
@@ -6833,6 +6833,13 @@ function triggerT80Cannon() {
       el.style.backgroundImage = `url('${deadSprite}')`;
     }
   }
+  function updateBossToDeadSprite() {
+	  const cfg = bossConfigs[selectedBoss];
+	  const bossAnim = document.getElementById("boss-animation");
+	  if (!bossAnim || !cfg.deathSprite) return;
+	  bossAnim.style.backgroundImage = `url('${cfg.deathSprite}')`;
+	}
+
   // 確保 Firebase 已初始化
   if (!window.firebase || !window.firebase.database) {
     return;
@@ -6867,12 +6874,13 @@ function triggerT80Cannon() {
   const bossConfigs = {
     "zombieKing": {
       name: "BTR-80A 「守護者」",
-      hp: 600,
+      hp: 1500,
       damageRange: {min: 25, max: 150},
       attackInterval: 7000, 
       singleAttackRate: 0.7,
 	  hitChance: 75,
       sprite: "images/boss_zombie_king_sprite.png", 
+	  deathSprite: "images/boss_zombie_king_dead_sprite.png",
       frames: 4,  // 精靈圖幀數
       frameWidth: 200, // 每幀寬度
       rewards: {
@@ -8133,7 +8141,7 @@ function triggerPlayerAttack() {
     const hit = (hitRoll < hitChanceVal);
     
     // 傷害計算
-    const baseDamage = hit ? (Math.floor(Math.random() * 10) + 1) : 0;
+    const baseDamage = hit ? (Math.floor(Math.random() * 30) + 1) : 0;
     
     // 僵尸指揮中心加成
     let commandCenterLevel = 0;
@@ -8628,8 +8636,8 @@ function triggerBtrSpecialAttack() {
   // 計算傷害
   const hitRoll = Math.random() * 100;
   const baseDamage = battleBTRType === "t80" ? 
-    Math.floor(Math.random() * 20) + 15 :  // T-80伤害15-35
-    Math.floor(Math.random() * 15) + 10;   // BTR伤害10-25
+    Math.floor(Math.random() * 100) + 15 :  // T-80伤害15-115
+    Math.floor(Math.random() * 70) + 10;   // BTR伤害10-85
   
   // 讀取裝甲車庫等級計算加成
   let tractorLevel = 0;
@@ -8731,6 +8739,9 @@ function endPveBattle(isVictory) {
   // 避免重複結算
   if (pveEnded) return;
   pveEnded = true;
+  if (isVictory) {
+    updateBossToDeadSprite();
+  }
   
   // 停止所有計時器
   clearCombatTimers();
