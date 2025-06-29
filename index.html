@@ -2,7 +2,7 @@
 <html lang="zh">
 <head>
   <meta charset="UTF-8" name="viewport" content="width=device-width, initial-scale=0.45"/>
-  <title>末日控制中心 - 正式版v.1.112 pve-coop update</title>
+  <title>末日控制中心 - 正式版v.1.113 pve-coop update</title>
   <style>
     /* 彈窗系統 */
     .modal-overlay {
@@ -5183,23 +5183,21 @@ function triggerT80Cannon() {
 	  );
 	  const centerLevel = centerBuilding ? centerBuilding.level : 1;
 	  const hitChance = Math.min(40 + centerLevel * 0.5, 85);	  
-	  // 模拟我方攻击
 	  const ourHit = (Math.random() * 100 < hitChance);
 	  const baseOurDamage = ourHit ? (Math.floor(Math.random() * 10) + 1): 0;
-	   // 從 gameState 中查找僵尸指揮中心的等級
 	  let commandCenterLevel = 0;
-	  if (window.gameState && window.gameState.buildings) {
-		  const commandCenter = window.gameState.buildings.find(b => 
-			  b && b.type.toLowerCase() === "zombiecommandcenter"
+		try {
+		  const commandCenter = gameState.buildings.find(b => 
+			b && b.type.toLowerCase() === "zombiecommandcenter"
 		  );
 		  if (commandCenter) {
-			  commandCenterLevel = commandCenter.level;
+			commandCenterLevel = commandCenter.level;
 		  }
-	  }
-	  // 每級1%的加成：倍率 = 1 + (僵尸指揮中心等級 × 0.01)
-	  const multiplierZ = 1 + commandCenterLevel * 0.01;
-	  // 最終傷害
-	  const ourDamage = Math.round(baseOurDamage * multiplierZ);
+		} catch (error) {
+		  commandCenterLevel = 0;
+		}	
+	  const multiplier = Math.pow(1.01, commandCenterLevel);
+	  const ourDamage = Math.round(baseOurDamage * multiplier);
 	  const phrase = getRandomPhrase("normal");
 	  if (ourHit) {
 	    pushBattleLog( phrase + "（命中），對方僵尸-" + ourDamage);
@@ -5647,20 +5645,19 @@ function triggerT80Cannon() {
 	  const hitChance = Math.min(40 + centerLevel * 0.5, 85);
 	  const ourHit = (Math.random() * 100 < hitChance);
 	  const baseOurDamage = ourHit ? (Math.floor(Math.random() * 10) + 1): 0;
-	   // 從 gameState 中查找僵尸指揮中心的等級
 	  let commandCenterLevel = 0;
-	  if (window.gameState && window.gameState.buildings) {
-		  const commandCenter = window.gameState.buildings.find(b => 
-			  b && b.type.toLowerCase() === "zombiecommandcenter"
+		try {
+		  const commandCenter = gameState.buildings.find(b => 
+			b && b.type.toLowerCase() === "zombiecommandcenter"
 		  );
 		  if (commandCenter) {
-			  commandCenterLevel = commandCenter.level;
+			commandCenterLevel = commandCenter.level;
 		  }
-	  }
-
-	  // 每級1%的加成：倍率 = 1 + (僵尸指揮中心等級 × 0.01)
-	  const multiplierZ = 1 + commandCenterLevel * 0.01;
-	  const ourDamage = Math.round(baseOurDamage * multiplierZ);
+		} catch (error) {
+		  commandCenterLevel = 0;
+		}	
+	  const multiplier = Math.pow(1.01, commandCenterLevel);
+	  const ourDamage = Math.round(baseOurDamage * multiplier);
 	  const phrase = getRandomPhrase("normal");
 	  if (ourHit) {
 		pushBattleLog( phrase + "（命中），對方僵尸-" + ourDamage);
@@ -5976,18 +5973,18 @@ function triggerT80Cannon() {
 		  Math.floor(Math.random() * 15) + 10;     // BTR伤害10-25
 	  // 從全局 gameState.buildings 中查找拖拉機廠（armoredgarage）的等級
 	  let tractorLevel = 0;
-	  if (window.gameState && window.gameState.buildings) {
-		  const tractor = window.gameState.buildings.find(b => 
-			  b && b.type.toLowerCase() === "armoredgarage"
-		  );
-		  if (tractor) {
-		     tractorLevel = tractor.level;
-		  }
+	  try {
+		const tractor = gameState.buildings.find(b => 
+		  b && b.type.toLowerCase() === "armoredgarage"
+		);
+		if (tractor) {
+		  tractorLevel = tractor.level;
+		}
+	  } catch (error) {
+		tractorLevel = 0;
 	  }
-	  // 每級0.5%的加成：倍率 = 1 + (拖拉機廠等級 × 0.005)
-	  const multiplier = 1 + tractorLevel * 0.005;
-	  // 根據倍率調整最終傷害，並取整（四捨五入）
-	  const damage = Math.round(baseDamage * multiplier);
+	  const multiplierA = Math.pow(1.01, tractorLevel);
+	  const damage = Math.round(baseDamage * multiplierA);
 	  const hitSuccess = hitRoll < hitChanceVal;
 	  if (hitSuccess) {
 	      totalEnemyDamage += damage;
@@ -6442,7 +6439,7 @@ function triggerT80Cannon() {
   const bossConfigs = {
     "zombieKing": {
       name: "BTR-80A 「守護者」",
-      hp: 1500,
+      hp: 3000,
       damageRange: {min: 25, max: 150},
       attackInterval: 7000, 
       singleAttackRate: 0.7,
@@ -6452,10 +6449,10 @@ function triggerT80Cannon() {
       frames: 4,  // 精靈圖幀數
       frameWidth: 200, // 每幀寬度
       rewards: {
-        food: 10000000,
-        materials: 30000000,
-        weapons: 50000000,
-        tech: 30000000
+        food: 100000000,
+        materials: 300000000,
+        weapons: 500000000,
+        tech: 300000000
       },
       attackPhrases: {
         single: [
@@ -6723,6 +6720,21 @@ function triggerT80Cannon() {
         battleMode: "pve"
       });
     }
+	
+	// pve獎勵發放
+	function applyPveRewards(rewards) {
+		if (!rewards) return;
+		gameState.resources.food      += rewards.food      || 0;
+		gameState.resources.materials += rewards.materials || 0;
+		gameState.resources.weapons   += rewards.weapons   || 0;
+		gameState.resources.tech      += rewards.tech      || 0;
+		updateResourceDisplays();
+		saveGameState();
+		appendBattleLogEntry({
+		sender: '系統', senderRole: 'system',
+		message: `獲得獎勵：🍖${rewards.food} 🔩${rewards.materials} 🔫${rewards.weapons} 💾${rewards.tech}`
+		});
+	}
   
     // 添加健康條容器
     function addHealthBarsContainers() {
@@ -7125,8 +7137,8 @@ function triggerT80Cannon() {
 			} else {}
 		}).catch(() => {});
       }
-	} 
-  
+	}
+
 	function setupFirebaseListeners() {
 	  if (!currentBattleRoomRef) return;
 	  // 移除現有監聽器
@@ -7158,11 +7170,9 @@ function triggerT80Cannon() {
 		  }
 		}   
 		// 检查游戏结束
-		if (roomData.status === 'ended') {
-		  if (!pveEnded) {
-			pveEnded = true;
-			setTimeout(() => endPveBattle(roomData.result === 'victory'), 1000);
-		  }
+		if (roomData.status === 'ended' && roomData.finalRewards && !pveEnded) {
+		  pveEnded = true;
+		  setTimeout(() => applyPveRewards(roomData.finalRewards), 1000);
 		  return;
 		}   
 		// 关键改进：无论任何状态，始终更新所有血量显示
@@ -7564,8 +7574,7 @@ function triggerT80Cannon() {
 		const hitRoll = Math.random() * 100;
 		const hit = (hitRoll < hitChanceVal);	
 		// 傷害計算
-		const baseDamage = hit ? (Math.floor(Math.random() * 30) + 1) : 0;	
-		// 僵尸指揮中心加成
+		const baseDamage = hit ? (Math.floor(Math.random() * 15) + 1) : 0;	
 		let commandCenterLevel = 0;
 		try {
 		  const commandCenter = gameState.buildings.find(b => 
@@ -7577,12 +7586,9 @@ function triggerT80Cannon() {
 		} catch (error) {
 		  commandCenterLevel = 0;
 		}	
-		// 傷害加成
-		const multiplier = 1 + commandCenterLevel * 0.01;
+		const multiplier = Math.pow(1.05, commandCenterLevel);
 		const damage = Math.round(baseDamage * multiplier);	
-		// 獲取攻擊短語
 		const phrase = pveAttackPhrases.normal[Math.floor(Math.random() * pveAttackPhrases.normal.length)];	
-		// 處理戰鬥結果
 		if (hit && damage > 0) {
 		  appendBattleLogEntry({
 			sender: window.myUid,
@@ -7996,17 +8002,14 @@ function triggerT80Cannon() {
 	  } catch (error) {
 		centerLevel = 1;
 	  }
-	  
 	  // 與PVP模式使用相同的命中率計算
 	  const baseHitChance = 40;
 	  const hitChanceVal = Math.min(baseHitChance + centerLevel * 0.5, 85);
-	  
 	  // 計算傷害
 	  const hitRoll = Math.random() * 100;
 	  const baseDamage = battleBTRType === "t80" ? 
 		Math.floor(Math.random() * 100) + 15 :  // T-80伤害15-115
-		Math.floor(Math.random() * 70) + 10;   // BTR伤害10-85
-	  
+		Math.floor(Math.random() * 70) + 10;   // BTR伤害10-80
 	  // 讀取裝甲車庫等級計算加成
 	  let tractorLevel = 0;
 	  try {
@@ -8019,10 +8022,8 @@ function triggerT80Cannon() {
 	  } catch (error) {
 		tractorLevel = 0;
 	  }
-	  
-	  // 每級0.5%的加成
-	  const multiplier = 1 + tractorLevel * 0.005;
-	  const damage = Math.round(baseDamage * multiplier);
+	  const multiplierA = Math.pow(1.05, tractorLevel);
+	  const damage = Math.round(baseDamage * multiplierA);
 	  
 	  // 命中判定
 	  const hitSuccess = hitRoll < hitChanceVal;
@@ -8135,28 +8136,16 @@ function triggerT80Cannon() {
 		battleMode: "pve"
 	  });
 	  
-	  // 添加獎勵資源
-	  if (gameState && gameState.resources) {
-		gameState.resources.food += rewards.food;
-		gameState.resources.materials += rewards.materials;
-		gameState.resources.weapons += rewards.weapons;
-		gameState.resources.tech += rewards.tech;
-		
-		// 保存遊戲狀態
-		if (typeof saveGameState === 'function') saveGameState();
-		if (typeof updateResourceDisplays === 'function') updateResourceDisplays();
-	  }
-	  
-	  // 更新 Firebase 狀態
 	  if (currentBattleRoomRef) {
 		currentBattleRoomRef.update({
-		  status: 'ended',
-		  result: isVictory ? 'victory' : 'defeat',
-		  endTime: firebase.database.ServerValue.TIMESTAMP,
-		  finalDamage: totalPlayerDamage,
-		  finalRewards: rewards
-		});
+		status: 'ended',
+		result: isVictory ? 'victory' : 'defeat',
+		endTime: firebase.database.ServerValue.TIMESTAMP,
+		finalDamage: totalPlayerDamage,
+		finalRewards: rewards
+	    });
 	  }
+	  applyPveRewards(rewards);
 	}
 
 	// 輔助函數，生成戰鬥結果訊息
