@@ -2,7 +2,7 @@
 <html lang="zh">
 <head>
   <meta charset="UTF-8" name="viewport" content="width=device-width, initial-scale=0.45"/>
-  <title>末日控制中心 - 正式版v.1.102 pve-coop update</title>
+  <title>末日控制中心 - 正式版v.1.11 pve-coop update</title>
   <style>
     /* 彈窗系統 */
     .modal-overlay {
@@ -7651,8 +7651,7 @@ function setupFirebaseListeners() {
     
     // 關鍵修復：同步本地倒地狀態
     if (roomData[window.myRole] && roomData[window.myRole].isDown && !playerIsDown) {
-      playerIsDown = true;
-      updatePlayerSpriteToDead(window.myRole);
+      handlePlayerDown();
     }
     
     // 檢查倒地玩家視覺效果
@@ -8376,15 +8375,29 @@ function triggerBossAttack() {
         });
       }
     } else {
-      // 未命中
-      appendBattleLogEntry({
-        sender: cfg.name,
-        senderRole: "boss",
-        message: `${phrase}${window.myUid}（未命中）！`,
-        timestamp: Date.now(),
-        battleMode: "pve",
-        aoe: !useSinglePool
-      });
+      // 未命中：区分单体 vs 群体
+		if (useSinglePool) {
+		  // 单体未命中
+		  appendBattleLogEntry({
+			sender: cfg.name,
+			senderRole: "boss",
+			message: `${phrase}${window.myUid}（未命中）！`,
+			timestamp: Date.now(),
+			battleMode: "pve",
+			aoe: false
+		  });
+		} else {
+		  // 群体未命中
+		  appendBattleLogEntry({
+			sender: cfg.name,
+			senderRole: "boss",
+			message: `${phrase}（範圍攻擊）（未命中）！`,
+			timestamp: Date.now(),
+			battleMode: "pve",
+			aoe: true
+		  });
+		}
+
     }
 
     // 刷新血条
