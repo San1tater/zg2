@@ -7445,6 +7445,7 @@ function triggerT80Cannon() {
 			processedMessages['bossKilled'] = true;
 			gameState.bossKillCounts[selectedBoss] =
 				(gameState.bossKillCounts[selectedBoss] || 0) + 1;
+			saveGameState();
 			checkBossKillAchievements(selectedBoss);
 		  }
 		}
