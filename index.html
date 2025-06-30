@@ -4482,7 +4482,6 @@ function triggerT80Cannon() {
 			unlockedAchievements = saveData.unlockedAchievements;
 			gameState.unlockedAchievements = unlockedAchievements;
 		  }
-		 refreshUnlockedAchievements();
 		 if (saveData.elapsedTime) {
 			window.startTime = Date.now() - saveData.elapsedTime;
 		  } else {
@@ -4762,7 +4761,6 @@ function triggerT80Cannon() {
 		}		  
 		// 尝试加载存档
 		loadGameState();
-		refreshUnlockedAchievements();
 		removeDuplicateAchievements();  
 		// 初始化游戏（使用存档或初始状态）
 		initGame();		  
