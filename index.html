@@ -2,7 +2,7 @@
 <html lang="zh">
 <head>
   <meta charset="UTF-8" name="viewport" content="width=device-width, initial-scale=0.45"/>
-  <title>末日控制中心 - 正式版v.1.114 pve-coop update</title>
+  <title>末日控制中心 - 正式版v.1.116 pve-coop update</title>
   <style>
     /* 彈窗系統 */
     .modal-overlay {
@@ -1735,7 +1735,7 @@
 			  <option value="pve">PVE模式</option>
 			</select>
 			<select id="bossList" style="display:none">
-			  <option value="zombieController">流浪科學家</option>
+			  <option value="zombieController">流浪研究員</option>
 			  <option value="zombieKing">BTR-80A「守護者」</option>
 			  
 			</select>
@@ -2145,7 +2145,11 @@
 		i === 4 ? { type: 'center', level: 1, upgradable: true } : null
 	  ),
 	  explorationMilestone: 10,
-	  efficiency: { food: 1, materials: 1, weapons: 1, tech: 1, exploration: 1 }
+	  efficiency: { food: 1, materials: 1, weapons: 1, tech: 1, exploration: 1 },
+	  bossKillCounts: {
+		zombieController: 0,
+		zombieKing: 0
+	  },
 	};
 
 	let BUILDINGS = {
@@ -3241,7 +3245,17 @@
 		{ threshold: 50000, title: "裝甲大軍", level: 10 },
 		{ threshold: 100000, title: "鋼鐵尸流", level: 11 },
 		{ threshold: 200000, title: "金屬地獄", level: 12 }
-	  ]
+	  ],
+	  bossKills: [
+	    { boss: "zombieController", threshold: 1, title: "奇特針劑", level: 5 },
+		{ boss: "zombieController", threshold: 10, title: "不要打針", level: 7 },
+		{ boss: "zombieController", threshold: 100, title: "筋肉撕裂者", level: 9 },
+		{ boss: "zombieController", threshold: 500, title: "魔鬼屠夫", level: 11 },
+		{ boss: "zombieKing", threshold: 1, title: "邪惡觸手", level: 6 },
+		{ boss: "zombieKing", threshold: 10, title: "挑戰者", level: 8 },
+		{ boss: "zombieKing", threshold: 100, title: "裝甲撕裂者", level: 10 },
+		{ boss: "zombieKing", threshold: 500, title: "壽司師傅", level: 12 },
+	  ],
 	};
 
 	// 稀有度映射：根據升級等級返回稀有度
@@ -3267,6 +3281,14 @@
 		  return `達到 ${rule.threshold}隻僵尸`;
 		case "btrTriggers":
 		  return `呼叫BTR ${rule.threshold}次`;
+		case "bossKills":
+		  // BOSS 英文 key → 中文 名映射
+		  const bossNames = {
+			zombieController: "流浪研究員",
+			zombieKing: "BTR-80A「守護者」"
+		  };
+		  const bossName = bossNames[rule.boss] || rule.boss;
+		  return `擊殺${bossName}${rule.threshold}次`;
 		default:
 		  return "";
 	  }
@@ -3368,6 +3390,23 @@
 	  addEventLog(`成就解鎖：[${rule.title}] (${category})`, rarity, "achievement");
 	  updateAchievementsUI();
 	}
+
+	function refreshUnlockedAchievements() {
+	  unlockedAchievements.sort((a, b) => {
+	    if (b.level !== a.level) return b.level - a.level;
+	    return a.unlockedTime - b.unlockedTime;
+	  });
+	  unlockedAchievements.forEach(a => {
+		const rules = achievementRules[a.category];
+		if (!rules) return;
+		const rule = rules.find(r => r.level === a.level);
+		if (!rule) return;
+		a.details = getAchievementDetails(a.category, rule);
+	  });
+	  gameState.unlockedAchievements = unlockedAchievements.slice();
+	  updateAchievementsUI();
+	}
+
 	
 	/***** (2) 修正神聖物品成就統計 *****/
 	// 每次檢查成就前調用，統計 collectedItems 中神聖物品的總數
@@ -4443,6 +4482,7 @@ function triggerT80Cannon() {
 			unlockedAchievements = saveData.unlockedAchievements;
 			gameState.unlockedAchievements = unlockedAchievements;
 		  }
+		 refreshUnlockedAchievements();
 		 if (saveData.elapsedTime) {
 			window.startTime = Date.now() - saveData.elapsedTime;
 		  } else {
@@ -4722,7 +4762,8 @@ function triggerT80Cannon() {
 		}		  
 		// 尝试加载存档
 		loadGameState();
-		removeDuplicateAchievements();		  
+		refreshUnlockedAchievements();
+		removeDuplicateAchievements();  
 		// 初始化游戏（使用存档或初始状态）
 		initGame();		  
 		// 初始化计时器：updateTimer 每秒更新，计时器依据 window.startTime 计算已流逝时间
@@ -4779,8 +4820,351 @@ function triggerT80Cannon() {
 		});
 	});
 	
+	// mode="pvp"或"pve"，直接返回小数加成
+	function getCombatForSprite(spriteUrl, mode) {
+	  const opt = zombieSpriteOptions.find(o => o.src === spriteUrl);
+	  return (opt && opt.combat && opt.combat[mode]) 
+		? opt.combat[mode] 
+		: { hit:0, dmgMax:0, hp:0, dmgTaken:0 };
+	}
 
+	// 用本地 unlockedAchievements 生成一个称号集合
+	function syncAchievements() {
+	  const set = new Set();
+	  // 我們遍歷 unlockedAchievements 這個全局變量
+	  unlockedAchievements.forEach(a => {
+		if (a.title) {
+		  // 進行 Unicode 正規化、轉小寫並修剪空格
+		  set.add(a.title.normalize("NFC").toLowerCase().trim());
+		}
+	  });
+	  return set;
+	}
+(function(){
+    // ──────────────────────────────
+    // 模塊內定義精靈圖數據：原有的僵尸精靈圖與新增的裝甲系列
+    const zombieSpriteOptions = [
+      { src: "images/zombie_search_sprite.png", unlock: true,
+		combat: {
+		pvp: { hit:0, dmgMax:0, hp:0, dmgTaken:0 },
+		pve: { hit:0, dmgMax:0, hp:0, dmgTaken:0 }
+	  }},
+      { src: "images/zombie_search_sprite_helmet.png", unlock: "Алтын",
+		combat: {
+		pvp: { hit:0, dmgMax:0, hp:0, dmgTaken:-0.1 },
+		pve: { hit:0, dmgMax:0, hp:0, dmgTaken:-0.2 }
+	  }},
+      { src: "images/zombie_search_sprite_btr.png", unlock: "報話機",
+		combat: {
+		pvp: { hit:0, dmgMax:0, hp:0, dmgTaken:0 },
+		pve: { hit:0, dmgMax:0, hp:0, dmgTaken:0 }
+	  }},
+      { src: "images/zombie_search_sprite_equipped.png", unlock: "武裝通信兵",
+		combat: {
+		pvp: { hit:0, dmgMax:0, hp:0, dmgTaken:-0.1 },
+		pve: { hit:0, dmgMax:0, hp:0, dmgTaken:-0.2 }
+	  }},
+      { src: "images/zombie_search_sprite_svd.png", unlock: "拾荒高手",
+		combat: {
+		pvp: { hit:0.1, dmgMax:0.1, hp:0, dmgTaken:0.1 },
+		pve: { hit:0.2, dmgMax:0.2, hp:0, dmgTaken:0.2 }
+	  }},
+      { src: "images/zombie_search_sprite_svd_b.png", unlock: "清空貨架！",
+		combat: {
+		pvp: { hit:0.1, dmgMax:0.1, hp:0, dmgTaken:0 },
+		pve: { hit:0.2, dmgMax:0.2, hp:0, dmgTaken:0 }
+	  }},
+	  { src: "images/zombie_search_sprite_svd_h.png", unlock: "物資收集者",
+		combat: {
+		pvp: { hit:0.1, dmgMax:0.1, hp:0, dmgTaken:-0.1 },
+		pve: { hit:0.2, dmgMax:0.2, hp:0, dmgTaken:-0.2 }
+	  }},
+      { src: "images/zombie_search_sprite_elite.png", unlock: "全副武裝",
+		combat: {
+		pvp: { hit:0, dmgMax:0, hp:0.1, dmgTaken:-0.1 },
+		pve: { hit:0, dmgMax:0, hp:0.2, dmgTaken:-0.2 }
+	  }},
+      { src: "images/zombie_search_sprite_pkm_e.png", unlock: "裝甲猛虎",
+		combat: {
+		pvp: { hit:-0.1, dmgMax:0.2, hp:0.1, dmgTaken:-0.1 },
+		pve: { hit:-0.2, dmgMax:0.4, hp:0.2, dmgTaken:-0.2 }
+	  }},
+      { src: "images/zombie_search_sprite_pkm_m.png", unlock: "銅墻鐵壁",
+		combat: {
+		pvp: { hit:-0.1, dmgMax:0.2, hp:0.1, dmgTaken:-0.15 },
+		pve: { hit:-0.2, dmgMax:0.4, hp:0.2, dmgTaken:-0.3 }
+	  }},
+	  { src: "images/zombie_search_sprite_pkm_ms.png", unlock: "堅不可摧",
+		combat: {
+		pvp: { hit:-0.2, dmgMax:-0.2, hp:0.2, dmgTaken:-0.3 },
+		pve: { hit:-0.4, dmgMax:-0.4, hp:0.4, dmgTaken:-0.6 }
+	  },
+      heal: {
+        interval: 20000,
+        amount:   10,
+        targets:  { self:1, one:0.0, all:0 }
+      }},
+	  { src: "images/zombie_search_sprite_healer.png", unlock: "銅墻鐵壁",
+		combat: {
+		pvp: { hit:-0.3, dmgMax:-0.3, hp:0.3, dmgTaken:-0.3 },
+		pve: { hit:-0.6, dmgMax:-0.6, hp:0.6, dmgTaken:-0.6 }
+	  },
+      heal: {
+        interval: 10000,
+        amount:   25,
+        targets:  { self:0.3, one:0.4, all:0.3 }
+      }},
+	  { src: "images/zombie_search_sprite_doctor.png", unlock: "不要打針",
+		combat: {
+		pvp: { hit:-1, dmgMax:-1, hp:-0.25, dmgTaken:0.3 },
+		pve: { hit:-1, dmgMax:-1, hp:-0.5, dmgTaken:0.6 }
+	  },
+      heal: {
+        interval: 15000,
+        amount:   100,
+        targets:  { self:0.1, one:0.7, all:0.2 }
+      }},
+    ];
+    const btrSpriteOptions = [
+      { src: "images/btr_sprite_80.png", unlock: true },
+	  { src: "images/btr_sprite_80_a.png", unlock: "尸坦協同" },
+      { src: "images/btr_sprite_80_mg.png", unlock: "機炮仙人" },
+    ];
+    const t80SpriteOptions = [
+      { src: "images/t-80_sprite.png", unlock: true },
+      { src: "images/t-80_sprite_u.png", unlock: "裝甲猛虎" },
+	  { src: "images/t-80_sprite_um.png", unlock: "裝甲大軍" },
+    ];
+    
 
+    // 全局精靈圖變量初始化，從 localStorage 讀取；如無則採用默認值
+    window.currentZombieSprite = localStorage.getItem("currentZombieSprite") || "images/zombie_search_sprite.png";
+    window.currentBtrSprite = localStorage.getItem("currentBtrSprite") || "images/btr_sprite.png";
+    window.currentT80Sprite = localStorage.getItem("currentT80Sprite") || "images/t-80_sprite.png";
+	window.zombieSpriteOptions = zombieSpriteOptions;
+	window.btrSpriteOptions    = btrSpriteOptions;
+	window.t80SpriteOptions    = t80SpriteOptions;
+
+    // 覆蓋CSS規則函數：當用戶選定 T‑80 裝甲精靈圖後，更新 head 中的規則
+   function overrideT80SpriteCSS() {
+	  const spritePath = localStorage.getItem("currentT80Sprite") || "images/t-80_sprite.png";
+	  let styleEl = document.getElementById("t80OverrideStyle");
+	  if (!styleEl) {
+		styleEl = document.createElement("style");
+		styleEl.id = "t80OverrideStyle";
+		document.head.appendChild(styleEl);
+	  }
+	  styleEl.innerHTML = `
+		.t80-animation:not(#battleEnemyAnim *) {
+		  background-image: url('${spritePath}') !important;
+		}
+	  `;
+	  let styleEl2 = document.getElementById("btrOverrideStyle");
+	  if (!styleEl2) {
+		styleEl2 = document.createElement("style");
+		styleEl2.id = "btrOverrideStyle";
+		document.head.appendChild(styleEl2);
+	  }
+	  const btrPath = localStorage.getItem("currentBtrSprite") || "images/btr_sprite.png";
+	  styleEl2.innerHTML = `
+		.btr-animation:not(#battleEnemyAnim *) {
+		  background-image: url('${btrPath}') !important;
+		}
+	  `;
+	}
+    overrideT80SpriteCSS();
+
+     function isSpriteUnlocked(option) {
+		if(option.unlock === true) return true;
+		let need = "";
+		if (typeof option.unlock === "string") {
+		  need = option.unlock.normalize("NFC").toLowerCase().trim();
+		}
+		if (need === "default") return true;
+		const unlockedSet = syncAchievements();
+		return unlockedSet.has(need);
+	  }
+
+    function updateZombieSearchSprite(){
+      const zombieElem = document.querySelector(".zombie-search");
+      if (!zombieElem) return;
+      zombieElem.style.backgroundImage = "url('" + window.currentZombieSprite + "')";
+    }
+
+    function updateBattleZombieSearchSprite(){
+      const battleZombieElem = document.querySelector("#battleSelfAnim .zombie-search");
+      if (!battleZombieElem) return;
+      // 由於T‑80動畫將依靠 CSS 覆蓋，所以這裡可以不做修改，或者強制書寫：
+      battleZombieElem.style.backgroundImage = "url('" + window.currentT80Sprite + "')";
+    }
+
+    function renderWardrobeTab(){
+      const container = document.getElementById("wardrobeContent");
+      container.innerHTML = "";
+      zombieSpriteOptions.forEach(function(option){
+        const card = document.createElement("div");
+        card.className = "wardrobe-card";
+        const thumb = option.src.replace(/(\.\w+)$/, "_card$1");
+        card.style.backgroundImage = "url('" + thumb + "')";
+        if (!isSpriteUnlocked(option)){
+          card.classList.add("locked");
+        }
+        if (option.src === window.currentZombieSprite){
+          card.classList.add("selected");
+          const label = document.createElement("div");
+          label.className = "label";
+          label.textContent = "使用中";
+          card.appendChild(label);
+        }
+        card.addEventListener("click", function(){
+          if (!isSpriteUnlocked(option)) return;
+          document.querySelectorAll(".wardrobe-card.selected").forEach(function(el){
+            el.classList.remove("selected");
+            const lab = el.querySelector(".label");
+            if (lab) lab.remove();
+          });
+          card.classList.add("selected");
+          const label = document.createElement("div");
+          label.className = "label";
+          label.textContent = "使用中";
+          card.appendChild(label);
+          window.currentZombieSprite = option.src;
+          localStorage.setItem("currentZombieSprite", window.currentZombieSprite);
+          updateZombieSearchSprite();
+          updateBattleZombieSearchSprite();
+        });
+        container.appendChild(card);
+      });
+    }
+
+    function renderArmorSprites(mode){
+      const container = document.getElementById("armorSprites");
+      container.innerHTML = "";
+      let optionsArray = (mode === "btr") ? btrSpriteOptions : t80SpriteOptions;
+      optionsArray.forEach(function(option){
+        const card = document.createElement("div");
+        card.className = "wardrobe-card";
+        const thumb = option.src.replace(/(\.\w+)$/, "_card$1");
+        card.style.backgroundImage = "url('" + thumb + "')";
+        if (!isSpriteUnlocked(option)){
+          card.classList.add("locked");
+        }
+        if (mode === "btr" && option.src === window.currentBtrSprite){
+          card.classList.add("selected");
+          const label = document.createElement("div");
+          label.className = "label";
+          label.textContent = "使用中";
+          card.appendChild(label);
+        }
+        if (mode === "t80" && option.src === window.currentT80Sprite){
+          card.classList.add("selected");
+          const label = document.createElement("div");
+          label.className = "label";
+          label.textContent = "使用中";
+          card.appendChild(label);
+        }
+        card.addEventListener("click", function(){
+          if (!isSpriteUnlocked(option)) return;
+          document.querySelectorAll("#armorSprites .wardrobe-card.selected").forEach(function(el){
+            el.classList.remove("selected");
+            const lab = el.querySelector(".label");
+            if (lab) lab.remove();
+          });
+          card.classList.add("selected");
+          const label = document.createElement("div");
+          label.className = "label";
+          label.textContent = "使用中";
+          card.appendChild(label);
+          if (mode === "btr"){
+            window.currentBtrSprite = option.src;
+            localStorage.setItem("currentBtrSprite", window.currentBtrSprite);
+          } else if (mode === "t80"){
+            window.currentT80Sprite = option.src;
+            localStorage.setItem("currentT80Sprite", window.currentT80Sprite);
+          }
+          // 覆蓋 CSS 規則，以便對戰動畫使用最新精靈圖
+          overrideT80SpriteCSS();
+          updateZombieSearchSprite();
+          updateBattleZombieSearchSprite();
+        });
+        container.appendChild(card);
+      });
+    }
+    
+    // 衣櫃模式模塊：分頁切換及顯示邏輯
+    (function(){
+      const wardrobeOverlay = document.getElementById("wardrobeOverlay");
+      const wardrobeModal = document.getElementById("wardrobeModal");
+      const wardrobeContent = document.getElementById("wardrobeContent");
+      const tabZombie = document.getElementById("tabZombie");
+      const tabArmor = document.getElementById("tabArmor");
+      
+      tabZombie.addEventListener("click", function(){
+        tabZombie.classList.add("active");
+        tabArmor.classList.remove("active");
+        wardrobeContent.innerHTML = "";
+        renderWardrobeTab();
+      });
+      
+      tabArmor.addEventListener("click", function(){
+        tabArmor.classList.add("active");
+        tabZombie.classList.remove("active");
+        wardrobeContent.innerHTML = `
+          <div id="armorTabs" style="display: flex; justify-content: center; margin-bottom: 1em;">
+            <button id="armorTabBTR" class="active" style="flex: 1;">BTR</button>
+            <button id="armorTabT80" style="flex: 1;">T‑80</button>
+          </div>
+          <div id="armorSprites" style="display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;"></div>
+        `;
+        document.getElementById("armorTabBTR").addEventListener("click", function(){
+          this.classList.add("active");
+          document.getElementById("armorTabT80").classList.remove("active");
+          renderArmorSprites("btr");
+        });
+        document.getElementById("armorTabT80").addEventListener("click", function(){
+          this.classList.add("active");
+          document.getElementById("armorTabBTR").classList.remove("active");
+          renderArmorSprites("t80");
+        });
+        // 初始默認渲染 BTR 系列
+        renderArmorSprites("btr");
+      });
+      
+      window.showWardrobeMode = function(){
+        wardrobeOverlay.style.display = "block";
+        tabZombie.classList.add("active");
+        tabArmor.classList.remove("active");
+        renderWardrobeTab();
+      };
+      window.hideWardrobeMode = function(){
+        wardrobeOverlay.style.display = "none";
+      };
+      
+      const wardrobeBtn = document.getElementById("wardrobeBtn");
+      if (wardrobeBtn) {
+        wardrobeBtn.addEventListener("click", function(){
+          window.showWardrobeMode();
+        });
+      }
+      const closeBtn = document.getElementById("wardrobeCloseBtn");
+      if (closeBtn) {
+        closeBtn.addEventListener("click", function(){
+          window.hideWardrobeMode();
+        });
+      }
+      wardrobeOverlay.addEventListener("click", function(e){
+          if (e.target === wardrobeOverlay) {
+            window.hideWardrobeMode();
+          }
+      });
+      wardrobeModal.addEventListener("click", function(e){
+        e.stopPropagation();
+      });
+    })();
+    
+  })();
+ 
+ // PVP 模式
  (function(){
 	let battleModeActive = false;
 	let battleMatched = false;
@@ -4831,17 +5215,15 @@ function triggerT80Cannon() {
 	  const index = Math.floor(Math.random() * phrases.length);
 	  return phrases[index];
 	}
-
+		
 	// 修改後：進入對戰模式只初始化獨立對戰動畫
 	function enterBattleMode() {
-        if (battleModeActive) return;
+        if (battleModeActive) return; 
         battleModeActive = true;
         battleMatched = false;
         document.getElementById("battleOverlay").style.display = "block";
         document.body.style.overflow = "hidden";
-        // 初始化對戰動畫，己方使用 window.currentZombieSprite
         initBattleAnimation(false);
-        // 為 battleOverlay 綁定雙擊退出事件
         document.getElementById("battleOverlay").addEventListener("dblclick", exitBattleMode);
       }
 	  
@@ -4875,7 +5257,8 @@ function triggerT80Cannon() {
 		  if (battleBTRInterval) {
 			clearInterval(battleBTRInterval);
 			battleBTRInterval = null;
-		  }		
+		  }
+		  clearInterval(window.pvpHealTimer);
 		// 清理 Firebase 监听
 		if (window.currentBattleRoom) {
 		  const roomRef = firebase.database().ref("battles").child(window.currentBattleRoom);		  
@@ -4938,7 +5321,7 @@ function triggerT80Cannon() {
         zombieSearch.style.backgroundImage = "url('" + window.currentZombieSprite + "')";
         selfAnim.appendChild(zombieSearch);
       }
-	  
+
 	function handleIncomingDamage(damage) {
 	  totalSelfDamage += damage;
 	}
@@ -5640,31 +6023,31 @@ function triggerT80Cannon() {
 	}
 	
 	function triggerBattleEvent() {
-	  if (!battleMatched) return;
-	  const centerBuilding = gameState.buildings.find(b => b && b.type.toLowerCase() === "center");
-	  const centerLevel = centerBuilding ? centerBuilding.level : 1;
-	  const hitChance = Math.min(40 + centerLevel * 0.5, 85);
-	  const ourHit = (Math.random() * 100 < hitChance);
-	  const baseOurDamage = ourHit ? (Math.floor(Math.random() * 10) + 1): 0;
-	  let commandCenterLevel = 0;
-		try {
-		  const commandCenter = gameState.buildings.find(b => 
-			b && b.type.toLowerCase() === "zombiecommandcenter"
-		  );
-		  if (commandCenter) {
-			commandCenterLevel = commandCenter.level;
-		  }
-		} catch (error) {
-		  commandCenterLevel = 0;
-		}	
-	  const multiplier = Math.pow(1.01, commandCenterLevel);
-	  const ourDamage = Math.round(baseOurDamage * multiplier);
+	  // …读取中心基地等级 centerLevel
+	  const centerBuilding = gameState.buildings.find(b => b?.type==="center");
+	  const centerLevel = centerBuilding?.level||1;
+
+	  // 1. 自身精灵属性
+	  const atk = getCombatForSprite(window.currentZombieSprite, 'pvp');
+	  // 2. 命中率
+	  const baseChance = 40 + centerLevel*0.5;
+	  const hitChance = Math.min(baseChance*(1 + atk.hit), 100);
+	  const hit = Math.random()*100 < hitChance;
+
+	  // 3. 计算原始伤害
+	  const raw = hit
+		? (Math.floor(Math.random()*10) + 1) * (1 + atk.dmgMax)
+		: 0;
+	  // 4. 对手减伤
+	  const def = getCombatForSprite(window.opponentZombieSprite, 'pvp');
+	  const finalDmg = Math.round(raw * (1 - def.dmgTaken));
+
 	  const phrase = getRandomPhrase("normal");
-	  if (ourHit) {
-		pushBattleLog( phrase + "（命中），對方僵尸-" + ourDamage);
-		totalEnemyDamage += ourDamage;
+	  if (hit && finalDmg>0) {
+		pushBattleLog(`${phrase}（命中），對方僵尸-${finalDmg}`);
+		totalEnemyDamage += finalDmg;
 	  } else {
-		pushBattleLog( phrase + "（未命中）");
+		pushBattleLog(`${phrase}（未命中）`);
 	  }
 	}
 
@@ -6124,272 +6507,7 @@ function triggerT80Cannon() {
 
     })();
 
-	// 用本地 unlockedAchievements 生成一个称号集合
-	function syncAchievements() {
-	  const set = new Set();
-	  // 我們遍歷 unlockedAchievements 這個全局變量
-	  unlockedAchievements.forEach(a => {
-		if (a.title) {
-		  // 進行 Unicode 正規化、轉小寫並修剪空格
-		  set.add(a.title.normalize("NFC").toLowerCase().trim());
-		}
-	  });
-	  return set;
-	}
-
-  (function(){
-    // ──────────────────────────────
-    // 模塊內定義精靈圖數據：原有的僵尸精靈圖與新增的裝甲系列
-    const zombieSpriteOptions = [
-      { src: "images/zombie_search_sprite.png", unlock: true },
-      { src: "images/zombie_search_sprite_helmet.png", unlock: "Алтын" },
-      { src: "images/zombie_search_sprite_btr.png", unlock: "報話機" },
-      { src: "images/zombie_search_sprite_equipped.png", unlock: "武裝通信兵" },
-      { src: "images/zombie_search_sprite_svd.png", unlock: "拾荒高手" },
-      { src: "images/zombie_search_sprite_svd_b.png", unlock: "清空貨架！" },
-	  { src: "images/zombie_search_sprite_svd_h.png", unlock: "物資收集者" },
-      { src: "images/zombie_search_sprite_elite.png", unlock: "全副武裝" },
-      { src: "images/zombie_search_sprite_pkm_e.png", unlock: "裝甲猛虎" },
-      { src: "images/zombie_search_sprite_pkm_m.png", unlock: "銅墻鐵壁" },
-	  { src: "images/zombie_search_sprite_pkm_ms.png", unlock: "堅不可摧" },
-    ];
-    const btrSpriteOptions = [
-      { src: "images/btr_sprite_80.png", unlock: true },
-	  { src: "images/btr_sprite_80_a.png", unlock: "尸坦協同" },
-      { src: "images/btr_sprite_80_mg.png", unlock: "機炮仙人" },
-    ];
-    const t80SpriteOptions = [
-      { src: "images/t-80_sprite.png", unlock: true },
-      { src: "images/t-80_sprite_u.png", unlock: "裝甲猛虎" },
-	  { src: "images/t-80_sprite_um.png", unlock: "裝甲大軍" },
-    ];
-    
-
-    // 全局精靈圖變量初始化，從 localStorage 讀取；如無則採用默認值
-    window.currentZombieSprite = localStorage.getItem("currentZombieSprite") || "images/zombie_search_sprite.png";
-    window.currentBtrSprite = localStorage.getItem("currentBtrSprite") || "images/btr_sprite.png";
-    window.currentT80Sprite = localStorage.getItem("currentT80Sprite") || "images/t-80_sprite.png";
-
-    // 覆蓋CSS規則函數：當用戶選定 T‑80 裝甲精靈圖後，更新 head 中的規則
-   function overrideT80SpriteCSS() {
-	  const spritePath = localStorage.getItem("currentT80Sprite") || "images/t-80_sprite.png";
-	  let styleEl = document.getElementById("t80OverrideStyle");
-	  if (!styleEl) {
-		styleEl = document.createElement("style");
-		styleEl.id = "t80OverrideStyle";
-		document.head.appendChild(styleEl);
-	  }
-	  styleEl.innerHTML = `
-		.t80-animation:not(#battleEnemyAnim *) {
-		  background-image: url('${spritePath}') !important;
-		}
-	  `;
-	  let styleEl2 = document.getElementById("btrOverrideStyle");
-	  if (!styleEl2) {
-		styleEl2 = document.createElement("style");
-		styleEl2.id = "btrOverrideStyle";
-		document.head.appendChild(styleEl2);
-	  }
-	  const btrPath = localStorage.getItem("currentBtrSprite") || "images/btr_sprite.png";
-	  styleEl2.innerHTML = `
-		.btr-animation:not(#battleEnemyAnim *) {
-		  background-image: url('${btrPath}') !important;
-		}
-	  `;
-	}
-    overrideT80SpriteCSS();
-
-     function isSpriteUnlocked(option) {
-		if(option.unlock === true) return true;
-		let need = "";
-		if (typeof option.unlock === "string") {
-		  need = option.unlock.normalize("NFC").toLowerCase().trim();
-		}
-		if (need === "default") return true;
-		const unlockedSet = syncAchievements();
-		return unlockedSet.has(need);
-	  }
-
-    function updateZombieSearchSprite(){
-      const zombieElem = document.querySelector(".zombie-search");
-      if (!zombieElem) return;
-      zombieElem.style.backgroundImage = "url('" + window.currentZombieSprite + "')";
-    }
-
-    function updateBattleZombieSearchSprite(){
-      const battleZombieElem = document.querySelector("#battleSelfAnim .zombie-search");
-      if (!battleZombieElem) return;
-      // 由於T‑80動畫將依靠 CSS 覆蓋，所以這裡可以不做修改，或者強制書寫：
-      battleZombieElem.style.backgroundImage = "url('" + window.currentT80Sprite + "')";
-    }
-
-    function renderWardrobeTab(){
-      const container = document.getElementById("wardrobeContent");
-      container.innerHTML = "";
-      zombieSpriteOptions.forEach(function(option){
-        const card = document.createElement("div");
-        card.className = "wardrobe-card";
-        const thumb = option.src.replace(/(\.\w+)$/, "_card$1");
-        card.style.backgroundImage = "url('" + thumb + "')";
-        if (!isSpriteUnlocked(option)){
-          card.classList.add("locked");
-        }
-        if (option.src === window.currentZombieSprite){
-          card.classList.add("selected");
-          const label = document.createElement("div");
-          label.className = "label";
-          label.textContent = "使用中";
-          card.appendChild(label);
-        }
-        card.addEventListener("click", function(){
-          if (!isSpriteUnlocked(option)) return;
-          document.querySelectorAll(".wardrobe-card.selected").forEach(function(el){
-            el.classList.remove("selected");
-            const lab = el.querySelector(".label");
-            if (lab) lab.remove();
-          });
-          card.classList.add("selected");
-          const label = document.createElement("div");
-          label.className = "label";
-          label.textContent = "使用中";
-          card.appendChild(label);
-          window.currentZombieSprite = option.src;
-          localStorage.setItem("currentZombieSprite", window.currentZombieSprite);
-          updateZombieSearchSprite();
-          updateBattleZombieSearchSprite();
-        });
-        container.appendChild(card);
-      });
-    }
-
-    function renderArmorSprites(mode){
-      const container = document.getElementById("armorSprites");
-      container.innerHTML = "";
-      let optionsArray = (mode === "btr") ? btrSpriteOptions : t80SpriteOptions;
-      optionsArray.forEach(function(option){
-        const card = document.createElement("div");
-        card.className = "wardrobe-card";
-        const thumb = option.src.replace(/(\.\w+)$/, "_card$1");
-        card.style.backgroundImage = "url('" + thumb + "')";
-        if (!isSpriteUnlocked(option)){
-          card.classList.add("locked");
-        }
-        if (mode === "btr" && option.src === window.currentBtrSprite){
-          card.classList.add("selected");
-          const label = document.createElement("div");
-          label.className = "label";
-          label.textContent = "使用中";
-          card.appendChild(label);
-        }
-        if (mode === "t80" && option.src === window.currentT80Sprite){
-          card.classList.add("selected");
-          const label = document.createElement("div");
-          label.className = "label";
-          label.textContent = "使用中";
-          card.appendChild(label);
-        }
-        card.addEventListener("click", function(){
-          if (!isSpriteUnlocked(option)) return;
-          document.querySelectorAll("#armorSprites .wardrobe-card.selected").forEach(function(el){
-            el.classList.remove("selected");
-            const lab = el.querySelector(".label");
-            if (lab) lab.remove();
-          });
-          card.classList.add("selected");
-          const label = document.createElement("div");
-          label.className = "label";
-          label.textContent = "使用中";
-          card.appendChild(label);
-          if (mode === "btr"){
-            window.currentBtrSprite = option.src;
-            localStorage.setItem("currentBtrSprite", window.currentBtrSprite);
-          } else if (mode === "t80"){
-            window.currentT80Sprite = option.src;
-            localStorage.setItem("currentT80Sprite", window.currentT80Sprite);
-          }
-          // 覆蓋 CSS 規則，以便對戰動畫使用最新精靈圖
-          overrideT80SpriteCSS();
-          updateZombieSearchSprite();
-          updateBattleZombieSearchSprite();
-        });
-        container.appendChild(card);
-      });
-    }
-    
-    // 衣櫃模式模塊：分頁切換及顯示邏輯
-    (function(){
-      const wardrobeOverlay = document.getElementById("wardrobeOverlay");
-      const wardrobeModal = document.getElementById("wardrobeModal");
-      const wardrobeContent = document.getElementById("wardrobeContent");
-      const tabZombie = document.getElementById("tabZombie");
-      const tabArmor = document.getElementById("tabArmor");
-      
-      tabZombie.addEventListener("click", function(){
-        tabZombie.classList.add("active");
-        tabArmor.classList.remove("active");
-        wardrobeContent.innerHTML = "";
-        renderWardrobeTab();
-      });
-      
-      tabArmor.addEventListener("click", function(){
-        tabArmor.classList.add("active");
-        tabZombie.classList.remove("active");
-        wardrobeContent.innerHTML = `
-          <div id="armorTabs" style="display: flex; justify-content: center; margin-bottom: 1em;">
-            <button id="armorTabBTR" class="active" style="flex: 1;">BTR</button>
-            <button id="armorTabT80" style="flex: 1;">T‑80</button>
-          </div>
-          <div id="armorSprites" style="display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;"></div>
-        `;
-        document.getElementById("armorTabBTR").addEventListener("click", function(){
-          this.classList.add("active");
-          document.getElementById("armorTabT80").classList.remove("active");
-          renderArmorSprites("btr");
-        });
-        document.getElementById("armorTabT80").addEventListener("click", function(){
-          this.classList.add("active");
-          document.getElementById("armorTabBTR").classList.remove("active");
-          renderArmorSprites("t80");
-        });
-        // 初始默認渲染 BTR 系列
-        renderArmorSprites("btr");
-      });
-      
-      window.showWardrobeMode = function(){
-        wardrobeOverlay.style.display = "block";
-        tabZombie.classList.add("active");
-        tabArmor.classList.remove("active");
-        renderWardrobeTab();
-      };
-      window.hideWardrobeMode = function(){
-        wardrobeOverlay.style.display = "none";
-      };
-      
-      const wardrobeBtn = document.getElementById("wardrobeBtn");
-      if (wardrobeBtn) {
-        wardrobeBtn.addEventListener("click", function(){
-          window.showWardrobeMode();
-        });
-      }
-      const closeBtn = document.getElementById("wardrobeCloseBtn");
-      if (closeBtn) {
-        closeBtn.addEventListener("click", function(){
-          window.hideWardrobeMode();
-        });
-      }
-      wardrobeOverlay.addEventListener("click", function(e){
-          if (e.target === wardrobeOverlay) {
-            window.hideWardrobeMode();
-          }
-      });
-      wardrobeModal.addEventListener("click", function(e){
-        e.stopPropagation();
-      });
-    })();
-    
-  })();
-
-
+	
 /* PVE模式 */
 (function(){
   function updatePlayerSpriteToDead(role) {
@@ -6406,7 +6524,82 @@ function triggerT80Cannon() {
 	  if (!bossAnim || !cfg.deathSprite) return;
 	  bossAnim.style.backgroundImage = `url('${cfg.deathSprite}')`;
 	}
+	// ——— 2. 完整替换：initPveHealing ———
+	function initPveHealing() {
+	  const spriteOpt = zombieSpriteOptions.find(o => o.src === window.currentZombieSprite);
+	  const cfg = spriteOpt?.heal;
+	  if (!cfg) return;
+	  clearInterval(window.pveHealTimer);
 
+	  window.pveHealTimer = setInterval(async () => {
+		if (!pveActive || pveEnded || playerHp <= 0
+			|| (pveMode === 'coop' && playerIsDown)) {
+		  return;
+		}
+
+		// —— 优先检测 Cooperate 模式下伙伴是否倒地 ——  
+		let healType = null;
+		if (pveMode === 'coop') {
+		  const partner = window.myRole === 'userA' ? 'userB' : 'userA';
+		  const down = (await currentBattleRoomRef.child(partner + '/isDown').once('value')).val();
+		  if (down === true) {
+			healType = 'self';
+		  }
+		}
+		// 如果还没确定 healType，再走原有随机逻辑
+		if (!healType) {
+		  const rnd = Math.random(), targets = cfg.targets;
+		  let acc = 0;
+		  for (const k of Object.keys(targets)) {
+			acc += targets[k];
+			if (rnd <= acc) { healType = k; break; }
+		  }
+		}
+
+		// 生成 targetRole/targetUid
+		let targetRole, targetUid;
+		if (healType === 'self') {
+		  targetRole = window.myRole;
+		  targetUid  = window.myUid;
+		} else if (healType === 'one') {
+		  const roles = ['userA','userB'];
+		  targetRole = roles[Math.floor(Math.random() * roles.length)];
+		  targetUid  = (await currentBattleRoomRef.child(targetRole + '/uid').once('value')).val() || '';
+		} else {
+		  targetRole = 'all'; targetUid = 'all';
+		}
+
+		// 生成日志
+		let logMessage = '';
+		if (healType === 'self') {
+		  logMessage = `💚 ${window.myUid} 治療自己，生命 +${cfg.amount}`;
+		} else if (healType === 'one') {
+		  logMessage = targetRole === window.myRole
+			? `💚 ${window.myUid} 治療自己，生命 +${cfg.amount}`
+			: `💚 ${window.myUid} 治療隊友，生命 +${cfg.amount}`;
+		} else {
+		  logMessage = `💚 ${window.myUid} 治療全隊，生命 +${cfg.amount}`;
+		}
+
+		// 推送并本地立即更新
+		if (healEventsRef) {
+		  const ref = healEventsRef.push({
+			sender:    window.myRole,
+			senderUid: window.myUid,
+			type:      healType,
+			targetRole,
+			targetUid,
+			amount:    cfg.amount,
+			timestamp: Date.now(),
+			logMessage
+		  });
+		  playerHp = Math.min(playerMaxHp, playerHp + cfg.amount);
+		  updateHealthDisplay();
+		}
+	  }, cfg.interval);
+	}
+
+	
   // 確保 Firebase 已初始化
   if (!window.firebase || !window.firebase.database) {
     return;
@@ -6435,11 +6628,12 @@ function triggerT80Cannon() {
   let t80CannonOnCooldown = false; 
   let currentBattleRoomRef = null;
   let processedMessages = {}; 
+  let healEventsRef = null;
   
   // BOSS配置
   const bossConfigs = {
 	"zombieController": {
-      name: "流浪科學家",
+      name: "流浪研究員",
       hp: 2000,
       damageRange: {min: 15, max: 75},
       attackInterval: 3000, 
@@ -6472,7 +6666,7 @@ function triggerT80Cannon() {
     "zombieKing": {
       name: "BTR-80A 「守護者」",
       hp: 3000,
-      damageRange: {min: 25, max: 150},
+      damageRange: {min: 25, max: 250},
       attackInterval: 7000, 
       singleAttackRate: 0.7,
 	  hitChance: 75,
@@ -6744,22 +6938,23 @@ function triggerT80Cannon() {
         message: `戰鬥開始！挑戰 ${bossConfig.name}！`,
         battleMode: "pve"
       });
+	  initPveHealing();
+	  setupFirebaseListeners();
     }
 	
+	
 	// pve獎勵發放
+	// ——— 完整替换：applyPveRewards ———
 	function applyPveRewards(rewards) {
-		if (!rewards) return;
-		gameState.resources.food      += rewards.food      || 0;
-		gameState.resources.materials += rewards.materials || 0;
-		gameState.resources.weapons   += rewards.weapons   || 0;
-		gameState.resources.tech      += rewards.tech      || 0;
-		updateResourceDisplays();
-		saveGameState();
-		appendBattleLogEntry({
-		sender: '系統', senderRole: 'system',
-		message: `獲得獎勵：🍖${rewards.food} 🔩${rewards.materials} 🔫${rewards.weapons} 💾${rewards.tech}`
-		});
+	  if (!rewards) return;
+	  gameState.resources.food      += rewards.food      || 0;
+	  gameState.resources.materials += rewards.materials || 0;
+	  gameState.resources.weapons   += rewards.weapons   || 0;
+	  gameState.resources.tech      += rewards.tech      || 0;
+	  updateResourceDisplays();
+	  saveGameState();
 	}
+
   
     // 添加健康條容器
     function addHealthBarsContainers() {
@@ -6970,7 +7165,7 @@ function triggerT80Cannon() {
 		  updateCoopHealthDisplay();
 		} else {
 		  // 单人模式只更新自己
-		  const playerBar = document.getElementById('player-health-bar');
+		  const playerBar = document.getElementById('userA-health-bar');
 		  if (playerBar) {
 			const percentage = Math.round((playerHp / playerMaxHp) * 100);
 			playerBar.querySelector('.health-fill').style.width = `${percentage}%`;
@@ -7043,22 +7238,20 @@ function triggerT80Cannon() {
   
   // 初始化玩家生命值 - 確保正確讀取中心建築等級
     function initializePlayerHealth() {
-		let centerLevel = 1;   
-		try {
-		  // 直接從全局gameState獲取中心建築等級
-		  const centerBuilding = gameState.buildings.find(b => 
-			b && b.type.toLowerCase() === "center"
-		  );
-		  if (centerBuilding) {
-			centerLevel = centerBuilding.level || 1;
-		  }
-		} catch (error) {
-		  centerLevel = 1; // 出錯時使用默認值
-		}  
-		// 基礎生命值100，每級提升5%
-		const baseHealth = 100;
-		const healthMultiplier = Math.pow(1.05, centerLevel - 1);
-		playerMaxHp = playerHp = Math.round(baseHealth * healthMultiplier);
+		let centerLevel = 1;
+	    try {
+		  const cb = gameState.buildings.find(b => b && b.type.toLowerCase() === "center");
+		  if (cb) centerLevel = cb.level;
+	    } catch (e) { /* ignore */ }
+	    const baseHealth = 100;
+	    const multiplier = Math.pow(1.05, centerLevel - 1);
+	    let hp = Math.round(baseHealth * multiplier);
+	    // 2. 叠加精灵图在 combat.pve.hp 上的加成
+	    const spriteOpt = zombieSpriteOptions.find(o => o.src === window.currentZombieSprite);
+	    if (spriteOpt && spriteOpt.combat && spriteOpt.combat.pve && spriteOpt.combat.pve.hp) {
+		  hp = Math.round(hp * (1 + spriteOpt.combat.pve.hp));
+	    }
+	    playerMaxHp = playerHp = hp;
 		// 初始化BOSS生命值
 		const bossConfig = bossConfigs[selectedBoss];
 		bossMaxHp = bossHp = bossConfig.hp;
@@ -7166,143 +7359,177 @@ function triggerT80Cannon() {
 
 	function setupFirebaseListeners() {
 	  if (!currentBattleRoomRef) return;
-	  // 移除現有監聽器
+
+	  // 1) 卸载所有旧监听
 	  currentBattleRoomRef.off();
 	  currentBattleRoomRef.child('log').off();
-	  currentBattleRoomRef.child('events').off(); 
-	  // 1. 监听房间状态变化 - 重要：死亡后仍需继续监听
-	  currentBattleRoomRef.on('value', (snapshot) => {
-		const roomData = snapshot.val();
-		if (!roomData) return;   
-		// 關鍵修復：同步本地倒地狀態
-		if (roomData[window.myRole] && roomData[window.myRole].isDown && !playerIsDown) {
-		  handlePlayerDown();
-		}    
-		// 檢查倒地玩家視覺效果
-		if (pveMode === 'coop') {
-		  if (roomData.userA?.isDown && !processedMessages['userA_death']) {
-			processedMessages['userA_death'] = true;
-			updatePlayerSpriteToDead('userA');
-		  }
-		  if (roomData.userB?.isDown && !processedMessages['userB_death']) {
-			processedMessages['userB_death'] = true;
-			updatePlayerSpriteToDead('userB');
-		  } 
-		  // 如果玩家A倒地，則玩家B接管boss攻擊循環
-		  if (roomData.userA?.isDown && !processedMessages['bossLoop_taken']) {
-			processedMessages['bossLoop_taken'] = true;
-			enableBossLoop();
-		  }
-		}   
-		// 检查游戏结束
-		if (roomData.status === 'ended' && roomData.finalRewards && !pveEnded) {
-		  pveEnded = true;
-		  setTimeout(() => applyPveRewards(roomData.finalRewards), 1000);
-		  return;
-		}   
-		// 关键改进：无论任何状态，始终更新所有血量显示
-		updateAllPlayerHealth(roomData);     
-		// 檢查是否已有兩名玩家
-		if (roomData.status === 'active' && roomData.userA && roomData.userB) {
-		  if (!pveMatched) {
-			pveMatched = true;
-			appendBattleLogEntry({
-			  sender: "系統",
-			  senderRole: "system",
-			  message: "雙方連線成功，準備開始對戰！",
-			  battleMode: "pve"
-			});       
-			// 如果是玩家A，初始化戰鬥
-			if (window.myRole === "userA") {
-			  initPveBattle();
-			}       
-			// 添加伙伴角色
-			const selfAnim = document.getElementById('battleSelfAnim');
-			if (selfAnim) {
-			  addUserCharacters(selfAnim);
-			}        
-			// 更新双方血条
-			updateCoopHealthDisplay();
-		  }
-		}   
-		// 同步BOSS生命值
-		if (window.myRole === "userB" && roomData.bossHealth !== undefined) {
-		  bossHp = roomData.bossHealth;
-		  updateHealthDisplay();
-		}   
-		// ===== 玩家倒地检测与处理 =====
-		if (window.myRole === "userA") {
-		  // 检查userA是否刚刚死亡
-		  if (roomData.userA && roomData.userA.isDown) {
-			const userADownKey = `userA_${roomData.userA.uid}_down`;
-			if (!processedMessages[userADownKey]) {
-			  processedMessages[userADownKey] = true;         
+	  currentBattleRoomRef.child('events').off();
+	  currentBattleRoomRef.child('healEvents').off();
+
+	  // 2) 房间任何变化 -> UI 同步（**不再推日志或发奖**）
+	   currentBattleRoomRef.on('value', snap => {
+		const room = snap.val();
+		if (!room) return;
+
+		// 同步 bossHealth
+		if (typeof room.bossHealth === 'number') {
+		  bossHp = room.bossHealth;
+		  updateBossHealthBar(bossHp);
+		}
+
+		// 同步玩家倒地 & 精灵切换
+		['userA','userB'].forEach(role => {
+		  const info = room[role];
+		  if (info?.isDown && !processedMessages[`${role}_down`]) {
+			processedMessages[`${role}_down`] = true;
+			if (window.myRole === 'userA') {
 			  appendBattleLogEntry({
-				sender: "系統",
-				senderRole: "system",
-				message: `${roomData.userA.uid} 受到致命一擊，重傷倒地。`,
-				battleMode: "pve"
-			  });
-			  currentBattleRoomRef.child('_processedMessages').update({
-				[userADownKey]: true
+				sender: '系統', senderRole: 'system',
+				message: `${info.uid} 受到致命一擊，重傷倒地。`,
+				battleMode: 'pve'
 			  });
 			}
-		  }     
-		  // 检查userB是否刚刚死亡
-		  if (roomData.userB && roomData.userB.isDown) {
-			const userBDownKey = `userB_${roomData.userB.uid}_down`;
-			if (!processedMessages[userBDownKey]) {
-			  processedMessages[userBDownKey] = true;			  
-			  appendBattleLogEntry({
-				sender: "系統",
-				senderRole: "system",
-				message: `${roomData.userB.uid} 受到致命一擊，重傷倒地。`,
-				battleMode: "pve"
-			  });
-			}
+			updatePlayerSpriteToDead(role);
+			if (role === window.myRole && !playerIsDown) handlePlayerDown();
 		  }
-		  // 检查是否双方都死亡 - 战斗失败
-		  if (roomData.userA && roomData.userA.isDown && 
-			  roomData.userB && roomData.userB.isDown && !pveEnded) {
-			setTimeout(() => endPveBattle(false), 1000);
+		});
+
+		// Coop：UserA 死亡后由 UserB 接管 Boss 循环
+		if (pveMode === 'coop'
+			&& room.userA?.isDown
+			&& !room.userB?.isDown
+			&& window.myRole === 'userB'
+			&& !bossAttackInterval) {
+		  enableBossLoop();
+		}
+		// 3) 配對完成
+		if (room.status === 'active' && room.userA && room.userB && !pveMatched) {
+		  pveMatched = true;
+		  appendBattleLogEntry({
+			sender:     '系統',
+			senderRole: 'system',
+			message:    '雙方連線成功，準備開始對戰！',
+			battleMode: 'pve'
+		  });
+		  if (window.myRole === 'userA') initPveBattle();
+		  const anim = document.getElementById('battleSelfAnim');
+		  if (anim) addUserCharacters(anim);
+		  updateCoopHealthDisplay();
+		}
+
+		// 4) 戰鬥結束（僅第一次執行）
+		if (room.status === 'ended' && !processedMessages['pveEnded']) {
+		  processedMessages['pveEnded'] = true;
+		  const isVictory = room.result === 'victory';
+		  const rewards   = room.finalRewards || {};
+
+		  // a) 切死圖
+		  if (isVictory) updateBossToDeadSprite();
+		  if (window.myRole === 'userA') {
+		  // 战果
+		  appendBattleLogEntry({
+		  sender:     '系統',
+		  senderRole: 'system',
+		  message:    generateBattleResultMessage(isVictory, rewards),
+		  battleMode: 'pve'
+		  });
+		  // 资源奖励
+		  appendBattleLogEntry({
+		  sender:     '系統',
+		  senderRole: 'system',
+		  message:    `獲得獎勵：🍖${rewards.food} 🔩${rewards.materials} 🔫${rewards.weapons} 💾${rewards.tech}`,
+		  battleMode: 'pve'
+		  });
+		  }
+
+		  // b) 成就累計
+		  if (isVictory && !processedMessages['bossKilled']) {
+			processedMessages['bossKilled'] = true;
+			gameState.bossKillCounts[selectedBoss] =
+				(gameState.bossKillCounts[selectedBoss] || 0) + 1;
+			checkBossKillAchievements(selectedBoss);
 		  }
 		}
 	  });
-	  // 2. 監聽事件 - 用于同步BTR/T80支援
+
+	  // 日誌同步（去重后展示）
+	  currentBattleRoomRef.child('log')
+		.on('child_added', snap => {
+		  const entry = snap.val(), key = snap.key;
+		  if (!entry || processedMessages[key]) return;
+		  processedMessages[key] = true;
+		  if (entry.battleMode && entry.battleMode !== 'pve') return;
+		  displayBattleLogEntry(entry);
+		});
+
+	  // 4) 装甲支援事件（Coop）
 	  if (pveMode === 'coop') {
-		currentBattleRoomRef.child('events').on('child_added', (snapshot) => {
-		  const event = snapshot.val();
-		  if (event && event.type === 'btrSupport' && event.sender !== window.myRole) {
-			// 显示伙伴的BTR/T80支援
-			battleBTRType = event.btrType;
-			showPartnerBtrSupport();
+		currentBattleRoomRef.child('events')
+		  .on('child_added', snap => {
+			const e = snap.val();
+			if (!e || e.sender === window.myRole) return;
+			if (e.type === 'btrSupport' || e.type === 't80Support') {
+			  battleBTRType = e.btrType;
+			  showPartnerBtrSupport();
+			}
+		  });
+	  }
+
+	  // 5) 实时治疗事件
+	  healEventsRef = currentBattleRoomRef.child('healEvents');
+	  healEventsRef.on('child_added', async snap => {
+		const e = snap.val();
+		if (!e) return;
+		if (pveMode === 'coop' && e.sender === window.myRole) return;
+
+		// a) 显示日志
+		appendBattleLogEntry({
+		  sender:     e.senderUid,
+		  senderRole: 'player',
+		  message:    e.logMessage,
+		  battleMode: 'pve'
+		});
+
+		// b) 对目标做 transaction 原子加血
+		const roles = (e.targetRole === 'all') ? ['userA','userB'] : [e.targetRole];
+		for (const role of roles) {
+		  const roleRef = currentBattleRoomRef.child(role);
+		  await roleRef.transaction(data => {
+			if (!data) return;
+			if (data.isDown) return data;        // 倒地不回血
+			const maxHp  = data.maxHp || playerMaxHp;
+			const curHp  = data.health || 0;
+			data.health  = Math.min(curHp + e.amount, maxHp);
+			data.isDown  = data.health <= 0;
+			return data;
+		  }).then(txn => {
+			// c) 本端自己：同步本地状态 & UI
+			if (role === window.myRole && txn.committed) {
+			  playerHp = txn.snapshot.val().health;
+			  updateHealthDisplay();
+			}
+		  });
+		}
+	  });
+
+	  ['userA','userB'].forEach(role => {
+		if (role === 'userB' && pveMode !== 'coop') return;
+		currentBattleRoomRef.child(role).on('value', snap => {
+		  const dat = snap.val();
+		  const bar = document.getElementById(`${role}-health-bar`);
+		  if (dat && bar) {
+			const maxHp = dat.maxHp || playerMaxHp;
+			const hp    = dat.health || 0;
+			const pct   = Math.round(hp / maxHp * 100);
+			bar.querySelector('.health-fill').style.width = pct + '%';
+			bar.querySelector('.health-text').textContent =
+			  `${dat.uid || (role==='userA'?window.myUid:'玩家B')}: ${hp}/${maxHp}`;
+			bar.classList.toggle('player-down', !!dat.isDown);
 		  }
 		});
-	  }
-	  // 3. 監聽日誌 - 修復：使用唯一ID防止重複
-	  currentBattleRoomRef.child('log').on('child_added', (snapshot) => {
-		if (pveEnded) return;   
-		const logEntry = snapshot.val();
-		if (!logEntry) return;    
-		const entryId = snapshot.key;   
-		// 檢查是否已處理過該消息
-		if (processedMessages[entryId]) {
-		  return; // 跳過已處理的消息
-		}    
-		// 標記消息為已處理
-		processedMessages[entryId] = true;   
-		// 確保消息來自PVE戰鬥
-		if (logEntry.battleMode !== 'pve' && logEntry.battleMode !== undefined) {
-		  return; // 跳过非PVE消息
-		}    
-		// 避免顯示自己本地已顯示過的消息（僅檢查發送者和角色）
-		if (logEntry.sender === window.myUid && logEntry.senderRole === window.myRole) {
-		  return;
-		}   
-		// 顯示日誌
-		displayBattleLogEntry(logEntry);
 	  });
 	}
+
 
 	function updateAllPlayerHealth(roomData) {
 	  if (!roomData) return;
@@ -7433,29 +7660,34 @@ function triggerT80Cannon() {
 	  });
 	}
 
-	// 顯示戰鬥日誌條目
+	// ——— 3. 完整替换：displayBattleLogEntry ———
 	function displayBattleLogEntry(messageObj) {
-	  if (typeof messageObj !== 'object' || messageObj === null) return; 
+	  if (!messageObj || typeof messageObj.message !== 'string') return;
 	  const entry = document.createElement('div');
-	  entry.className = 'log-entry';	  
-	  // 根據發送者設置樣式
-	  if (messageObj.senderRole === "system") {
-		// 系统事件 - 使用系统样式
-		entry.className += ' battle-system-entry';
-		entry.innerHTML = `<span>[系統] ${messageObj.message}</span>`;
-	  } else if (messageObj.senderRole === "boss") {
-		// Boss事件 - 使用敌方样式
-		entry.className += ' battle-enemy-entry';
-		entry.innerHTML = `<span>[${messageObj.sender}] ${messageObj.message}</span>`;
+	  entry.className = 'log-entry';
+
+	  // HTML 安全 & 换行
+	  const safe = messageObj.message
+		.replace(/&/g,'&amp;')
+		.replace(/</g,'&lt;')
+		.replace(/>/g,'&gt;')
+		.replace(/\n/g,'<br>');
+
+	  if (messageObj.senderRole === 'system') {
+		entry.classList.add('battle-system-entry');
+		entry.innerHTML = `<span>[系統] ${safe}</span>`;
+	  } else if (messageObj.senderRole === 'boss') {
+		entry.classList.add('battle-enemy-entry');
+		entry.innerHTML = `<span>[${messageObj.sender}] ${safe}</span>`;
 	  } else {
-		// 玩家事件 - 使用己方样式
-		entry.className += ' battle-self-entry';
-		entry.innerHTML = `<span>[${messageObj.sender}] ${messageObj.message}</span>`;
-	  }	  
-	  const logContainer = document.getElementById('battleLogContent');
-	  if (logContainer) {
-		logContainer.appendChild(entry);
-		logContainer.scrollTop = logContainer.scrollHeight;
+		entry.classList.add('battle-self-entry');
+		entry.innerHTML = `<span>[${messageObj.sender}] ${safe}</span>`;
+	  }
+
+	  const log = document.getElementById('battleLogContent');
+	  if (log) {
+		log.appendChild(entry);
+		log.scrollTop = log.scrollHeight;
 	  }
 	}
 
@@ -7554,12 +7786,14 @@ function triggerT80Cannon() {
 	  if (battleBTRInterval) clearInterval(battleBTRInterval);
 	  if (t80IdleInterval) clearInterval(t80IdleInterval);
 	  if (t80CannonTimeout) clearTimeout(t80CannonTimeout); 
+	  if (window.pveHealTimer)  clearInterval(window.pveHealTimer); 
 	  pveInterval = null;
 	  bossAttackInterval = null;
 	  battleBTREventTimer = null;
 	  battleBTRInterval = null;
 	  t80IdleInterval = null;
 	  t80CannonTimeout = null;
+	  window.pveHealTimer  = null; 
 	}
 
 	// 觸發玩家攻擊
@@ -7581,83 +7815,75 @@ function triggerT80Cannon() {
 		// 單人模式直接執行
 		executePlayerAttack();
 	  }	  
-	  function executePlayerAttack() {
-		let centerLevel = 1;
-		try {
-		  // 直接從gameState獲取中心基地等級
-		  const centerBuilding = gameState.buildings.find(b => 
-			b && b.type.toLowerCase() === "center"
-		  );
-		  if (centerBuilding) {
-			centerLevel = centerBuilding.level || 1;
-		  }
-		} catch (error) {
-		  centerLevel = 1;
-		}		
-		// 與PVP一致的命中率計算：40 + centerLevel * 0.5，最高85%
-		const hitChanceVal = Math.min(40 + centerLevel * 0.5, 85);
-		const hitRoll = Math.random() * 100;
-		const hit = (hitRoll < hitChanceVal);	
-		// 傷害計算
-		const baseDamage = hit ? (Math.floor(Math.random() * 15) + 1) : 0;	
-		let commandCenterLevel = 0;
-		try {
-		  const commandCenter = gameState.buildings.find(b => 
-			b && b.type.toLowerCase() === "zombiecommandcenter"
-		  );
-		  if (commandCenter) {
-			commandCenterLevel = commandCenter.level;
-		  }
-		} catch (error) {
-		  commandCenterLevel = 0;
-		}	
-		const multiplier = Math.pow(1.05, commandCenterLevel);
-		const damage = Math.round(baseDamage * multiplier);	
-		const phrase = pveAttackPhrases.normal[Math.floor(Math.random() * pveAttackPhrases.normal.length)];	
-		if (hit && damage > 0) {
-		  appendBattleLogEntry({
-			sender: window.myUid,
-			senderRole: window.myRole,
-			message: `派遣的 ${phrase}（命中），${bossConfigs[selectedBoss].name} 受到 ${damage} 點傷害`,
-			targetType: "boss",
-			battleMode: "pve"
-		  });
-		  // 更新BOSS生命值
-		  if (window.myRole === "userA") {
-			// 更新BOSS生命值
-			bossHp = Math.max(0, bossHp - damage);
-			totalPlayerDamage += damage;
-		  
-			// 同步到Firebase
-			if (currentBattleRoomRef) {
-			  currentBattleRoomRef.update({ 
-				bossHealth: bossHp,
-				lastDamageBy: "userA",
-				lastDamageAmount: damage,
-				lastUpdateTime: firebase.database.ServerValue.TIMESTAMP
-			  });
-			}	  
-			// 檢查BOSS是否被擊敗
-			if (bossHp <= 0) {
-			  endPveBattle(true);
-			}
-		  } else {
-			// userB只更新自己的本地伤害统计，不修改bossHp
-			totalPlayerDamage += damage;
-		  }
-		} else {
-		  appendBattleLogEntry({
-			sender: window.myUid,
-			senderRole: window.myRole,
-			message: `派遣的 ${phrase}（未命中）`,
-			targetType: "boss",
-			battleMode: "pve"
-		  });
-		}		
-		// 更新生命值顯示
-		updateHealthDisplay();
+	async function executePlayerAttack() {
+	  // 如果已倒地或戰鬥結束，跳過
+	  if (pveEnded || playerIsDown) return;
+
+	  // 1) 命中率計算（+指揮中心加成）
+	  let centerLevel = 1;
+	  try {
+		const cb = gameState.buildings.find(b => b && b.type.toLowerCase() === "center");
+		if (cb) centerLevel = cb.level;
+	  } catch (e) {}
+	  const spriteCombat = getCombatForSprite(window.currentZombieSprite, "pve");
+	  const hitChance = Math.min(40 + centerLevel * 0.5, 100) * (1 + (spriteCombat.hit || 0));
+	  const hit       = Math.random() * 100 < hitChance;
+
+	  // 2) 傷害計算（+殲滅中心加成 + 怪物防禦減傷）
+	  let raw = 0;
+	  if (hit) {
+		raw = Math.floor(Math.random() * 15) + 1;          // 基礎
+		const zcc = gameState.buildings.find(b => b && b.type.toLowerCase() === "zombiecommandcenter");
+		const ccLevel = zcc ? zcc.level : 0;
+		raw = Math.round(raw * Math.pow(1.05, ccLevel));   // 建築加成
 	  }
+	  const dmg = Math.round(raw * (1 + (spriteCombat.dmgMax || 0)));
+
+	  // 3) 輸出日誌
+	  const phrase = pveAttackPhrases.normal[
+		Math.floor(Math.random() * pveAttackPhrases.normal.length)
+	  ];
+	  if (hit && dmg > 0) {
+		appendBattleLogEntry({
+		  sender:     window.myUid,
+		  senderRole: window.myRole,
+		  message:    `派遣的 ${phrase}（命中），${bossConfigs[selectedBoss].name} 受到 ${dmg} 點傷害`,
+		  targetType: "boss",
+		  battleMode: "pve",
+		  timestamp:  Date.now()
+		});
+
+		totalPlayerDamage += dmg;
+
+		// 4) 使用 transaction 原子減血
+		const bossHpRef = currentBattleRoomRef.child('bossHealth');
+		const txnResult = await bossHpRef.transaction(currHp => {
+		  if (typeof currHp !== 'number') return;           // 容錯
+		  const next = Math.max(0, currHp - dmg);
+		  bossHp = next;                                     // 本端同步
+		  return next;
+		});
+
+		// 5) 如果扣到 0，立即結算
+		if (txnResult.committed && txnResult.snapshot.val() === 0) {
+		  endPveBattle(true);
+		}
+
+	  } else {
+		appendBattleLogEntry({
+		  sender:     window.myUid,
+		  senderRole: window.myRole,
+		  message:    `派遣的 ${phrase}（未命中）`,
+		  battleMode: "pve",
+		  timestamp:  Date.now()
+		});
+	  }
+
+	  // 6) 更新畫面血條
+	  updateHealthDisplay();
 	}
+	}
+
 
 
 	function triggerBossAttack() {
@@ -7682,8 +7908,8 @@ function triggerT80Cannon() {
 	function executeBossAttack() {
 		const cfg = bossConfigs[selectedBoss];
 		// 1) 命中判定
-		const hitChance = cfg.hitChance ?? 75;
-		const hit = Math.random() * 100 < hitChance;
+		const hit   = Math.random()*100 < (cfg.hitChance||75);
+	    const single = Math.random() < (cfg.singleAttackRate||0.7);
 		// 2) 单体 vs AOE
 		const singleRate = cfg.singleAttackRate ?? 0.7;
 		const isSingle  = Math.random() < singleRate;
@@ -7694,16 +7920,22 @@ function triggerT80Cannon() {
 		  : (cfg.attackPhrases.aoe || cfg.attackPhrases.single);
 		const phrase = pool[Math.floor(Math.random() * pool.length)];
 		// 4) 计算伤害
-		let damage = 0;
-		if (hit) {
-		  const raw = Math.floor(
-			cfg.damageRange.min +
-			Math.random() * (cfg.damageRange.max - cfg.damageRange.min)
+		let raw = 0;
+	    if (hit) {
+		  raw = Math.floor(
+		    cfg.damageRange.min +
+		    Math.random()*(cfg.damageRange.max-cfg.damageRange.min)
 		  );
-		  damage = isSingle ? raw : Math.floor(raw * 0.8);
-		}
+		  if (!single) raw = Math.floor(raw * 0.8);
+	    }
 		// 5) 扣血 & 日志
-		if (hit && damage > 0) {
+		const defCombat = getCombatForSprite(
+			window.currentZombieSprite,
+			"pve"
+		  );
+		  const finalDmg = Math.round(raw * (1 - defCombat.dmgTaken));
+
+		  if (hit && finalDmg > 0) {
 		  if (useSinglePool) {
 			// 单体：实时查询可攻击目标
 			currentBattleRoomRef.once('value').then(snapshot => {
@@ -7721,7 +7953,7 @@ function triggerT80Cannon() {
 			  appendBattleLogEntry({
 				sender: cfg.name,
 				senderRole: 'boss',
-				message: `${phrase}${uid}（命中），造成 ${damage} 點傷害！`,
+				message: `${phrase}${uid}（命中），造成 ${finalDmg} 點傷害！`,
 				timestamp: Date.now(),
 				battleMode: 'pve',
 				aoe: false
@@ -7731,7 +7963,7 @@ function triggerT80Cannon() {
 			  ref.once('value').then(snap => {
 				const data = snap.val() || {};
 				if (data.isDown) return;
-				const newHp = Math.max(0, (data.health || playerMaxHp) - damage);
+				const newHp = Math.max(0, (data.health || playerMaxHp) - finalDmg);
 				const isNowDown = newHp <= 0;
 				
 				// 寫入 Firebase
@@ -7767,7 +7999,7 @@ function triggerT80Cannon() {
 			appendBattleLogEntry({
 			  sender: cfg.name,
 			  senderRole: 'boss',
-			  message: `${phrase}（範圍攻擊）→ 我方各受 ${damage} 點傷害！`,
+			  message: `${phrase}（範圍攻擊）→ 我方各受 ${finalDmg} 點傷害！`,
 			  timestamp: Date.now(),
 			  battleMode: 'pve',
 			  aoe: true
@@ -7778,7 +8010,7 @@ function triggerT80Cannon() {
 			  ref.once('value').then(snap => {
 				const data = snap.val() || {};
 				if (data.isDown) return; 
-				const newHp = Math.max(0, (data.health || playerMaxHp) - damage);
+				const newHp = Math.max(0, (data.health || playerMaxHp) - finalDmg);
 				const isNowDown = newHp <= 0;				
 				// 寫入 Firebase
 				ref.update({ 
@@ -7795,7 +8027,6 @@ function triggerT80Cannon() {
 				  if (isNowDown && !playerIsDown) {
 					handlePlayerDown();
 				  } else {
-					// 非致命傷，只更新健康條
 					const healthBar = document.getElementById(`${role}-health-bar`);
 					if (healthBar) {
 					  const maxHp = data.maxHp || playerMaxHp;
@@ -7961,7 +8192,6 @@ function triggerT80Cannon() {
 		spriteElem.style.backgroundPosition = t80IdleToggle ? "-1440px 0" : "0px 0";
 	  }, 250);
 	}
-
 	// 觸發T80開炮動畫
 	function triggerT80Cannon(spriteElem) {
 	  if (!spriteElem || !spriteElem.parentNode || t80CannonOnCooldown) return;
@@ -7983,8 +8213,7 @@ function triggerT80Cannon() {
 		  spriteElem.style.backgroundPosition = "0px 0";
 		  startT80IdleAnimation(spriteElem);
 		}
-	  }, 1000);
-	  
+	  }, 1000);	  
 	  // 4.25秒後允許再次開炮
 	  setTimeout(() => {
 		t80CannonOnCooldown = false;
@@ -7999,10 +8228,8 @@ function triggerT80Cannon() {
 	function startBtrSpecialAttack() {
 	  if (pveEnded || playerIsDown) return;
 	  if (battleBTRInterval) clearInterval(battleBTRInterval);
-	  
 	  // 立即執行第一次攻擊
-	  triggerBtrSpecialAttack();
-	  
+	  triggerBtrSpecialAttack();  
 	  // 之後每5秒執行一次
 	  battleBTRInterval = setInterval(() => {
 		if (!pveEnded && !playerIsDown && battleBTRActive) {
@@ -8012,183 +8239,166 @@ function triggerT80Cannon() {
 	}
 
 	// 執行BTR特殊攻擊
-	function triggerBtrSpecialAttack() {
+	async function triggerBtrSpecialAttack() {
 	  if (pveEnded || !battleBTRActive) return;
-	  
-	  // 從gameState獲取中心建築等級計算命中率
+	  // 1) 計算命中率、傷害和選擇短語
 	  let centerLevel = 1;
 	  try {
-		const centerBuilding = gameState.buildings.find(b => 
-		  b && b.type.toLowerCase() === "center"
-		);
-		if (centerBuilding) {
-		  centerLevel = centerBuilding.level || 1;
-		}
-	  } catch (error) {
-		centerLevel = 1;
-	  }
-	  // 與PVP模式使用相同的命中率計算
-	  const baseHitChance = 40;
-	  const hitChanceVal = Math.min(baseHitChance + centerLevel * 0.5, 85);
-	  // 計算傷害
-	  const hitRoll = Math.random() * 100;
-	  const baseDamage = battleBTRType === "t80" ? 
-		Math.floor(Math.random() * 100) + 15 :  // T-80伤害15-115
-		Math.floor(Math.random() * 70) + 10;   // BTR伤害10-80
-	  // 讀取裝甲車庫等級計算加成
-	  let tractorLevel = 0;
+		const cb = gameState.buildings.find(b => b && b.type.toLowerCase() === "center");
+		if (cb) centerLevel = cb.level;
+	  } catch (e) {}
+	  const baseHitChance = Math.min(40 + centerLevel * 0.5, 85);
+	  const hitSuccess    = Math.random() * 100 < baseHitChance;
+	  // 傷害範圍：T-80 或 BTR
+	  const baseDamage = battleBTRType === "t80"
+		? Math.floor(Math.random() * 100) + 15   // 15–115
+		: Math.floor(Math.random() * 70)  + 10;  // 10–80
+	  // 裝甲車庫等級加成
+	  let garageLevel = 0;
 	  try {
-		const tractor = gameState.buildings.find(b => 
-		  b && b.type.toLowerCase() === "armoredgarage"
-		);
-		if (tractor) {
-		  tractorLevel = tractor.level;
-		}
-	  } catch (error) {
-		tractorLevel = 0;
-	  }
-	  const multiplierA = Math.pow(1.05, tractorLevel);
-	  const damage = Math.round(baseDamage * multiplierA);
-	  
-	  // 命中判定
-	  const hitSuccess = hitRoll < hitChanceVal;
-	  
-	  // 獲取攻擊短語
-	  let type = battleBTRType === "t80" ? "t80" : "btr";
-	  let phrase = pveAttackPhrases[type][Math.floor(Math.random() * pveAttackPhrases[type].length)];
-	  
+		const ag = gameState.buildings.find(b => b && b.type.toLowerCase() === "armoredgarage");
+		if (ag) garageLevel = ag.level;
+	  } catch (e) {}
+	  const damage = Math.round(baseDamage * Math.pow(1.05, garageLevel));
+	  // 選短語
+	  const pool   = pveAttackPhrases[battleBTRType];
+	  const phrase = pool[Math.floor(Math.random() * pool.length)];
+	  // 2) 日誌
 	  if (hitSuccess) {
-		// 命中
 		appendBattleLogEntry({
-		  sender: window.myUid,
+		  sender:    window.myUid,
 		  senderRole: window.myRole,
-		  message: `派遣的 ${phrase}（命中），${bossConfigs[selectedBoss].name} 受到 ${damage} 點傷害`,
-		  timestamp: Date.now(),
+		  message:   `派遣的 ${phrase}（命中），${bossConfigs[selectedBoss].name} 受到 ${damage} 點傷害`,
 		  targetType: "boss",
-		  battleMode: "pve"
+		  battleMode: "pve",
+		  timestamp:  Date.now()
 		});
-		
-		// 更新BOSS生命值
-		if (window.myRole === "userA") {
-		  // 更新BOSS生命值
-		  bossHp = Math.max(0, bossHp - damage);
-		  totalPlayerDamage += damage;
-		  
-		  // 同步到Firebase
-		  if (currentBattleRoomRef) {
-			currentBattleRoomRef.update({ 
-			  bossHealth: bossHp,
-			  lastDamageBy: "userA_btr",
-			  lastDamageAmount: damage
-			});
-		  }
-		
-		// 檢查BOSS是否被擊敗
-	   if (bossHp <= 0) {
-			endPveBattle(true);
-		  }
-		} else {
-		  // userB只更新自己的伤害统计
-		  totalPlayerDamage += damage;
+		totalPlayerDamage += damage;
+		// 3) 以 transaction 原子減少 bossHealth
+		const bossHpRef = currentBattleRoomRef.child('bossHealth');
+		const txn = await bossHpRef.transaction(currHp => {
+		  if (typeof currHp !== 'number') return;        // 容錯
+		  const newHp = Math.max(0, currHp - damage);
+		  bossHp = newHp;                                // 本端同步
+		  return newHp;
+		});
+		// 4) 若減到 0，直接結算勝利
+		if (txn.committed && txn.snapshot.val() === 0) {
+		  endPveBattle(true);
 		}
-	  } else {
-		// 未命中
+	  }
+	  else {
 		appendBattleLogEntry({
-		  sender: window.myUid,
+		  sender:    window.myUid,
 		  senderRole: window.myRole,
-		  message: `派遣的 ${phrase}（未命中）`,
-		  timestamp: Date.now(),
-		  targetType: "boss",
-		  battleMode: "pve"
+		  message:   `派遣的 ${phrase}（未命中）`,
+		  battleMode: "pve",
+		  timestamp: Date.now()
 		});
 	  }
-	  
-	  // 更新生命值顯示
+
+	  // 5) 更新畫面血條
 	  updateHealthDisplay();
 	}
+
 
 	// 玩家倒地處理
 	function handlePlayerDown() {
 	  if (playerIsDown) return; // 防止重复处理
-	  playerIsDown = true;
-	  
+	  playerIsDown = true;  
 	  // 更新倒地視覺效果
 	  updatePlayerSpriteToDead(window.myRole);
-	  
 	  // 同步到Firebase
 	  if (currentBattleRoomRef) {
 		currentBattleRoomRef.child(window.myRole).update({
-		  isDown: true
+		  isDown: true,
+		  health: 0
 		});
 	  }
-	  
+	  // 手动把自己血条拉到 0
+	  const bar = document.getElementById(`${window.myRole}-health-bar`);
+	  if (bar) {
+		bar.querySelector('.health-fill').style.width = '0%';
+		bar.querySelector('.health-text').textContent =
+		  `${window.myUid}: 0/${playerMaxHp}`;
+		bar.classList.add('player-down');
+	  }
 	  // 單人模式直接戰敗
 	  if (pveMode === 'solo') {
 		endPveBattle(false);
-	  }
+		return;
+	  }	  
+	  // 合作模式：检查是否所有玩家都倒地
+	  currentBattleRoomRef.once('value').then(snapshot => {
+		const roomData = snapshot.val();
+		if (!roomData) return;		
+		const userADown = roomData.userA?.isDown || false;
+		const userBDown = roomData.userB?.isDown || false;		
+		if (userADown && userBDown) {
+		  // 全体倒地，结束战斗（失败）
+		  endPveBattle(false);
+		}
+	  });
 	}
 
 	// 結束PVE戰鬥
-	function endPveBattle(isVictory) {
-	  // 避免重複結算
+	async function endPveBattle(isVictory) {
 	  if (pveEnded) return;
 	  pveEnded = true;
-	  if (isVictory) {
-		updateBossToDeadSprite();
-	  }
-	  
-	  // 停止所有計時器
 	  clearCombatTimers();
-	  
-	  // 計算獎勵 (與原來的邏輯相同)
-	  const bossConfig = bossConfigs[selectedBoss];
-	  let rewardRatio = isVictory ? 1.0 : Math.min(totalPlayerDamage / bossMaxHp, 0.75);
-	  
-	  // 計算最終獎勵
-	  const rewards = {};
-	  for (const resource in bossConfig.rewards) {
-		rewards[resource] = Math.round(bossConfig.rewards[resource] * rewardRatio);
+
+	  // 1) 统计伤害 & 计算奖励
+	  const damageDone  = bossMaxHp - bossHp;
+	  const ratio       = isVictory ? 1 : Math.min(damageDone / bossMaxHp, 0.5);
+	  const rewards     = {};
+	  for (const key in bossConfigs[selectedBoss].rewards) {
+		rewards[key] = Math.round(bossConfigs[selectedBoss].rewards[key] * ratio);
 	  }
-	  
-	  // 顯示結果訊息
-	  const resultMessage = generateBattleResultMessage(isVictory, rewards);
-	  
-	  // 關鍵修復：直接顯示結果，不依賴 Firebase 回調
-	  appendBattleLogEntry({
-		sender: "系統",
-		senderRole: "system",
-		message: resultMessage,
-		battleMode: "pve"
-	  });
-	  
+
+	  // 3) 更新房间状态（双方都会写一次，但写入值相同）
 	  if (currentBattleRoomRef) {
-		currentBattleRoomRef.update({
-		status: 'ended',
-		result: isVictory ? 'victory' : 'defeat',
-		endTime: firebase.database.ServerValue.TIMESTAMP,
-		finalDamage: totalPlayerDamage,
-		finalRewards: rewards
-	    });
+		await currentBattleRoomRef.update({
+		  status:       'ended',
+		  result:       isVictory ? 'victory' : 'defeat',
+		  endTime:      firebase.database.ServerValue.TIMESTAMP,
+		  finalDamage:  damageDone,
+		  finalRewards: rewards
+		});
 	  }
+
+	  // 4) 本地发放奖励（不再在这里写日志）
 	  applyPveRewards(rewards);
+	}
+
+	
+	function checkBossKillAchievements(bossId) {
+	  const rules = achievementRules.bossKills.filter(r => r.boss === bossId);
+	  rules.forEach(rule => {
+		if (bossKillCounts[bossId] >= rule.threshold &&
+			!isAchievementUnlocked('bossKills', rule.level)) {
+		  awardAchievement('bossKills', rule);
+		}
+	  });
 	}
 
 	// 輔助函數，生成戰鬥結果訊息
 	function generateBattleResultMessage(isVictory, rewards) {
-	  const bossConfig = bossConfigs[selectedBoss];
-	  const damagePercentage = Math.round((totalPlayerDamage / bossMaxHp) * 100);
-	  
-	  let resultMessage = `戰鬥${isVictory ? '勝利' : '失敗'}！\n`;
-	  resultMessage += `BOSS: ${bossConfig.name}\n`;
-	  resultMessage += `造成傷害: ${totalPlayerDamage}/${bossMaxHp} (${damagePercentage}%)\n\n`;
-	  resultMessage += `獎勵資源:\n`;
-	  resultMessage += `食物: +${rewards.food}\n`;
-	  resultMessage += `材料: +${rewards.materials}\n`;
-	  resultMessage += `武器: +${rewards.weapons}\n`;
-	  resultMessage += `科技: +${rewards.tech}\n`;
-	  
-	  return resultMessage;
+	  // 內部自動算總傷害 & 百分比
+	  const damageDone = bossMaxHp - bossHp;
+	  const pct        = Math.round(damageDone / bossMaxHp * 100);
+	  const bossName   = bossConfigs[selectedBoss].name;
+
+	  let msg = `戰鬥${isVictory ? '勝利' : '失敗'}！\n`;
+	  msg += `BOSS: ${bossName}\n`;
+	  msg += `造成傷害: ${damageDone}/${bossMaxHp} (${pct}%)\n`;
+	  msg += `獎勵資源:\n`;
+	  msg += `食物: +${rewards.food}\n`;
+	  msg += `材料: +${rewards.materials}\n`;
+	  msg += `武器: +${rewards.weapons}\n`;
+	  msg += `科技: +${rewards.tech}\n`;
+	  return msg;
 	}
+	
 	async function exitPveBattle() {
 	  const pin = window.currentBattleRoom;
 	  if (!pin) return;
@@ -8234,6 +8444,8 @@ function triggerT80Cannon() {
 	}
 
 })();
+
+
 
 	
 	</script>
