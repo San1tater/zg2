@@ -4482,8 +4482,15 @@ function triggerT80Cannon() {
 			gameState.bossKillCounts = gameState.bossKillCounts || {
 			zombieController: 0,
 			zombieKing:       0
-		  };
+		    };
 		  }
+		   if (Array.isArray(saveData.unlockedAchievements)) {
+			  unlockedAchievements = saveData.unlockedAchievements.map(a => ({
+				...a,
+				level: Number(a.level)
+			  }));
+			  gameState.unlockedAchievements = unlockedAchievements.slice();
+			}
 		  if (saveData.collectedItems) {
 			collectedItems = saveData.collectedItems;
 		  }
