@@ -4942,7 +4942,7 @@ function triggerT80Cannon() {
 	  },
       heal: {
         interval: 5000,
-        amount:   10,
+        amount:   () => Math.floor(Math.random()*16) - 5,
         targets:  { self:1, one:0.0, all:0 }
       }},
 	  { src: "images/zombie_search_sprite_healer.png", unlock: "挑戰者",
