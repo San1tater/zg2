@@ -2,7 +2,7 @@
 <html lang="zh">
 <head>
   <meta charset="UTF-8" name="viewport" content="width=device-width, initial-scale=0.45"/>
-  <title>末日控制中心 - 正式版v.1.117 pve-coop update</title>
+  <title>末日控制中心 - 正式版v.1.12 healer update</title>
   <style>
     /* 彈窗系統 */
     .modal-overlay {
@@ -4952,17 +4952,17 @@ function triggerT80Cannon() {
 	  },
       heal: {
         interval: 10000,
-        amount:   25,
+        amount: () => Math.floor(Math.random()*26) + 25,
         targets:  { self:0.3, one:0.4, all:0.3 }
       }},
 	  { src: "images/zombie_search_sprite_doctor.png", unlock: "不要打針",
 		combat: {
-		pvp: { hit:-0.5, dmgMax:-0.5, hp:-0.25, dmgTaken:0.3 },
-		pve: { hit:-1, dmgMax:-1, hp:-0.5, dmgTaken:0.6 }
+		pvp: { hit:-0.5, dmgMax:-0.5, hp:-0.25, dmgTaken:0.5 },
+		pve: { hit:-1, dmgMax:-1, hp:-0.5, dmgTaken:1 }
 	  },
       heal: {
         interval: 15000,
-        amount:   100,
+        amount:   () => Math.floor(Math.random()*176) - 75,
         targets:  { self:0.1, one:0.7, all:0.2 }
       }},
     ];
@@ -6571,75 +6571,112 @@ function triggerT80Cannon() {
 	  const cfg = spriteOpt?.heal;
 	  if (!cfg) return;
 	  clearInterval(window.pveHealTimer);
-
 	  window.pveHealTimer = setInterval(async () => {
-		if (!pveActive || pveEnded || playerHp <= 0
-			|| (pveMode === 'coop' && playerIsDown)) {
+		// 不在战斗、已结束或自己倒地时跳过
+		if (!pveActive || pveEnded || playerHp <= 0 || (pveMode === 'coop' && playerIsDown)) {
 		  return;
 		}
-
-		// —— 优先检测 Cooperate 模式下伙伴是否倒地 ——  
-		let healType = null;
+		// 1. 决定 healType：solo 固定 self，coop 按倒地或 cfg.targets 随机
+		let healType = pveMode === 'solo'
+		  ? 'self'
+		  : null;
 		if (pveMode === 'coop') {
+		  // 倒地优先自疗
 		  const partner = window.myRole === 'userA' ? 'userB' : 'userA';
 		  const down = (await currentBattleRoomRef.child(partner + '/isDown').once('value')).val();
-		  if (down === true) {
-			healType = 'self';
+		  if (down) healType = 'self';
+		  // 随机按权重
+		  if (!healType) {
+			const rnd = Math.random(), targets = cfg.targets;
+			let acc = 0;
+			for (const k of Object.keys(targets)) {
+			  acc += targets[k];
+			  if (rnd <= acc) { healType = k; break; }
+			}
 		  }
 		}
-		// 如果还没确定 healType，再走原有随机逻辑
-		if (!healType) {
-		  const rnd = Math.random(), targets = cfg.targets;
-		  let acc = 0;
-		  for (const k of Object.keys(targets)) {
-			acc += targets[k];
-			if (rnd <= acc) { healType = k; break; }
-		  }
-		}
-
-		// 生成 targetRole/targetUid
+		// 2. 确定目标角色/UID
 		let targetRole, targetUid;
 		if (healType === 'self') {
 		  targetRole = window.myRole;
 		  targetUid  = window.myUid;
-		} else if (healType === 'one') {
+		}
+		else if (healType === 'one') {
 		  const roles = ['userA','userB'];
 		  targetRole = roles[Math.floor(Math.random() * roles.length)];
 		  targetUid  = (await currentBattleRoomRef.child(targetRole + '/uid').once('value')).val() || '';
-		} else {
-		  targetRole = 'all'; targetUid = 'all';
 		}
-
-		// 生成日志
-		let logMessage = '';
-		if (healType === 'self') {
-		  logMessage = `💚 治療自己，生命 +${cfg.amount}`;
-		} else if (healType === 'one') {
-		  logMessage = targetRole === window.myRole
-			? `💚 治療自己，生命 +${cfg.amount}`
-			: `💚 治療隊友，生命 +${cfg.amount}`;
-		} else {
-		  logMessage = `💚 治療全隊，生命 +${cfg.amount}`;
+		else {
+		  // 'all'
+		  targetRole = 'all';
+		  targetUid  = 'all';
 		}
-
-		// 推送并本地立即更新
+		// 3. 计算治疗量 amt（支持函数/数字），正负都保留
+		const rawAmt = typeof cfg.amount === 'function'
+		  ? cfg.amount()
+		  : cfg.amount;
+		const amt = Number(rawAmt) || 0;
+		// 4. 应用到本地自己：只要目标里包含自己（self/all 或 one→self）
+		const affectsSelf = (
+		  targetRole === 'self'
+		  || targetRole === 'all'
+		  || (targetRole === 'one' && window.myRole === targetRole)
+		);
+		if (affectsSelf) {
+		  playerHp = Math.max(0, Math.min(playerMaxHp, playerHp + amt));
+		  updateHealthDisplay();
+		}
+		// 5. （Coop）如果影响队友，也通过 transaction 写入
+		if (pveMode === 'coop' && targetRole === 'one' && targetUid !== window.myUid) {
+		  // 单目标治队友
+		  await currentBattleRoomRef.child(targetRole).transaction(data => {
+			if (!data || data.isDown) return data;
+			data.health = Math.max(0,
+							 Math.min(data.maxHp, data.health + amt)
+						   );
+			data.isDown = data.health <= 0;
+			return data;
+		  });
+		}
+		else if (pveMode === 'coop' && targetRole === 'all') {
+		  // 全队
+		  for (const role of ['userA','userB']) {
+			await currentBattleRoomRef.child(role).transaction(data => {
+			  if (!data || data.isDown) return data;
+			  data.health = Math.max(0,
+							   Math.min(data.maxHp, data.health + amt)
+							 );
+			  data.isDown = data.health <= 0;
+			  return data;
+			});
+		  }
+		}
+		// 6. 统一日志：正值输出💖，负值输出💔
+		const signIcon = amt >= 0 ? '💖治療成功' : '💔治療失敗';
+		const amtText  = amt >= 0 ? `+${amt}` : `${amt}`; // 负数自带负号
+		let who = '自己';
+		if (targetRole === 'one' && targetUid !== window.myUid) {
+		  who = '隊友';
+		}
+		else if (targetRole === 'all') {
+		  who = '全隊';
+		}
+		const logMessage = `${signIcon}，${who}的生命值 ${amtText}`;
+		// 7. 推送并广播
 		if (healEventsRef) {
-		  const ref = healEventsRef.push({
-			sender:    window.myRole,
-			senderUid: window.myUid,
-			type:      healType,
+		  healEventsRef.push({
+			sender:     window.myRole,
+			senderUid:  window.myRole === 'self' ? window.myUid : window.myUid,
+			type:       healType,
 			targetRole,
 			targetUid,
-			amount:    cfg.amount,
-			timestamp: Date.now(),
+			amount:     amt,
+			timestamp:  Date.now(),
 			logMessage
 		  });
-		  playerHp = Math.min(playerMaxHp, playerHp + cfg.amount);
-		  updateHealthDisplay();
 		}
 	  }, cfg.interval);
 	}
-
 	
   // 確保 Firebase 已初始化
   if (!window.firebase || !window.firebase.database) {
