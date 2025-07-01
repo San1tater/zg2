@@ -3248,7 +3248,7 @@
 	  ],
 	  bossKills: [
 	    { boss: "zombieController", threshold: 1, title: "奇特針劑", level: 5 },
-		{ boss: "zombieController", threshold: 10, title: "不要打針", level: 7 },
+		{ boss: "zombieController", threshold: 2, title: "不要打針", level: 7 },
 		{ boss: "zombieController", threshold: 100, title: "筋肉撕裂者", level: 9 },
 		{ boss: "zombieController", threshold: 500, title: "魔鬼屠夫", level: 11 },
 		{ boss: "zombieKing", threshold: 1, title: "邪惡觸手", level: 6 },
@@ -3406,7 +3406,14 @@
 	  gameState.unlockedAchievements = unlockedAchievements.slice();
 	  updateAchievementsUI();
 	}
-
+	function refreshBossKillAchievements() {
+	  // 拿到当前所有 boss 的 key
+	  const bosses = Object.keys(gameState.bossKillCounts || {});
+	  bosses.forEach(bossId => {
+		// 让已有次数 >= 阈值的成就都解锁一次
+		checkBossKillAchievements(bossId);
+	  });
+	}
 	
 	/***** (2) 修正神聖物品成就統計 *****/
 	// 每次檢查成就前調用，統計 collectedItems 中神聖物品的總數
@@ -4482,6 +4489,8 @@ function triggerT80Cannon() {
 			unlockedAchievements = saveData.unlockedAchievements;
 			gameState.unlockedAchievements = unlockedAchievements;
 		  }
+		  refreshBossKillAchievements(); 
+		  refreshUnlockedAchievements();
 		 if (saveData.elapsedTime) {
 			window.startTime = Date.now() - saveData.elapsedTime;
 		  } else {
@@ -4761,7 +4770,9 @@ function triggerT80Cannon() {
 		}		  
 		// 尝试加载存档
 		loadGameState();
-		removeDuplicateAchievements();  
+		removeDuplicateAchievements();
+		refreshBossKillAchievements();   // ← 新增
+	    refreshUnlockedAchievements();
 		// 初始化游戏（使用存档或初始状态）
 		initGame();		  
 		// 初始化计时器：updateTimer 每秒更新，计时器依据 window.startTime 计算已流逝时间
@@ -6570,13 +6581,13 @@ function triggerT80Cannon() {
 		// 生成日志
 		let logMessage = '';
 		if (healType === 'self') {
-		  logMessage = `💚 ${window.myUid} 治療自己，生命 +${cfg.amount}`;
+		  logMessage = `💚 治療自己，生命 +${cfg.amount}`;
 		} else if (healType === 'one') {
 		  logMessage = targetRole === window.myRole
-			? `💚 ${window.myUid} 治療自己，生命 +${cfg.amount}`
-			: `💚 ${window.myUid} 治療隊友，生命 +${cfg.amount}`;
+			? `💚 治療自己，生命 +${cfg.amount}`
+			: `💚 治療隊友，生命 +${cfg.amount}`;
 		} else {
-		  logMessage = `💚 ${window.myUid} 治療全隊，生命 +${cfg.amount}`;
+		  logMessage = `💚 治療全隊，生命 +${cfg.amount}`;
 		}
 
 		// 推送并本地立即更新
