@@ -6081,7 +6081,7 @@ function triggerT80Cannon() {
 		: 0;
 	  // 4. 对手减伤
 	  const def = getCombatForSprite(window.opponentZombieSprite, 'pvp');
-	  const finalDmg = Math.round(raw * (1 - def.dmgTaken));
+	  const finalDmg = Math.round(raw * (1 + def.dmgTaken));
 
 	  const phrase = getRandomPhrase("normal");
 	  if (hit && finalDmg>0) {
@@ -8012,7 +8012,7 @@ function triggerT80Cannon() {
 			window.currentZombieSprite,
 			"pve"
 		  );
-		  const finalDmg = Math.round(raw * (1 - defCombat.dmgTaken));
+		  const finalDmg = Math.round(raw * (1 + defCombat.dmgTaken));
 
 		  if (hit && finalDmg > 0) {
 		  if (useSinglePool) {
