@@ -1219,19 +1219,12 @@
 	}
 
 	.battle-header {
-	  padding: 15px;
+	  padding: 0 1em;
 	  background: #333;
 	  display: grid;
 	  grid-template-rows: 1fr auto auto;
-	  gap: 0.5rem;           /* 两行之间留点空 */
 	  align-items: stretch; /* 使子元素拉伸填充宽度 */
-	  gap: 1em;
 	  height: calc(50vh - 180px);
-	}
-
-	.battle-header input[type="text"] {
-	  padding: 15px;
-	  font-size: 1rem;
 	}
 
 	.battle-header button {
@@ -1315,7 +1308,6 @@
 	  background-color: #5e1c0d; /* 底色為紅色 */
 	  color: white;          /* 文字顏色為白色 */
 	  border: none;          /* 無邊框（可根據需要調整） */
-	  font-size: 20px;       /* 調整字體大小 */
 	  cursor: pointer;
 	}
 	.resource-header {
@@ -1436,28 +1428,32 @@
 	}
 	.battle-header .battle-nav-row:first-child {
 	  grid-row: 2;           /* 第一行操作区放到第二行 */
+	  margin-bottom: 3vh;
 	}
 	.battle-header .battle-nav-row:last-child {
 	  grid-row: 3;           /* 第二行操作区放到第三行 */
+	  margin-bottom: 3vh;
 	}
 
 	.battle-nav-row:first-child input[type="text"] {
 	  flex: 1;
 	  max-width: 40%; /* 限制最大宽度 */
 	  height: 100%; 
-	  min-height: 7vh;
+	  min-height: 5vh;
 	  box-sizing: border-box; 
-	  font-size: 1em; 
+	  font-size: calc(5vh * 0.3);
+	  line-height: 5vh;
 	  padding: 0 0.5em;
 	}
 
 	.battle-nav-row:first-child button {
 	  margin-left: auto; /* 推到右侧 */
 	  height: 100%;
-	  min-height: 7vh;
-	  min-width: 7vh;
+	  min-height: 5vh;
+	  min-width: 5vh;
 	  box-sizing: border-box; 
-	  font-size: 1em; 
+	  font-size: calc(5vh * 0.3);
+	  line-height: 5vh;
 	  padding: 0 2em
 	}
 
@@ -1466,19 +1462,21 @@
 	  flex: 1;
 	  max-width: 30%; /* 限制最大宽度，确保三个选择器大小一致 */
 	  height: 100%;
-	  min-height: 7vh;
+	  min-height: 5vh;
 	  box-sizing: border-box; 
-	  font-size: 1em; 
+	  font-size: calc(5vh * 0.3);
+	  line-height: 5vh; 
 	  padding: 0 0.5em
 	}
 
 	.battle-nav-row:last-child button {
 	  min-width: 100px; /* 给开始按钮一个最小宽度 */
 	  height: 100%;
-	  min-height: 7vh;
+	  min-height: 5vh;
 	  min-width: 14vh;
 	  box-sizing: border-box; 
-	  font-size: 1em; 
+	  font-size: calc(5vh * 0.3);
+	  line-height: 5vh; 
 	  padding: 0 0.5em
 	}
 
@@ -1488,9 +1486,10 @@
 	  background: #222;
 	  color: #fff;
 	  height: 100%;
-	  min-height: 7vh;
+	  min-height: 5vh;
 	  box-sizing: border-box; 
-	  font-size: 1em; 
+	  font-size: calc(5vh * 0.3);
+	  line-height: 5vh; 
 	  padding: 0 0.5em
 	}
 
