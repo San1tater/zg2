@@ -2,7 +2,7 @@
 <html lang="zh">
 <head>
   <meta charset="UTF-8" name="viewport" content="width=device-width, initial-scale=0.45"/>
-  <title>末日控制中心 - 正式版v.1.116 pve-coop update</title>
+  <title>末日控制中心 - 正式版v.1.117 pve-coop update</title>
   <style>
     /* 彈窗系統 */
     .modal-overlay {
@@ -3248,7 +3248,7 @@
 	  ],
 	  bossKills: [
 	    { boss: "zombieController", threshold: 1, title: "奇特針劑", level: 5 },
-		{ boss: "zombieController", threshold: 2, title: "不要打針", level: 7 },
+		{ boss: "zombieController", threshold: 10, title: "不要打針", level: 7 },
 		{ boss: "zombieController", threshold: 100, title: "筋肉撕裂者", level: 9 },
 		{ boss: "zombieController", threshold: 500, title: "魔鬼屠夫", level: 11 },
 		{ boss: "zombieKing", threshold: 1, title: "邪惡觸手", level: 6 },
@@ -3300,10 +3300,10 @@
 	  const rarity = getRarityForAchievement(level);
 	  const achievement = {
 		category: "building",
-		level: level,
-		title: title,
-		details: details,
-		rarity: rarity,
+		level,           // ← 數字
+		title,
+		details,
+		rarity,
 		unlockedTime: Date.now()
 	  };
 	  unlockedAchievements.push(achievement);
@@ -3406,15 +3406,7 @@
 	  gameState.unlockedAchievements = unlockedAchievements.slice();
 	  updateAchievementsUI();
 	}
-	function refreshBossKillAchievements() {
-	  // 拿到当前所有 boss 的 key
-	  const bosses = Object.keys(gameState.bossKillCounts || {});
-	  bosses.forEach(bossId => {
-		// 让已有次数 >= 阈值的成就都解锁一次
-		checkBossKillAchievements(bossId);
-	  });
-	}
-	
+
 	/***** (2) 修正神聖物品成就統計 *****/
 	// 每次檢查成就前調用，統計 collectedItems 中神聖物品的總數
 	function updateDivineItemsCount() {
@@ -3451,6 +3443,12 @@
 	  achievementRules.btrTriggers.forEach(rule => {
 		if (btrCount >= rule.threshold && !isAchievementUnlocked("btrTriggers", rule.level)) {
 		  awardAchievement("btrTriggers", rule);
+		}
+	  });
+	  achievementRules.bossKills.forEach(rule => {
+		const count = gameState.bossKillCounts[rule.boss] || 0;
+		if (count >= rule.threshold && !isAchievementUnlocked("bossKills", rule.level)) {
+		  awardAchievement("bossKills", rule);
 		}
 	  });
 	  updateAchievementsUI();
@@ -4472,12 +4470,19 @@ function triggerT80Cannon() {
 
 	// 加载存档的函数
 	function loadGameState() {
+	  if (!gameState.bossKillCounts) {
+		gameState.bossKillCounts = { zombieController:0, zombieKing:0 };
+	  }
 	  const saved = localStorage.getItem("gameSave");
 	  if (saved) {
 		try {
 		  const saveData = JSON.parse(saved);
 		  if (saveData.gameState) {
 			gameState = saveData.gameState;
+			gameState.bossKillCounts = gameState.bossKillCounts || {
+			zombieController: 0,
+			zombieKing:       0
+		  };
 		  }
 		  if (saveData.collectedItems) {
 			collectedItems = saveData.collectedItems;
@@ -4489,7 +4494,6 @@ function triggerT80Cannon() {
 			unlockedAchievements = saveData.unlockedAchievements;
 			gameState.unlockedAchievements = unlockedAchievements;
 		  }
-		  refreshBossKillAchievements(); 
 		  refreshUnlockedAchievements();
 		 if (saveData.elapsedTime) {
 			window.startTime = Date.now() - saveData.elapsedTime;
@@ -4771,7 +4775,6 @@ function triggerT80Cannon() {
 		// 尝试加载存档
 		loadGameState();
 		removeDuplicateAchievements();
-		refreshBossKillAchievements();   // ← 新增
 	    refreshUnlockedAchievements();
 		// 初始化游戏（使用存档或初始状态）
 		initGame();		  
@@ -4925,7 +4928,7 @@ function triggerT80Cannon() {
       }},
 	  { src: "images/zombie_search_sprite_doctor.png", unlock: "不要打針",
 		combat: {
-		pvp: { hit:-1, dmgMax:-1, hp:-0.25, dmgTaken:0.3 },
+		pvp: { hit:-0.5, dmgMax:-0.5, hp:-0.25, dmgTaken:0.3 },
 		pve: { hit:-1, dmgMax:-1, hp:-0.5, dmgTaken:0.6 }
 	  },
       heal: {
