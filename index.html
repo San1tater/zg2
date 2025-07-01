@@ -1221,13 +1221,12 @@
 	.battle-header {
 	  padding: 15px;
 	  background: #333;
-	  display: flex;
-	  flex: 1;
-	  flex-direction: column; /* 修改为纵向排列 */
-	  justify-content: center;
+	  display: grid;
+	  grid-template-rows: 1fr auto auto;
+	  gap: 0.5rem;           /* 两行之间留点空 */
 	  align-items: stretch; /* 使子元素拉伸填充宽度 */
 	  gap: 1em;
-	  height: calc(50vh - 240px);
+	  height: calc(50vh - 180px);
 	}
 
 	.battle-header input[type="text"] {
@@ -1431,15 +1430,22 @@
 	  display: flex;
 	  flex: 1;
 	  justify-content: center;
-	  align-items: center;
+	  align-items: flex-end;
 	  gap: 1rem;
 	  width: 100%;
+	}
+	.battle-header .battle-nav-row:first-child {
+	  grid-row: 2;           /* 第一行操作区放到第二行 */
+	}
+	.battle-header .battle-nav-row:last-child {
+	  grid-row: 3;           /* 第二行操作区放到第三行 */
 	}
 
 	.battle-nav-row:first-child input[type="text"] {
 	  flex: 1;
 	  max-width: 40%; /* 限制最大宽度 */
-	  height: 80%; 
+	  height: 100%; 
+	  min-height: 7vh;
 	  box-sizing: border-box; 
 	  font-size: 1em; 
 	  padding: 0 0.5em;
@@ -1447,7 +1453,9 @@
 
 	.battle-nav-row:first-child button {
 	  margin-left: auto; /* 推到右侧 */
-	  height: 80%; 
+	  height: 100%;
+	  min-height: 7vh;
+	  min-width: 7vh;
 	  box-sizing: border-box; 
 	  font-size: 1em; 
 	  padding: 0 2em
@@ -1457,7 +1465,8 @@
 	.battle-nav-row:last-child select {
 	  flex: 1;
 	  max-width: 30%; /* 限制最大宽度，确保三个选择器大小一致 */
-	  height: 80%; 
+	  height: 100%;
+	  min-height: 7vh;
 	  box-sizing: border-box; 
 	  font-size: 1em; 
 	  padding: 0 0.5em
@@ -1465,7 +1474,9 @@
 
 	.battle-nav-row:last-child button {
 	  min-width: 100px; /* 给开始按钮一个最小宽度 */
-	  height: 80%; 
+	  height: 100%;
+	  min-height: 7vh;
+	  min-width: 14vh;
 	  box-sizing: border-box; 
 	  font-size: 1em; 
 	  padding: 0 0.5em
@@ -1476,7 +1487,8 @@
 	  border: 2px solid #444;
 	  background: #222;
 	  color: #fff;
-	  height: 80%; 
+	  height: 100%;
+	  min-height: 7vh;
 	  box-sizing: border-box; 
 	  font-size: 1em; 
 	  padding: 0 0.5em
