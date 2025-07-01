@@ -4470,6 +4470,24 @@ function triggerT80Cannon() {
 
 	// 加载存档的函数
 	function loadGameState() {
+	  let saveData = null;
+	  const raw = localStorage.getItem("gameSave");
+	  if (raw) {
+		saveData = JSON.parse(raw);
+		if (saveData.gameState) {
+		  gameState = saveData.gameState;
+		}
+		// 如果有存舊成就陣列，就把 level 字串轉成數字
+		if (Array.isArray(saveData.unlockedAchievements)) {
+		  unlockedAchievements = saveData.unlockedAchievements.map(a => ({
+			...a,
+			// 只要 a.level 不是數字，就轉一次
+			level: Number(a.level)
+		  }));
+		  // 同步回 gameState
+		  gameState.unlockedAchievements = unlockedAchievements.slice();
+		}
+	  }
 	  if (!gameState.bossKillCounts) {
 		gameState.bossKillCounts = { zombieController:0, zombieKing:0 };
 	  }
