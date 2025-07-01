@@ -1212,19 +1212,22 @@
 	  left: 50%;
 	  transform: translateX(-50%);
 	  width: 100vw;
-	  height: 300px;
+	  height: 50vh;
 	  z-index: 2100;
+	  display: flex;
+      flex-direction: column;
 	}
 
 	.battle-header {
 	  padding: 15px;
 	  background: #333;
 	  display: flex;
+	  flex: 1;
 	  flex-direction: column; /* 修改为纵向排列 */
 	  justify-content: center;
 	  align-items: stretch; /* 使子元素拉伸填充宽度 */
-	  gap: 10px;
-	  height: auto; /* 高度自适应内容 */
+	  gap: 1em;
+	  height: calc(50vh - 240px);
 	}
 
 	.battle-header input[type="text"] {
@@ -1242,6 +1245,7 @@
 	  height: 180px;
 	  width: 100vw;
 	  display: flex;
+	  flex: none;
 	  margin: 0px;
 	}
 
@@ -1275,11 +1279,11 @@
 	}
 
 	.battle-log {
-	  position: fixed;
-	  top: 300px;      /* 戰鬥日誌頂部緊貼 battle-container 底部 */
+	  position: relative;
+	  top: 50vh;
 	  left: 0;
 	  width: 100%;
-	  height: calc(100vh - 220px);  /* 占滿剩餘高度 */
+	  height: 50vh;
 	  background: #1f1f1f;         /* 與探索日誌一致 */
 	  color: #fff;
 	  overflow-y: auto;
@@ -1425,44 +1429,57 @@
 	/* 对战模式导航行样式 */
 	.battle-nav-row {
 	  display: flex;
+	  flex: 1;
 	  justify-content: center;
 	  align-items: center;
-	  gap: 10px; /* 元素间距 */
+	  gap: 1rem;
 	  width: 100%;
 	}
 
 	.battle-nav-row:first-child input[type="text"] {
 	  flex: 1;
 	  max-width: 40%; /* 限制最大宽度 */
-	  padding: 8px 12px;
-	  font-size: 1rem;
+	  height: 80%; 
+	  box-sizing: border-box; 
+	  font-size: 1em; 
+	  padding: 0 0.5em;
 	}
 
 	.battle-nav-row:first-child button {
-	  padding: 8px 15px;
 	  margin-left: auto; /* 推到右侧 */
+	  height: 80%; 
+	  box-sizing: border-box; 
+	  font-size: 1em; 
+	  padding: 0 2em
 	}
 
 	/* 第二行样式 - 三个下拉菜单均匀分布 */
 	.battle-nav-row:last-child select {
 	  flex: 1;
-	  padding: 8px;
 	  max-width: 30%; /* 限制最大宽度，确保三个选择器大小一致 */
+	  height: 80%; 
+	  box-sizing: border-box; 
+	  font-size: 1em; 
+	  padding: 0 0.5em
 	}
 
 	.battle-nav-row:last-child button {
-	  padding: 8px 20px;
 	  min-width: 100px; /* 给开始按钮一个最小宽度 */
+	  height: 80%; 
+	  box-sizing: border-box; 
+	  font-size: 1em; 
+	  padding: 0 0.5em
 	}
 
 	/* 调整下拉菜单样式 */
 	#battleModeSelect, #bossList, #pveModeSelect {
-	  padding: 8px;
-	  border-radius: 4px;
-	  border: 1px solid #444;
+	  border: 2px solid #444;
 	  background: #222;
 	  color: #fff;
-	  height: 36px; /* 固定高度确保一致性 */
+	  height: 80%; 
+	  box-sizing: border-box; 
+	  font-size: 1em; 
+	  padding: 0 0.5em
 	}
 
 
