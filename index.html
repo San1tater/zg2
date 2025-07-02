@@ -2,7 +2,7 @@
 <html lang="zh">
 <head>
   <meta charset="UTF-8" name="viewport" content="width=device-width, initial-scale=0.45"/>
-  <title>末日控制中心 - 正式版v.1.12 healer update</title>
+  <title>末日控制中心 - 正式版v.1.121 resource pickup update</title>
   <style>
     /* 彈窗系統 */
     .modal-overlay {
@@ -4880,10 +4880,10 @@ function triggerT80Cannon() {
 		  if (missed > 0) {
 			lastTs += missed * TICK_MS;
 			gameLoop();
-			if (missed > 1) {
+		  }
+		  if (missed > 1) {
 			  catchUpQueue = missed - 1;
 			  queuedRuns   = catchUpQueue;
-			}
 		  }
 		  if (catchUpQueue > 0) {
 			const run = Math.min(catchUpQueue, CHUNK_PER_FRAME);
