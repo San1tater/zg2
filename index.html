@@ -4817,6 +4817,16 @@ function triggerT80Cannon() {
 		if (favBtn) {
 		  favBtn.addEventListener("click", showCollection);
 		}
+		function updateModalContents() {
+		  const upgradeModal = document.getElementById("upgradeModal");
+		  if (upgradeModal?.style.display === "flex" && currentUpgradeIndex != null) {
+			updateUpgradeMenuContent(currentUpgradeIndex);
+		  }
+		  const buildModal = document.getElementById("buildModal");
+		  if (buildModal?.style.display === "flex" && currentBuildIndex != null) {
+			updateBuildMenuContent(currentBuildIndex);
+		  }
+		}
 		function gameLoop() {
 		  checkAchievements();  // 每次循環檢查成就條件
 		  // 資源生產、僵尸生產、食物消耗、探索等操作集中執行
@@ -4832,17 +4842,6 @@ function triggerT80Cannon() {
 		  if (gameState.allocations.exploration > 0) {
 			handleExploration();
 		  }
-		  // 統一更新所有顯示（若加上前面提到的 dirty flag 更新，就不會每次都更新）
-		  updateAllDisplays();
-		  const upgradeModal = document.getElementById("upgradeModal");
-		  if (upgradeModal && upgradeModal.style.display === "flex" && typeof currentUpgradeIndex !== "undefined") {
-			updateUpgradeMenuContent(currentUpgradeIndex);
-		  }
-		  // --- 新增建造彈窗自動更新 ---
-		  const buildModal = document.getElementById("buildModal");
-		  if (buildModal && buildModal.style.display === "flex" && currentBuildIndex !== null) {
-			updateBuildMenuContent(currentBuildIndex);
-		  }
 		}
 		const TICK_MS = 5000;
 		let lastTs   = performance.now();
@@ -4851,41 +4850,24 @@ function triggerT80Cannon() {
 		  const delta = now - lastTs;
 		  const ticks = Math.floor(delta / TICK_MS);
 		  if (ticks > 0) {
-			// 更新基准时间，避免累加误差
 			lastTs += ticks * TICK_MS;
-			// 1) 全盘补跑 ticks 次原 gameLoop
 			for (let i = 0; i < ticks; i++) {
 			  gameLoop();
 			}
-			// 2) 如果补跑超过 1 次，额外输出汇总
 			if (ticks > 1) {
-			  // exploration 面板
-			  addEventLog(
-				`補跑 ${ticks - 1} 次探索事件（背景期間）`,
-				'common',
-				'exploration'
-			  );
-			  // production 面板
-			  addEventLog(
-				`補跑 ${ticks - 1} 次生產事件（背景期間）`,
-				'common',
-				'production'
-			  );
+			  addEventLog(`補跑 ${ticks - 1} 次探索事件（背景期間）`,
+						  'common','exploration');
+			  addEventLog(`補跑 ${ticks - 1} 次生產事件（背景期間）`,
+						  'common','production');
 			}
+			updateAllDisplays();
+			updateCollectionCompletion();
 		  }
-		  // 3. 保留弹窗自动刷新
-		  const um = document.getElementById("upgradeModal");
-		  if (um?.style.display === "flex" && currentUpgradeIndex != null) {
-			updateUpgradeMenuContent(currentUpgradeIndex);
-		  }
-		  const bm = document.getElementById("buildModal");
-		  if (bm?.style.display === "flex" && currentBuildIndex != null) {
-			updateBuildMenuContent(currentBuildIndex);
-		  }
+		  updateModalContents();
 		  requestAnimationFrame(rafBatchLoop);
 		}
-		// 启动 RAF 循环
 		requestAnimationFrame(rafBatchLoop);
+
 		// 為所有 modal-overlay 添加事件監聽器
 		document.querySelectorAll('.modal-overlay').forEach(overlay => {
 		  overlay.addEventListener('click', function(event) {
