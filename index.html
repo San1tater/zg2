@@ -4827,74 +4827,76 @@ function triggerT80Cannon() {
 			updateBuildMenuContent(currentBuildIndex);
 		  }
 		}
-		const TICK_MS        = 5000;
-	    const CHUNK_PER_FRAME = 50;      // 每帧补跑最多 50 次
-	    let lastTs           = performance.now();
-	    let catchUpQueue     = 0;
-	    let queuedRuns       = 0;        // 记录这次补跑要播报的总次数
 
-	    // 原 gameLoop，保持不变——它会打日志、更新资源、刷新 UI
-	    function gameLoop() {
+		const TICK_MS        = 5000;
+		const CHUNK_PER_FRAME = 50;      // 每帧补跑最多 50 次
+		let lastTs           = performance.now();
+		let catchUpQueue     = 0;
+		let queuedRuns       = 0;
+
+		// 原 gameLoop，不变
+		function gameLoop() {
 		  checkAchievements();
-		  produceResources('farming', 'food', 1.7 * 5);
+		  produceResources('farming',  'food',      1.7 * 5);
 		  produceResources('recycling','materials', 0.5 * 5);
-		  produceResources('research', 'tech', 0.2 * 5);
+		  produceResources('research', 'tech',      0.2 * 5);
 		  produceWeaponsFromArmories();
 		  produceZombies();
 		  updateFoodConsumption();
 		  updateSafetyCenterConsumption();
 		  updateBarracksWeaponConsumption();
 		  if (gameState.allocations.exploration > 0) {
-		    handleExploration();
+			handleExploration();
 		  }
 		  updateAllDisplays();
-	    }
+		}
 
-	    // “静默”版 gameLoop：只更新资源状态、不打日志、不刷新 UI
-	    function catchUpTick() {
-		  produceResources('farming', 'food', 1.7 * 5);
+		// 静默版：只更新资源／状态，不打日志、不刷新 UI
+		function catchUpTick() {
+		  produceResources('farming',  'food',      1.7 * 5);
 		  produceResources('recycling','materials', 0.5 * 5);
-		  produceResources('research', 'tech', 0.2 * 5);
+		  produceResources('research', 'tech',      0.2 * 5);
 		  produceWeaponsFromArmories();
 		  produceZombies();
 		  updateFoodConsumption();
 		  updateSafetyCenterConsumption();
 		  updateBarracksWeaponConsumption();
 		  if (gameState.allocations.exploration > 0) {
-		    handleExploration(/* skipLog= */ true);
-		  }
-	    }
-
-	  function reportCatchUp(count) {
-		addEventLog(`補跑 ${count}次探索事件（背景期間）`,
-						  'common','exploration');
-		addEventLog(`補跑 ${count}次生產事件（背景期間）`,
-						  'common','production');
-		updateAllDisplays();
-		updateCollectionCompletion();
-	  }
-
-	  function rafBatchLoop(now) {
-		const delta = now - lastTs;
-		const missed = Math.floor(delta / TICK_MS);
-		if (missed > 0) {
-		  gameLoop();
-		  lastTs += TICK_MS;
-		  catchUpQueue = missed - 1;
-		  queuedRuns   = catchUpQueue; 
-		}
-		if (catchUpQueue > 0) {
-		  const run = Math.min(catchUpQueue, CHUNK_PER_FRAME);
-		  for (let i = 0; i < run; i++) catchUpTick();
-		  catchUpQueue -= run;
-		  if (catchUpQueue === 0) {
-			reportCatchUp(queuedRuns);
+			handleExploration(/* skipLog= */ true);
 		  }
 		}
-		updateModalContents();
+
+		// 补跑结束时一次性播报 & 刷新
+		function reportCatchUp(count) {
+		  addEventLog(`補跑 ${count} 次探索事件（背景期間）`, 'common', 'exploration');
+		  addEventLog(`補跑 ${count} 次生產事件（背景期間）`, 'common', 'production');
+		  updateAllDisplays();
+		  updateCollectionCompletion();
+		}
+
+		function rafBatchLoop(now) {
+		  const delta  = now - lastTs;
+		  const missed = Math.floor(delta / TICK_MS);
+		  if (missed > 0) {
+			lastTs += missed * TICK_MS;
+			gameLoop();
+			if (missed > 1) {
+			  catchUpQueue = missed - 1;
+			  queuedRuns   = catchUpQueue;
+			}
+		  }
+		  if (catchUpQueue > 0) {
+			const run = Math.min(catchUpQueue, CHUNK_PER_FRAME);
+			for (let i = 0; i < run; i++) catchUpTick();
+			catchUpQueue -= run;
+			if (catchUpQueue === 0) {
+			  reportCatchUp(queuedRuns);
+			}
+		  }
+		  updateModalContents();
+		  requestAnimationFrame(rafBatchLoop);
+		}
 		requestAnimationFrame(rafBatchLoop);
-	    }
-	    requestAnimationFrame(rafBatchLoop);
 
 		// 為所有 modal-overlay 添加事件監聽器
 		document.querySelectorAll('.modal-overlay').forEach(overlay => {
