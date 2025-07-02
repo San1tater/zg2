@@ -3174,7 +3174,6 @@
 		gameState.totalZombies = Math.max(0, gameState.totalZombies);
         if (gameState.totalZombies <= 0) {
           addEventLog("所有僵尸均已死亡，遊戲結束！", "epic");
-          clearInterval(gameLoopInterval);
         }
       }
       updateResourceDisplays();
@@ -4845,8 +4844,48 @@ function triggerT80Cannon() {
 			updateBuildMenuContent(currentBuildIndex);
 		  }
 		}
-		// 用單一定時器啟動主循環，例如每 5 秒執行一次
-		setInterval(gameLoop, 5000);		
+		const TICK_MS = 5000;
+		let lastTs   = performance.now();
+
+		function rafBatchLoop(now) {
+		  const delta = now - lastTs;
+		  const ticks = Math.floor(delta / TICK_MS);
+		  if (ticks > 0) {
+			// 更新基准时间，避免累加误差
+			lastTs += ticks * TICK_MS;
+			// 1) 全盘补跑 ticks 次原 gameLoop
+			for (let i = 0; i < ticks; i++) {
+			  gameLoop();
+			}
+			// 2) 如果补跑超过 1 次，额外输出汇总
+			if (ticks > 1) {
+			  // exploration 面板
+			  addEventLog(
+				`補跑 ${ticks - 1} 次探索事件（背景期間）`,
+				'common',
+				'exploration'
+			  );
+			  // production 面板
+			  addEventLog(
+				`補跑 ${ticks - 1} 次生產事件（背景期間）`,
+				'common',
+				'production'
+			  );
+			}
+		  }
+		  // 3. 保留弹窗自动刷新
+		  const um = document.getElementById("upgradeModal");
+		  if (um?.style.display === "flex" && currentUpgradeIndex != null) {
+			updateUpgradeMenuContent(currentUpgradeIndex);
+		  }
+		  const bm = document.getElementById("buildModal");
+		  if (bm?.style.display === "flex" && currentBuildIndex != null) {
+			updateBuildMenuContent(currentBuildIndex);
+		  }
+		  requestAnimationFrame(rafBatchLoop);
+		}
+		// 启动 RAF 循环
+		requestAnimationFrame(rafBatchLoop);
 		// 為所有 modal-overlay 添加事件監聽器
 		document.querySelectorAll('.modal-overlay').forEach(overlay => {
 		  overlay.addEventListener('click', function(event) {
@@ -4860,7 +4899,7 @@ function triggerT80Cannon() {
 		  });
 		});
 	});
-	
+
 	// mode="pvp"或"pve"，直接返回小数加成
 	function getCombatForSprite(spriteUrl, mode) {
 	  const opt = zombieSpriteOptions.find(o => o.src === spriteUrl);
@@ -4881,6 +4920,7 @@ function triggerT80Cannon() {
 	  });
 	  return set;
 	}
+	
 (function(){
     // ──────────────────────────────
     // 模塊內定義精靈圖數據：原有的僵尸精靈圖與新增的裝甲系列
