@@ -4877,21 +4877,23 @@ function triggerT80Cannon() {
 		function rafBatchLoop(now) {
 		  const delta  = now - lastTs;
 		  const missed = Math.floor(delta / TICK_MS);
-		  if (missed > 0) {
-			lastTs += missed * TICK_MS;
-			gameLoop();
+		  if (catchUpQueue === 0 && missed > 0) {
+			lastTs += TICK_MS;
+			gameLoop();      // 只这一句会打日志
 		  }
 		  if (missed > 1) {
-			  catchUpQueue = missed - 1;
-			  queuedRuns   = catchUpQueue;
+			// 全部都推到队列，不在这里打日志
+			catchUpQueue += (missed - 1);
+			lastTs       += (missed - 1) * TICK_MS;
 		  }
 		  if (catchUpQueue > 0) {
 			const run = Math.min(catchUpQueue, CHUNK_PER_FRAME);
-			for (let i = 0; i < run; i++) catchUpTick();
-			catchUpQueue -= run;
-			if (catchUpQueue === 0) {
-			  reportCatchUp(queuedRuns);
+			for (let i = 0; i < run; i++) {
+			  catchUpTick();   // 绝不打日志、只累状态
 			}
+			catchUpQueue -= run;
+			// 队列清空后一次性播报
+			if (catchUpQueue === 0) reportCatchUp(queuedRuns);
 		  }
 		  updateModalContents();
 		  requestAnimationFrame(rafBatchLoop);
