@@ -2,7 +2,7 @@
 <html lang="zh">
 <head>
   <meta charset="UTF-8" name="viewport" content="width=device-width, initial-scale=0.45"/>
-  <title>末日控制中心 - 正式版v.1.121 resource pickup update</title>
+  <title>末日控制中心 - 正式版v.1.122 resource pickup update</title>
   <style>
 
     .modal-overlay {
@@ -4558,52 +4558,12 @@ function triggerT80Cannon() {
 
 		const TICK_MS=5000,CHUNK_PER_FRAME=50;
 		let lastTs=performance.now(),inCatchUp=false,catchUpQueue=0,queuedRuns=0,tickCounter=0,btrExpireTick=0;
-		const _origAddEventLog=window.addEventLog;
-		window.addEventLog=(msg,rarity,type,apply)=>{
-		  if(inCatchUp&&type==='exploration'&&msg.includes('入場'))return;
-		  _origAddEventLog(msg,rarity,type,apply);
-		};
-		const _origTriggerZombieEntry=window.triggerZombieEntry,_origTriggerZombieLying=window.triggerZombieLying,_origProductionAccident=window.triggerProductionAccident,_origUpdateAllDisplays=window.updateAllDisplays,_origUpdateModalContents=window.updateModalContents;
-		function suppressSideEffects(){
-		  window.triggerZombieEntry=()=>{};window.triggerZombieLying=()=>{};window.triggerProductionAccident=()=>{};window.updateAllDisplays=()=>{};window.updateModalContents=()=>{};
-		}
-		function restoreSideEffects(){
-		  window.triggerZombieEntry=_origTriggerZombieEntry;window.triggerZombieLying=_origTriggerZombieLying;window.triggerProductionAccident=_origProductionAccident;window.updateAllDisplays=_origUpdateAllDisplays;window.updateModalContents=_origUpdateModalContents;
-		}
-		function gameTick(){
-		  tickCounter++;
-		  if(tickCounter%6===0){
-			const garages=gameState.buildings.filter(b=>b&&b.type.toLowerCase()==="armoredgarage");
-			if(garages.length>0){
-			  const info=BUILDINGS.armoredGarage.getUpgradeInfo(garages[0].level);
-			  if(Math.random()<info.effect.btrChance){
-				btrExpireTick=tickCounter+2;
-				if(!inCatchUp)triggerBTRAnimation();
-			  }
-			}
-		  }
-		  isBTRActive=tickCounter<=btrExpireTick;
-		  checkAchievements();produceResources('farming','food',1.7*TICK_MS/1000);produceResources('recycling','materials',0.5*TICK_MS/1000);produceResources('research','tech',0.2*TICK_MS/1000);produceWeaponsFromArmories();produceZombies();updateFoodConsumption();updateSafetyCenterConsumption();updateBarracksWeaponConsumption();if(gameState.allocations.exploration>0)handleExploration();updateAllDisplays();
-		}
-		function rafBatchLoop(now){
-		  const delta=now-lastTs;
-		  if(delta>=TICK_MS&&!inCatchUp){
-			const missed=Math.floor(delta/TICK_MS);
-			lastTs+=missed*TICK_MS;
-			gameTick();
-			if(missed>1){inCatchUp=true;catchUpQueue=queuedRuns=missed-1;}
-		  }
-		  if(inCatchUp){
-			suppressSideEffects();
-			const runs=Math.min(catchUpQueue,CHUNK_PER_FRAME);
-			for(let i=0;i<runs;i++)gameTick();
-			catchUpQueue-=runs;
-			if(catchUpQueue===0){
-			  inCatchUp=false;restoreSideEffects();updateAllDisplays();window.addEventLog(`補跑 ${queuedRuns} 次探索事件（靜默）`,'common','exploration');window.addEventLog(`補跑 ${queuedRuns} 次生產事件（靜默）`,'common','production');
-			}
-		  }
-		  requestAnimationFrame(rafBatchLoop);
-		}
+		const _origAddEventLog=window.addEventLog,_origTriggerZombieEntry=window.triggerZombieEntry,_origTriggerZombieLying=window.triggerZombieLying,_origProductionAccident=window.triggerProductionAccident,_origUpdateAllDisplays=window.updateAllDisplays,_origUpdateModalContents=window.updateModalContents;
+		window.addEventLog=(msg,rarity,type,apply)=>{if(inCatchUp)return;_origAddEventLog(msg,rarity,type,apply);};
+		function suppressSideEffects(){window.triggerZombieEntry=()=>{};window.triggerZombieLying=()=>{};window.triggerProductionAccident=()=>{};window.updateAllDisplays=()=>{};window.updateModalContents=()=>{};}
+		function restoreSideEffects(){window.triggerZombieEntry=_origTriggerZombieEntry;window.triggerZombieLying=_origTriggerZombieLying;window.triggerProductionAccident=_origProductionAccident;window.updateAllDisplays=_origUpdateAllDisplays;window.updateModalContents=_origUpdateModalContents;}
+		function gameTick(){tickCounter++;if(tickCounter%6===0){const garages=gameState.buildings.filter(b=>b&&b.type.toLowerCase()==="armoredgarage");if(garages.length){const info=BUILDINGS.armoredGarage.getUpgradeInfo(garages[0].level);if(Math.random()<info.effect.btrChance){btrExpireTick=tickCounter+2;if(!inCatchUp)triggerBTRAnimation();}}}isBTRActive=tickCounter<=btrExpireTick;checkAchievements();produceResources('farming','food',1.7*TICK_MS/1000);produceResources('recycling','materials',0.5*TICK_MS/1000);produceResources('research','tech',0.2*TICK_MS/1000);produceWeaponsFromArmories();produceZombies();updateFoodConsumption();updateSafetyCenterConsumption();updateBarracksWeaponConsumption();if(gameState.allocations.exploration>0)handleExploration();updateAllDisplays();}
+		function rafBatchLoop(now){const delta=now-lastTs;if(delta>=TICK_MS&&!inCatchUp){const missed=Math.floor(delta/TICK_MS);lastTs+=missed*TICK_MS;gameTick();if(missed>1){inCatchUp=true;catchUpQueue=queuedRuns=missed-1;}}if(inCatchUp){suppressSideEffects();const runs=Math.min(catchUpQueue,CHUNK_PER_FRAME);for(let i=0;i<runs;i++)gameTick();catchUpQueue-=runs;if(catchUpQueue===0){inCatchUp=false;restoreSideEffects();updateAllDisplays();window.addEventLog(`補跑 ${queuedRuns} 次探索事件（靜默）`,'common','exploration');window.addEventLog(`補跑 ${queuedRuns} 次生產事件（靜默）`,'common','production');}}requestAnimationFrame(rafBatchLoop);}
 		requestAnimationFrame(rafBatchLoop);
 
 		document.querySelectorAll('.modal-overlay').forEach(overlay => {
@@ -4720,6 +4680,16 @@ function triggerT80Cannon() {
         interval: 15000,
         amount:   () => Math.floor(Math.random()*176) - 75,
         targets:  { self:0.1, one:0.7, all:0.2 }
+      }},
+	  { src: "images/zombie_search_sprite_tanker.png", unlock: "挑戰者",
+		combat: {
+		pvp: { hit:-0.1, dmgMax:0, hp:0.15, dmgTaken:-0.1 },
+		pve: { hit:-0.2, dmgMax:0, hp:0.3, dmgTaken:-0.2 }
+	  },
+      heal: {
+        interval: 5000,
+        amount:   () => Math.floor(Math.random()*11) - 0,
+        targets:  { self:1, one:0, all:0 }
       }},
     ];
     const btrSpriteOptions = [
@@ -6906,7 +6876,7 @@ function triggerT80Cannon() {
 		  const totalWidth = frameWidth * framesTotal;	  
 
 		  bossAnim.style.position = 'absolute';
-		  bossAnim.style.left = '70%';
+		  bossAnim.style.left = '65%';
 		  bossAnim.style.top = '50%';
 		  bossAnim.style.marginLeft = `-${frameWidth / 2}px`;
 		  bossAnim.style.marginTop = `-${frameHeight / 2}px`;
