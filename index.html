@@ -4570,7 +4570,6 @@ function triggerT80Cannon() {
 		function restoreSideEffects(){
 		  window.triggerZombieEntry=_origTriggerZombieEntry;window.triggerZombieLying=_origTriggerZombieLying;window.triggerProductionAccident=_origProductionAccident;window.updateAllDisplays=_origUpdateAllDisplays;window.updateModalContents=_origUpdateModalContents;
 		}
-		
 		function gameTick(){
 		  tickCounter++;
 		  if(tickCounter%6===0){
@@ -4600,13 +4599,12 @@ function triggerT80Cannon() {
 			for(let i=0;i<runs;i++)gameTick();
 			catchUpQueue-=runs;
 			if(catchUpQueue===0){
-			  inCatchUp=false;restoreSideEffects();updateAllDisplays();updateModalContents();window.addEventLog(`補跑 ${queuedRuns} 次探索事件（靜默）`,'common','exploration');window.addEventLog(`補跑 ${queuedRuns} 次生產事件（靜默）`,'common','production');
+			  inCatchUp=false;restoreSideEffects();updateAllDisplays();window.addEventLog(`補跑 ${queuedRuns} 次探索事件（靜默）`,'common','exploration');window.addEventLog(`補跑 ${queuedRuns} 次生產事件（靜默）`,'common','production');
 			}
-		  }else updateModalContents();
+		  }
 		  requestAnimationFrame(rafBatchLoop);
 		}
 		requestAnimationFrame(rafBatchLoop);
-
 
 		document.querySelectorAll('.modal-overlay').forEach(overlay => {
 		  overlay.addEventListener('click', function(event) {
