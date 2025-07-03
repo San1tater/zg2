@@ -4563,14 +4563,14 @@ function triggerT80Cannon() {
 		  if(inCatchUp&&type==='exploration'&&msg.includes('入場'))return;
 		  _origAddEventLog(msg,rarity,type,apply);
 		};
-		const _origTriggerZombieEntry=window.triggerZombieEntry,_origTriggerZombieLying=window.triggerZombieLying,_origProductionAccident=window.triggerProductionAccident,_origUpdateAllDisplays=window.updateAllDisplays,_origUpdateModalContents=window.updateModalContents,_origCheckBTREvent=checkBTREvent;
+		const _origTriggerZombieEntry=window.triggerZombieEntry,_origTriggerZombieLying=window.triggerZombieLying,_origProductionAccident=window.triggerProductionAccident,_origUpdateAllDisplays=window.updateAllDisplays,_origUpdateModalContents=window.updateModalContents;
 		function suppressSideEffects(){
 		  window.triggerZombieEntry=()=>{};window.triggerZombieLying=()=>{};window.triggerProductionAccident=()=>{};window.updateAllDisplays=()=>{};window.updateModalContents=()=>{};
 		}
 		function restoreSideEffects(){
 		  window.triggerZombieEntry=_origTriggerZombieEntry;window.triggerZombieLying=_origTriggerZombieLying;window.triggerProductionAccident=_origProductionAccident;window.updateAllDisplays=_origUpdateAllDisplays;window.updateModalContents=_origUpdateModalContents;
 		}
-		checkBTREvent=function(){if(!inCatchUp)_origCheckBTREvent();};
+		
 		function gameTick(){
 		  tickCounter++;
 		  if(tickCounter%6===0){
