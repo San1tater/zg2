@@ -4828,81 +4828,118 @@ function triggerT80Cannon() {
 		  }
 		}
 
-		const TICK_MS        = 5000;
-		const CHUNK_PER_FRAME = 50;      // 每帧补跑最多 50 次
-		let lastTs           = performance.now();
-		let catchUpQueue     = 0;
-		let queuedRuns       = 0;
+		
+		// —— 配置 —— 
+const TICK_MS         = 5000;   // 游戏主循环周期：5 秒
+const CHUNK_PER_FRAME = 50;     // 分帧补算，每帧最多静默运行多少次
 
-		// 原 gameLoop，不变
-		function gameLoop() {
-		  checkAchievements();
-		  produceResources('farming',  'food',      1.7 * 5);
-		  produceResources('recycling','materials', 0.5 * 5);
-		  produceResources('research', 'tech',      0.2 * 5);
-		  produceWeaponsFromArmories();
-		  produceZombies();
-		  updateFoodConsumption();
-		  updateSafetyCenterConsumption();
-		  updateBarracksWeaponConsumption();
-		  if (gameState.allocations.exploration > 0) {
-			handleExploration();
-		  }
-		  updateAllDisplays();
-		}
+// —— 全局状态 —— 
+let lastTs       = performance.now(); // 上次推进基准时间
+let inCatchUp    = false;             // 是否正在后台补算
+let catchUpQueue = 0;                 // 剩余要静默补跑的周期数
+let queuedRuns   = 0;                 // 本次补跑总周期数
 
-		// 静默版：只更新资源／状态，不打日志、不刷新 UI
-		function catchUpTick() {
-		  produceResources('farming',  'food',      1.7 * 5);
-		  produceResources('recycling','materials', 0.5 * 5);
-		  produceResources('research', 'tech',      0.2 * 5);
-		  produceWeaponsFromArmories();
-		  produceZombies();
-		  updateFoodConsumption();
-		  updateSafetyCenterConsumption();
-		  updateBarracksWeaponConsumption();
-		  if (gameState.allocations.exploration > 0) {
-			handleExploration(/* skipLog= */ true);
-		  }
-		}
+// —— 原有每 5s 正常执行的逻辑 —— 
+// 会产生日志、刷新 UI
+function gameLoop() {
+  checkAchievements();
+  produceResources('farming',   'food',      1.7 * TICK_MS / 1000);
+  produceResources('recycling', 'materials', 0.5 * TICK_MS / 1000);
+  produceResources('research',  'tech',      0.2 * TICK_MS / 1000);
 
-		// 补跑结束时一次性播报 & 刷新
-		function reportCatchUp(count) {
-		  addEventLog(`補跑 ${count} 次探索事件（背景期間）`, 'common', 'exploration');
-		  addEventLog(`補跑 ${count} 次生產事件（背景期間）`, 'common', 'production');
-		  updateAllDisplays();
-		  updateCollectionCompletion();
-		}
+  produceWeaponsFromArmories();
+  produceZombies();
 
-		function rafBatchLoop(now) {
-		  const missed = Math.floor((now - lastTs) / TICK_MS);
-		  if (missed > 0) {
-			// 推进时间基准
-			lastTs += missed * TICK_MS;
-			// 当场可见周期仍要跑一次
-			gameLoop();
-		  }
-		  // 如果有多于一次的错过，全部累加进队列
-		  if (missed > 1) {
-			const extra = missed - 1;
-			catchUpQueue += extra;
-			queuedRuns   += extra;   // 累加需要汇报的总次数
-		  }
-		  // 分帧静默补跑
-		  if (catchUpQueue > 0) {
-			const run = Math.min(catchUpQueue, CHUNK_PER_FRAME);
-			for (let i = 0; i < run; i++) catchUpTick();
-			catchUpQueue -= run;
-			// 队列清空后才播报，并重置 queuedRuns
-			if (catchUpQueue === 0) {
-			  reportCatchUp(queuedRuns);
-			  queuedRuns = 0;
-			}
-		  }
-		  updateModalContents();
-		  requestAnimationFrame(rafBatchLoop);
-		}
-		requestAnimationFrame(rafBatchLoop);
+  updateFoodConsumption();
+  updateSafetyCenterConsumption();
+  updateBarracksWeaponConsumption();
+
+  if (gameState.allocations.exploration > 0) {
+    handleExploration();     // 正常打探索日志
+  }
+
+  updateAllDisplays();
+}
+
+// —— 静默补算版 gameLoop —— 
+// 只更新状态，不打日志、不刷新 UI
+function catchUpTick() {
+  produceResources('farming',   'food',      1.7 * TICK_MS / 1000);
+  produceResources('recycling', 'materials', 0.5 * TICK_MS / 1000);
+  produceResources('research',  'tech',      0.2 * TICK_MS / 1000);
+
+  produceWeaponsFromArmories();
+  produceZombies();
+
+  updateFoodConsumption();
+  updateSafetyCenterConsumption();
+  updateBarracksWeaponConsumption();
+
+  if (gameState.allocations.exploration > 0) {
+    handleExploration(/* skipLog= */ true);  // 跳过所有日志
+  }
+}
+
+// —— 补跑结束后一次性刷新 & 汇总播报 —— 
+function reportCatchUp(runs) {
+  // 1) 刷新所有面板数据
+  updateAllDisplays();
+  updateCollectionCompletion();
+
+  // 2) 向两个面板各播报一条补跑汇总
+  addEventLog(`補跑 ${runs} 次探索事件（背景期間）`, 'common', 'exploration');
+  addEventLog(`補跑 ${runs} 次生產事件（背景期間）`, 'common', 'production');
+}
+
+// —— 主循环（requestAnimationFrame 驱动） —— 
+function rafBatchLoop(now) {
+  const delta  = now - lastTs;
+  const ready  = delta >= TICK_MS;
+
+  // —— 1. 正常周期触发 —— 
+  if (!inCatchUp && ready) {
+    // 1a) 计算错过多少个周期
+    const missed = Math.floor(delta / TICK_MS);
+
+    // 1b) 推进基准时间
+    lastTs += missed * TICK_MS;
+
+    // 1c) 执行一次正常主循环（产生日志 + UI 刷新）
+    gameLoop();
+
+    // 1d) 如果不止一个周期，剩余的交给静默补算
+    if (missed > 1) {
+      inCatchUp    = true;
+      catchUpQueue = missed - 1;
+      queuedRuns   = missed - 1;
+    }
+  }
+
+  // —— 2. 静默补跑阶段 —— 
+  if (inCatchUp) {
+    const runCount = Math.min(catchUpQueue, CHUNK_PER_FRAME);
+    for (let i = 0; i < runCount; i++) {
+      catchUpTick();
+    }
+    catchUpQueue -= runCount;
+
+    // 队列消耗完毕后，一次性刷新并播报
+    if (catchUpQueue === 0) {
+      inCatchUp = false;
+      reportCatchUp(queuedRuns);
+    }
+  }
+  // —— 3. 非补跑阶段，持续更新弹窗 —— 
+  else {
+    updateModalContents();
+  }
+
+  requestAnimationFrame(rafBatchLoop);
+}
+
+// —— 启动主循环 —— 
+requestAnimationFrame(rafBatchLoop);
+
 
 		// 為所有 modal-overlay 添加事件監聽器
 		document.querySelectorAll('.modal-overlay').forEach(overlay => {
