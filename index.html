@@ -4686,9 +4686,13 @@ function triggerT80Cannon() {
 		pvp: { hit:-0.1, dmgMax:0, hp:-0.2, dmgTaken:-0.1 },
 		pve: { hit:-0.2, dmgMax:0, hp:-0.4, dmgTaken:-0.2 }
 	  },
+	  heal: {
+        interval: 30000,
+        amount: (maxHp) => Math.ceil(maxHp * 0.05),
+        targets:  { self:0, one:0, all:1 }
+      },
       btrBonus: {
-      interval: 3000,
-      healPct:  0.05
+      interval: 3000
       }},
     ];
     const btrSpriteOptions = [
@@ -5901,25 +5905,6 @@ function triggerT80Cannon() {
 	  startBattleBTRSpecialAttack();
 	  battleBTRActive = true;
 	  
-	  var opt = window.zombieSpriteOptions.find(function(o) {
-		return o.src === window.currentZombieSprite;
-	  }) || {};
-	  if (opt.btrBonus && currentBattleRoomRef) {
-		var healAmt = Math.ceil(playerMaxHp * opt.btrBonus.healPct);
-		['userA','userB'].forEach(function(role) {
-		  currentBattleRoomRef.child(role).transaction(function(data) {
-			if (!data || data.isDown) return data;
-			data.health = Math.min(data.maxHp, (data.health||0) + healAmt);
-			return data;
-		  });
-		});
-		appendBattleLogEntry({
-		  sender:     '系統',
-		  senderRole: 'system',
-		  message:    'BTR 支援回血：全隊 +' + healAmt + ' HP'
-		});
-	  }
-	  
 	  if (useT80) {
 		setTimeout(() => {
 		triggerBattleT80Cannon(spriteElem);
@@ -6321,7 +6306,7 @@ function triggerT80Cannon() {
 		}
 
 		const rawAmt = typeof cfg.amount === 'function'
-		  ? cfg.amount()
+		  ? cfg.amount(playerMaxHp)
 		  : cfg.amount;
 		const amt = Number(rawAmt) || 0;
 
