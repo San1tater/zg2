@@ -2,7 +2,7 @@
 <html lang="zh">
 <head>
   <meta charset="UTF-8" name="viewport" content="width=device-width, initial-scale=0.45"/>
-  <title>末日控制中心 - 正式版v.1.122 resource pickup update</title>
+  <title>末日控制中心 - 正式版v.1.124 resource pickup update</title>
   <style>
 
     .modal-overlay {
@@ -2033,7 +2033,7 @@
 	  showModal("productionCollectionModal");
 	}
 
-	const RESOURCE_CAP = 900000000000;   
+	const RESOURCE_CAP = 9000000000000;   
 	const RESET_VALUE = 100000;      
 	let collectedItems = {};
 	let gameState = {
@@ -4611,11 +4611,6 @@ function triggerT80Cannon() {
 		pvp: { hit:0, dmgMax:0, hp:0, dmgTaken:-0.1 },
 		pve: { hit:0, dmgMax:0, hp:0, dmgTaken:-0.2 }
 	  }},
-      { src: "images/zombie_search_sprite_btr.png", unlock: "報話機",
-		combat: {
-		pvp: { hit:0, dmgMax:0, hp:0, dmgTaken:0 },
-		pve: { hit:0, dmgMax:0, hp:0, dmgTaken:0 }
-	  }},
       { src: "images/zombie_search_sprite_equipped.png", unlock: "武裝通信兵",
 		combat: {
 		pvp: { hit:0, dmgMax:0, hp:0, dmgTaken:-0.1 },
@@ -4686,13 +4681,9 @@ function triggerT80Cannon() {
 		pvp: { hit:-0.1, dmgMax:0, hp:-0.2, dmgTaken:-0.1 },
 		pve: { hit:-0.2, dmgMax:0, hp:-0.4, dmgTaken:-0.2 }
 	  },
-	  heal: {
-        interval: 30000,
-        amount: (maxHp) => Math.ceil(maxHp * 0.05),
-        targets:  { self:0, one:0, all:1 }
-      },
       btrBonus: {
-      interval: 3000
+      interval: 3000,
+	  healPct:  0.05
       }},
     ];
     const btrSpriteOptions = [
@@ -7857,6 +7848,25 @@ function triggerT80Cannon() {
 	  selfAnim.appendChild(btrWrapper);	  
 
 	  battleBTRActive = true;	  
+	  
+	  var opt = window.zombieSpriteOptions.find(function(o) {
+		return o.src === window.currentZombieSprite;
+	  }) || {};
+	  if (opt.btrBonus && currentBattleRoomRef) {
+		var healAmt = Math.ceil(playerMaxHp * opt.btrBonus.healPct);
+		['userA','userB'].forEach(function(role) {
+		  currentBattleRoomRef.child(role).transaction(function(data) {
+			if (!data || data.isDown) return data;
+			data.health = Math.min(data.maxHp, (data.health||0) + healAmt);
+			return data;
+		  });
+		});
+		appendBattleLogEntry({
+		  sender:     '系統',
+		  senderRole: 'system',
+		  message:    'BTR 支援回血：全隊 +' + healAmt + ' HP'
+		});
+	  }
 
 	  startBtrSpecialAttack();	  
 	  if (useT80) {
