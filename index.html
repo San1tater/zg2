@@ -4683,13 +4683,12 @@ function triggerT80Cannon() {
       }},
 	  { src: "images/zombie_search_sprite_tanker.png", unlock: "挑戰者",
 		combat: {
-		pvp: { hit:-0.1, dmgMax:0, hp:0.15, dmgTaken:-0.1 },
-		pve: { hit:-0.2, dmgMax:0, hp:0.3, dmgTaken:-0.2 }
+		pvp: { hit:-0.1, dmgMax:0, hp:-0.2, dmgTaken:-0.1 },
+		pve: { hit:-0.2, dmgMax:0, hp:-0.4, dmgTaken:-0.2 }
 	  },
-      heal: {
-        interval: 5000,
-        amount:   () => Math.floor(Math.random()*11) - 0,
-        targets:  { self:1, one:0, all:0 }
+      btrBonus: {
+      interval: 3000,
+      healPct:  0.05
       }},
     ];
     const btrSpriteOptions = [
@@ -5901,6 +5900,26 @@ function triggerT80Cannon() {
 	  uploadBattleBTREvent(battleBTRType);
 	  startBattleBTRSpecialAttack();
 	  battleBTRActive = true;
+	  
+	  var opt = window.zombieSpriteOptions.find(function(o) {
+		return o.src === window.currentZombieSprite;
+	  }) || {};
+	  if (opt.btrBonus && currentBattleRoomRef) {
+		var healAmt = Math.ceil(playerMaxHp * opt.btrBonus.healPct);
+		['userA','userB'].forEach(function(role) {
+		  currentBattleRoomRef.child(role).transaction(function(data) {
+			if (!data || data.isDown) return data;
+			data.health = Math.min(data.maxHp, (data.health||0) + healAmt);
+			return data;
+		  });
+		});
+		appendBattleLogEntry({
+		  sender:     '系統',
+		  senderRole: 'system',
+		  message:    'BTR 支援回血：全隊 +' + healAmt + ' HP'
+		});
+	  }
+	  
 	  if (useT80) {
 		setTimeout(() => {
 		triggerBattleT80Cannon(spriteElem);
@@ -7936,14 +7955,21 @@ function triggerT80Cannon() {
 	function startBtrSpecialAttack() {
 	  if (pveEnded || playerIsDown) return;
 	  if (battleBTRInterval) clearInterval(battleBTRInterval);
+	  triggerBtrSpecialAttack();
 
-	  triggerBtrSpecialAttack();  
+	  var opt = window.zombieSpriteOptions.find(function(o) {
+		return o.src === window.currentZombieSprite;
+	  }) || {};
+	  var interval = 5000;
+	  if (opt.btrBonus && typeof opt.btrBonus.interval === 'number') {
+		interval = opt.btrBonus.interval;
+	  }
 
-	  battleBTRInterval = setInterval(() => {
+	  battleBTRInterval = setInterval(function() {
 		if (!pveEnded && !playerIsDown && battleBTRActive) {
 		  triggerBtrSpecialAttack();
 		}
-	  }, 5000);
+	  }, interval);
 	}
 
 	async function triggerBtrSpecialAttack() {
