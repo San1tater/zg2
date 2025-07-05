@@ -1406,48 +1406,6 @@
 	  padding: 0 0.5em
 	}
 
-	.battle-overlay,
-	.battle-container,
-	.battle-content,
-	.battle-half,
-	.battle-half.left,
-	.battle-half.right,
-	.battle-inner,
-	.zombie-search,
-	.btr-animation,
-	.t80-animation,
-	[class*="-animation"] {
-	  transform: translate3d(0,0,0);
-	  -webkit-transform: translate3d(0,0,0);
-	  will-change: transform;
-	  backface-visibility: hidden;
-	  -webkit-backface-visibility: hidden;
-	  contain: paint layout;
-	  -webkit-perspective: 1000;
-	  perspective: 1000;
-	  -webkit-font-smoothing: antialiased;
-	}
-	.battle-half.left .battle-inner {
-	  transform: matrix3d(-1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1);
-	}
-	.battle-overlay {
-	  isolation: isolate; 
-	  transform-style: preserve-3d;
-	  -webkit-transform-style: preserve-3d;
-	  touch-action: manipulation;
-	}
-	@supports (-webkit-overflow-scrolling: touch) {
-	  .battle-overlay,
-	  .battle-container,
-	  [class*="-animation"] {
-		-webkit-transform: translate3d(0,0,0);
-		transform: translate3d(0,0,0);
-	  }
-	}
-	@keyframes scrollBgRight {
-	  from { transform: translateX(0); }
-	  to { transform: translateX(-1000px); }
-	}
   </style>
 </head>
 
