@@ -2067,7 +2067,8 @@
 	  efficiency: { food: 1, materials: 1, weapons: 1, tech: 1, exploration: 1 },
 	  bossKillCounts: {
 		zombieController: 0,
-		zombieKing: 0
+		zombieKing: 0,
+		zombieCarrier: 0,
 	  },
 	};
 
@@ -4252,7 +4253,7 @@ function triggerT80Cannon() {
 
 	function loadGameState() {
 	  if (!gameState.bossKillCounts) {
-		gameState.bossKillCounts = { zombieController:0, zombieKing:0 };
+		gameState.bossKillCounts = { zombieController:0, zombieKing:0, zombieCarrier: 0,};
 	  }
 	  const saved = localStorage.getItem("gameSave");
 	  if (saved) {
@@ -4262,7 +4263,8 @@ function triggerT80Cannon() {
 			gameState = saveData.gameState;
 			gameState.bossKillCounts = gameState.bossKillCounts || {
 			zombieController: 0,
-			zombieKing:       0
+			zombieKing: 0,
+			zombieCarrier: 0,
 		    };
 		  }
 		  if (saveData.collectedItems) {
