@@ -2,7 +2,7 @@
 <html lang="zh">
 <head>
   <meta charset="UTF-8" name="viewport" content="width=device-width, initial-scale=0.45"/>
-  <title>末日控制中心 - 正式版v.1.126 resource pickup update</title>
+  <title>末日控制中心 - 正式版v.1.127 resource pickup update</title>
   <style>
 
     .modal-overlay {
@@ -2068,7 +2068,7 @@
 	  bossKillCounts: {
 		zombieController: 0,
 		zombieKing: 0,
-		zombieCarrier: 0,
+		zombieCarrier: 0
 	  },
 	};
 
@@ -3097,7 +3097,7 @@
 		{ boss: "zombieKing", threshold: 500, title: "壽司師傅", level: 12 },
 		{ boss: "zombieCarrier", threshold: 1, title: "坦克駕駛員", level: 6 },
 		{ boss: "zombieCarrier", threshold: 10, title: "缸中之物", level: 8 },
-		{ boss: "zombieCarrier", threshold: 100, title: "爆反撕裂者", level: 10 },
+		{ boss: "zombieCarrier", threshold: 100, title: "水缸撕裂者", level: 10 },
 		{ boss: "zombieCarrier", threshold: 500, title: "司馬光", level: 12 },
 	  ],
 	};
@@ -3127,7 +3127,8 @@
 
 		  const bossNames = {
 			zombieController: "流浪研究員",
-			zombieKing: "BTR-80A「守護者」"
+			zombieKing: "BTR-80A「守護者」",
+			zombieCarrier:"T-80BV 「護送者」"
 		  };
 		  const bossName = bossNames[rule.boss] || rule.boss;
 		  return `擊殺${bossName}${rule.threshold}次`;
@@ -3199,12 +3200,17 @@
 	  }
 	}
 
-	function isAchievementUnlocked(category, level) {
+	function isAchievementUnlocked(category, level, boss) {
+	  if (category === "bossKills" && boss) {
+		return unlockedAchievements.some(a => 
+		  a.category === category && a.level === level && a.boss === boss
+		);
+	  }
 	  return unlockedAchievements.some(a => a.category === category && a.level === level);
 	}
 
 	function awardAchievement(category, rule) {
-	  if (isAchievementUnlocked(category, rule.level)) {
+	  if (isAchievementUnlocked(category, rule.level, rule.boss)) {
 		return;
 	  }
 	  let rarity = getRarityForAchievement(rule.level);
@@ -3217,7 +3223,9 @@
 		details,
 		unlockedTime: Date.now()
 	  };
-
+	  if (category === "bossKills") {
+		achievement.boss = rule.boss;
+	  }
 	  if (!gameState.unlockedAchievements) {
 		gameState.unlockedAchievements = [];
 	  }
@@ -3281,7 +3289,7 @@
 	  });
 	  achievementRules.bossKills.forEach(rule => {
 		const count = gameState.bossKillCounts[rule.boss] || 0;
-		if (count >= rule.threshold && !isAchievementUnlocked("bossKills", rule.level)) {
+		if (count >= rule.threshold && !isAchievementUnlocked("bossKills", rule.level, rule.boss)) {
 		  awardAchievement("bossKills", rule);
 		}
 	  });
@@ -4253,7 +4261,7 @@ function triggerT80Cannon() {
 
 	function loadGameState() {
 	  if (!gameState.bossKillCounts) {
-		gameState.bossKillCounts = { zombieController:0, zombieKing:0, zombieCarrier: 0,};
+		gameState.bossKillCounts = { zombieController:0, zombieKing:0, zombieCarrier: 0};
 	  }
 	  const saved = localStorage.getItem("gameSave");
 	  if (saved) {
@@ -4264,7 +4272,7 @@ function triggerT80Cannon() {
 			gameState.bossKillCounts = gameState.bossKillCounts || {
 			zombieController: 0,
 			zombieKing: 0,
-			zombieCarrier: 0,
+			zombieCarrier: 0
 		    };
 		  }
 		  if (saveData.collectedItems) {
@@ -8319,8 +8327,8 @@ function triggerT80Cannon() {
 	function checkBossKillAchievements(bossId) {
 	  const rules = achievementRules.bossKills.filter(r => r.boss === bossId);
 	  rules.forEach(rule => {
-		if (bossKillCounts[bossId] >= rule.threshold &&
-			!isAchievementUnlocked('bossKills', rule.level)) {
+		if (gameState.bossKillCounts[bossId] >= rule.threshold &&
+			!isAchievementUnlocked('bossKills', rule.level, rule.boss)) {
 		  awardAchievement('bossKills', rule);
 		}
 	  });
