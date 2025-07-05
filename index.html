@@ -4169,37 +4169,33 @@ function triggerT80Cannon() {
 	};
 
 	const modalController = {
-	  init() {
-		this.viewportHandler = this.handleViewportChange.bind(this);
-	  },
-	  
+	  init() { },	  
 	  show(modalId) {
 		const modal = document.getElementById(modalId);
-		this.currentModal = modal;
-		this.currentScale = window.visualViewport.scale;
-		
+		currentScale = window.visualViewport.scale;		
+
 		modal.style.display = 'flex';
-		const modalContent = modal.querySelector('.modal-content');
-		this.updateModalTransform(modalContent, this.currentScale);
-		
-		window.visualViewport.addEventListener('resize', this.viewportHandler);
+		modal.querySelector('.modal-content').style.transform = `
+		  translateX(-50%) 
+		  scale(${1/currentScale})
+		`;		
+
+		modal.addEventListener('gesturestart', e => e.preventDefault());
+		modal.addEventListener('gesturechange', this.handleZoom);
 	  },
-	  
-	  updateModalTransform(modalContent, scale) {
-		if (!modalContent) return;
-		modalContent.style.transform = `translateX(-50%)`;
-	  },
-	  
-	  handleViewportChange(e) {
-		if (!this.currentModal) return;
-		const modalContent = this.currentModal.querySelector('.modal-content');
-		this.updateModalTransform(modalContent, window.visualViewport.scale);
-	  },
-	  
+	  handleZoom(e) {
+		const modalContent = e.target.closest('.modal-content');
+		if(!modalContent) return;		
+
+		const newScale = Math.min(Math.max(e.scale, 0.8), 2);
+		modalContent.style.setProperty('--zoom-factor', newScale);		
+
+		e.preventDefault();
+	  },	  
 	  close(modalId) {
-		window.visualViewport.removeEventListener('resize', this.viewportHandler);
+		window.visualViewport.removeEventListener('scroll', viewportHandler);
+		window.visualViewport.removeEventListener('resize', viewportHandler);
 		document.getElementById(modalId).style.display = 'none';
-		this.currentModal = null;
 	  }
 	};
 
