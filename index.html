@@ -1120,6 +1120,9 @@
 	  background: rgba(0,0,0,0.8);
 	  z-index: 2000;
 	  display: none;  
+	  overscroll-behavior: none;
+	  touch-action: manipulation;
+	  -webkit-overflow-scrolling: touch;
 	}
 
 	.battle-container {
@@ -1131,7 +1134,7 @@
 	  height: 40vh;
 	  z-index: 2100;
 	  display: flex;
-      flex-direction: column;
+	  flex-direction: column;
 	}
 
 	.battle-header {
@@ -1155,6 +1158,7 @@
 	  display: flex;
 	  flex: none;
 	  margin: 0px;
+	  transform: translateZ(0);
 	}
 
 	.battle-half {
@@ -1163,16 +1167,20 @@
 	  overflow: hidden;
 	  position: relative;
 	  background: #000;  
+	  overscroll-behavior: none; 
+	  touch-action: manipulation; 
+	  transform: translateZ(0); 
 	}
 
 	.battle-half.left .battle-inner {
-	  transform: scaleX(-1);  
+	  transform: scaleX(-1) translateZ(0);
 	}
 
 	.battle-inner {
 	  width: 100%;
 	  height: 100%;
 	  position: relative;
+	  transform: translateZ(0);
 	}
 
 	.battle-log-title {
