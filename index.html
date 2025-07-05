@@ -2,7 +2,7 @@
 <html lang="zh">
 <head>
   <meta charset="UTF-8" name="viewport" content="width=device-width, initial-scale=0.45"/>
-  <title>末日控制中心 - 正式版v.1.127 resource pickup update</title>
+  <title>末日控制中心 - 正式版v.1.126 resource pickup update</title>
   <style>
 
     .modal-overlay {
@@ -3211,6 +3211,10 @@
 
 	function awardAchievement(category, rule) {
 	  if (isAchievementUnlocked(category, rule.level, rule.boss)) {
+		return;
+	  }
+	  const titleExists = unlockedAchievements.some(a => a.title === rule.title);
+	  if (titleExists) {
 		return;
 	  }
 	  let rarity = getRarityForAchievement(rule.level);
