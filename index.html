@@ -1119,7 +1119,9 @@
 	  bottom: 0;
 	  background: rgba(0,0,0,0.8);
 	  z-index: 2000;
-	  display: none;  
+	  display: none;
+	  -webkit-backface-visibility: hidden;
+	  backface-visibility: hidden;
 	}
 
 	.battle-container {
@@ -1132,6 +1134,8 @@
 	  z-index: 2100;
 	  display: flex;
       flex-direction: column;
+	  transform-style: flat;
+	  -webkit-transform-style: flat;
 	}
 
 	.battle-header {
