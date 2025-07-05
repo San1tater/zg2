@@ -2,7 +2,7 @@
 <html lang="zh">
 <head>
   <meta charset="UTF-8" name="viewport" content="width=device-width, initial-scale=0.45"/>
-  <title>末日控制中心 - 正式版v.1.125 resource pickup update</title>
+  <title>末日控制中心 - 正式版v.1.126 resource pickup update</title>
   <style>
 
     .modal-overlay {
@@ -1159,6 +1159,12 @@
 	  display: flex;
 	  flex: none;
 	  margin: 0px;
+	  transform: translateZ(0);
+	  -webkit-transform: translateZ(0);
+	  will-change: transform;
+	   backface-visibility: hidden;
+	  -webkit-backface-visibility: hidden;
+	  contain: paint;
 	}
 
 	.battle-half {
@@ -1166,7 +1172,11 @@
 	  height: 180px;
 	  overflow: hidden;
 	  position: relative;
-	  background: #000;  
+	  background: #000; 
+	  transform: translateZ(0);
+	  -webkit-transform: translateZ(0);
+	  backface-visibility: hidden;
+	  -webkit-backface-visibility: hidden;	  
 	}
 
 	.battle-half.left .battle-inner {
@@ -1219,6 +1229,7 @@
 	  font-weight: bold;
 	  margin: 4px 0;
 	}
+	
 	#battleSelfAnim .zombie-search, #battleEnemyAnim .enemy-zombie-search  {
 	  top: 60%
 	}
@@ -1678,6 +1689,7 @@
 			<select id="bossList" style="display:none">
 			  <option value="zombieController">流浪研究員</option>
 			  <option value="zombieKing">BTR-80A「守護者」</option>
+			  <option value="zombieCarrier">T-80BV 「護送者」</option>
 
 			</select>
 			<select id="pveModeSelect" style="display:none">
@@ -3082,6 +3094,10 @@
 		{ boss: "zombieKing", threshold: 10, title: "挑戰者", level: 8 },
 		{ boss: "zombieKing", threshold: 100, title: "裝甲撕裂者", level: 10 },
 		{ boss: "zombieKing", threshold: 500, title: "壽司師傅", level: 12 },
+		{ boss: "zombieCarrier", threshold: 1, title: "坦克駕駛員", level: 6 },
+		{ boss: "zombieCarrier", threshold: 10, title: "缸中之物", level: 8 },
+		{ boss: "zombieCarrier", threshold: 100, title: "爆反撕裂者", level: 10 },
+		{ boss: "zombieCarrier", threshold: 500, title: "司馬光", level: 12 },
 	  ],
 	};
 
@@ -4658,21 +4674,21 @@ function triggerT80Cannon() {
 		  
 		  suppressSideEffects();
 		  
-		  const startMessage = `補跑開始：共需處理 ${catchupTotal} 次事件...`;
+		  const startMessage = `補跑開始：共需處理 ${catchupTotal} 輪事件...`;
 		  explorationProgressLog = createProgressLog("explorationLog", startMessage);
 		  productionProgressLog = createProgressLog("productionLog", startMessage);
 		  
 		  function finishCatchup() {
 			clearInterval(catchupInterval);
 			
-			updateProgressLog(explorationProgressLog, `補跑進度：100%（${catchupTotal}/${catchupTotal}）`);
-			updateProgressLog(productionProgressLog, `補跑進度：100%（${catchupTotal}/${catchupTotal}）`);
+			updateProgressLog(explorationProgressLog, `補跑進行中，進度：100%（${catchupTotal}/${catchupTotal}）`);
+			updateProgressLog(productionProgressLog, `補跑進行中，進度：100%（${catchupTotal}/${catchupTotal}）`);
 			
 			setTimeout(() => {
 			  restoreSideEffects();
 			  
-			  window.addEventLog(`補跑完成，共處理 ${catchupTotal} 次事件`, 'common', 'exploration');
-			  window.addEventLog(`補跑完成，共處理 ${catchupTotal} 次事件`, 'common', 'production');
+			  window.addEventLog(`補跑完成，共回收 ${catchupTotal} 輪行動報告`, 'common', 'exploration');
+			  window.addEventLog(`補跑完成，共回收 ${catchupTotal} 輪生產報告`, 'common', 'production');
 			  
 			  _origUpdateAllDisplays();
 			  
@@ -4692,7 +4708,7 @@ function triggerT80Cannon() {
 			}
 			
 			const percent = Math.floor((catchupProgress / catchupTotal) * 100);
-			const progressMessage = `補跑進度：${percent}%（${catchupProgress}/${catchupTotal}）`;
+			const progressMessage = `補跑進行中，進度：${percent}%（${catchupProgress}/${catchupTotal}）`;
 			updateProgressLog(explorationProgressLog, progressMessage);
 			updateProgressLog(productionProgressLog, progressMessage);
 			
@@ -4817,8 +4833,8 @@ function triggerT80Cannon() {
       }},
 	  { src: "images/zombie_search_sprite_healer.png", unlock: "挑戰者",
 		combat: {
-		pvp: { hit:-0.3, dmgMax:-0.3, hp:0.3, dmgTaken:-0.3 },
-		pve: { hit:-0.6, dmgMax:-0.6, hp:0.6, dmgTaken:-0.6 }
+		pvp: { hit:-0.3, dmgMax:-0.3, hp:0, dmgTaken:-0.3 },
+		pve: { hit:-0.6, dmgMax:-0.6, hp:0, dmgTaken:-0.6 }
 	  },
       heal: {
         interval: 10000,
@@ -4845,13 +4861,26 @@ function triggerT80Cannon() {
         amount:   () => Math.floor(Math.random()*176) - 75,
         targets:  { self:0.1, one:0.7, all:0.2 }
       }},
-	  { src: "images/zombie_search_sprite_tanker.png", unlock: "挑戰者",
+	  { src: "images/zombie_search_sprite_tanker.png", unlock: "坦克駕駛員",
 		combat: {
 		pvp: { hit:-0.1, dmgMax:0, hp:-0.2, dmgTaken:-0.1 },
 		pve: { hit:-0.2, dmgMax:0, hp:-0.4, dmgTaken:-0.2 }
 	  },
 	  heal: {
         interval: 30000,
+        amount: (maxHp) => Math.ceil(maxHp * 0.1),
+        targets:  { self:0, one:0, all:1 }
+      },
+      btrBonus: {
+      interval: 3000
+      }},
+	  { src: "images/zombie_search_sprite_tanker_m.png", unlock: "缸中之物",
+		combat: {
+		pvp: { hit:-0.1, dmgMax:0, hp:0.15, dmgTaken:-0.2 },
+		pve: { hit:-0.2, dmgMax:0, hp:0.3, dmgTaken:-0.4 }
+	  },
+	  heal: {
+        interval: 24000,
         amount: (maxHp) => Math.ceil(maxHp * 0.1),
         targets:  { self:0, one:0, all:1 }
       },
@@ -6627,6 +6656,43 @@ function triggerT80Cannon() {
         ],
         aoe: [
           "使用30mm高爆彈鏈[HE]，覆蓋射擊",
+          "釋放引擎煙霧，籠罩戰場",
+          "將引擎調到最大功率，橫衝直撞"
+        ]
+      }
+    },
+	"zombieCarrier": {
+      name: "T-80BV 「護送者」",
+      hp: 5000,
+      damageRange: {min: 50, max: 400},
+      attackInterval: 4000, 
+      singleAttackRate: 0.2,
+	  hitChance: 55,
+      sprite: "images/boss_zombie_carrier_sprite.png", 
+	  deathSprite: "images/boss_zombie_carrier_dead_sprite.png",
+      frames: 4,   
+      frameWidth: 200,  
+      rewards: {
+        food: 0,
+        materials: 500000000,
+        weapons: 500000000,
+        tech: 500000000
+      },
+      attackPhrases: {
+        single: [
+          "使用5.45mm標準彈[PS]，交替射擊",
+		  "使用5.45mm穿甲彈[BP]，集中射擊",
+          "使用5.45mm曳光彈[BT]，引導射擊",
+          "使用5.45mm亞音速彈[US]，匿蹤射擊",
+		  "使用5.45mm高精度穿甲彈[7N40]，精準射擊",
+        ],
+        aoe: [
+          "使用5.45mm標準彈[PS]，交替射擊",
+		  "使用5.45mm穿甲彈[BP]，破壞射擊",
+          "使用5.45mm曳光彈[BT]，引導射擊",
+          "使用5.45mm亞音速彈[US]，匿蹤射擊",
+		  "使用5.45mm高精度穿甲彈[7N40]，精準射擊",
+		  "發射125mm破甲火箭彈[RPG-28]，製造爆炸",
           "釋放引擎煙霧，籠罩戰場",
           "將引擎調到最大功率，橫衝直撞"
         ]
