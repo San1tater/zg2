@@ -8364,7 +8364,283 @@ function triggerT80Cannon() {
 	}
 })();
 
-
+/**
+ * 成就描述修復模塊 v1.1.0
+ * 作者: San1tater
+ * 日期: 2025-07-06 12:16:53
+ * 
+ * 修復所有成就描述，特別針對相同等級的 Boss 成就
+ */
+(function(window) {
+  // 模塊命名空間
+  const AchievementFixer = {
+    version: '1.1.0',
+    author: 'San1tater',
+    lastUpdate: '2025-07-06',
+    
+    config: {
+      logEnabled: true,
+      autoFixOnLoad: true,
+      notifyOnFix: true,
+      forceUpdateAll: false  // 強制更新所有成就
+    },
+    
+    // 初始化模塊
+    init: function(config) {
+      if (config) {
+        this.config = {...this.config, ...config};
+      }
+      
+      this.log('成就描述修復模塊已初始化');
+      
+      if (this.config.autoFixOnLoad) {
+        this.fixAll();
+      }
+      
+      return this;
+    },
+    
+    // 獲取成就的正確規則
+    getCorrectRule: function(achievement) {
+      if (!achievement || !achievement.category) return null;
+      
+      const rules = achievementRules[achievement.category];
+      if (!rules) return null;
+      
+      // 對不同類別使用不同的查找策略
+      if (achievement.category === "bossKills" && achievement.boss) {
+        // 首先嘗試通過標題查找，這是最準確的方式
+        let rule = rules.find(r => r.title === achievement.title);
+        if (rule) return rule;
+        
+        // 如果標題查找失敗，則嘗試通過 level 和 boss 查找
+        rule = rules.find(r => r.level === achievement.level && r.boss === achievement.boss);
+        if (rule) return rule;
+        
+        // 最後嘗試只通過 boss 查找
+        rule = rules.find(r => r.boss === achievement.boss);
+        return rule;
+      } 
+      else if (achievement.category === "building") {
+        // 建築成就通過標題查找
+        return rules.find(r => r.title === achievement.title);
+      }
+      else {
+        // 其他成就通過等級查找
+        return rules.find(r => r.level === achievement.level);
+      }
+    },
+    
+    // 修復所有成就描述
+    fixAll: function() {
+      this.log('開始修復所有成就描述...');
+      
+      if (!window.unlockedAchievements || !window.achievementRules) {
+        this.log('錯誤: 未找到成就數據', true);
+        return false;
+      }
+      
+      // 特別檢查坦克駕駛員成就
+      this.checkTankDriverAchievement();
+      
+      let fixed = {
+        boss: 0,
+        building: 0,
+        other: 0
+      };
+      
+      // 修復所有成就
+      unlockedAchievements.forEach(a => {
+        const rule = this.getCorrectRule(a);
+        if (!rule) return;
+        
+        // 獲取正確的描述
+        let newDesc = "";
+        if (a.category === "bossKills" && a.boss) {
+          const bossNames = {
+            zombieController: "流浪研究員",
+            zombieKing: "BTR-80A「守護者」",
+            zombieCarrier: "T-80BV 「護送者」"
+          };
+          const bossName = bossNames[a.boss] || a.boss;
+          newDesc = `擊殺${bossName}${rule.threshold}次`;
+        }
+        else if (a.category === "building" && rule.details) {
+          newDesc = rule.details;
+        }
+        else {
+          newDesc = getAchievementDetails(a.category, rule);
+        }
+        
+        // 記錄原描述
+        const oldDesc = a.details || "";
+        
+        // 如果描述需要更新，或者強制更新所有描述
+        if (oldDesc !== newDesc || this.config.forceUpdateAll) {
+          // 特殊記錄坦克駕駛員成就修復
+          if (a.title === "坦克駕駛員") {
+            this.log(`修復特殊Boss成就: ${a.title} [${oldDesc}] -> [${newDesc}]`, false, true);
+          } else {
+            this.log(`修復${a.category}成就: ${a.title} [${oldDesc}] -> [${newDesc}]`);
+          }
+          
+          // 更新描述
+          a.details = newDesc;
+          
+          // 計數
+          if (a.category === "bossKills") fixed.boss++;
+          else if (a.category === "building") fixed.building++;
+          else fixed.other++;
+        }
+      });
+      
+      // 總結修復結果
+      const totalFixed = fixed.boss + fixed.building + fixed.other;
+      if (totalFixed > 0) {
+        this.log(`成就描述修復完成! 總計修復了 ${totalFixed} 個成就:`);
+        this.log(`- Boss成就: ${fixed.boss} 個`);
+        this.log(`- 建築成就: ${fixed.building} 個`);
+        this.log(`- 其他成就: ${fixed.other} 個`);
+        
+        // 保存修復結果
+        if (window.gameState && window.saveGameState) {
+          gameState.unlockedAchievements = [...unlockedAchievements];
+          saveGameState();
+          
+          if (window.updateAchievementsUI) {
+            updateAchievementsUI();
+          }
+        }
+        
+        // 通知用戶
+        if (this.config.notifyOnFix) {
+          if (window.addEventLog) {
+            addEventLog(`成就系統已修復 ${totalFixed} 個成就描述`, "epic", "achievement");
+          } else {
+            alert(`成就系統已修復 ${totalFixed} 個成就描述!`);
+          }
+        }
+        
+        return true;
+      } else {
+        this.log("沒有發現需要修復的成就描述");
+        return false;
+      }
+    },
+    
+    // 特別檢查坦克駕駛員成就
+    checkTankDriverAchievement: function() {
+      const tankAchievement = unlockedAchievements.find(a => a.title === "坦克駕駛員");
+      
+      if (tankAchievement) {
+        this.log("發現坦克駕駛員成就，正在特別檢查...");
+        
+        // 確保成就有正確的 boss 屬性
+        if (tankAchievement.boss !== "zombieCarrier") {
+          const oldBoss = tankAchievement.boss || "未定義";
+          tankAchievement.boss = "zombieCarrier";
+          this.log(`修復坦克駕駛員成就的 boss 屬性: ${oldBoss} -> zombieCarrier`, false, true);
+        }
+        
+        // 確保描述正確
+        const correctDesc = "擊殺T-80BV 「護送者」1次";
+        if (tankAchievement.details !== correctDesc) {
+          this.log(`修復坦克駕駛員成就的描述: ${tankAchievement.details} -> ${correctDesc}`, false, true);
+          tankAchievement.details = correctDesc;
+          return true;
+        }
+      }
+      
+      return false;
+    },
+    
+    // 修補刷新函數
+    patchRefreshFunction: function() {
+      if (!window.originalRefreshUnlockedAchievements && window.refreshUnlockedAchievements) {
+        window.originalRefreshUnlockedAchievements = window.refreshUnlockedAchievements;
+      }
+      
+      const self = this;
+      window.refreshUnlockedAchievements = function() {
+        unlockedAchievements.sort((a, b) => {
+          if (b.level !== a.level) return b.level - a.level;
+          return a.unlockedTime - b.unlockedTime;
+        });
+        
+        unlockedAchievements.forEach(a => {
+          // 使用更精確的規則查找邏輯
+          const rule = self.getCorrectRule(a);
+          if (!rule) return;
+          
+          // 特殊處理 boss 成就
+          if (a.category === "bossKills" && a.boss) {
+            const bossNames = {
+              zombieController: "流浪研究員",
+              zombieKing: "BTR-80A「守護者」",
+              zombieCarrier: "T-80BV 「護送者」"
+            };
+            const bossName = bossNames[a.boss] || a.boss;
+            a.details = `擊殺${bossName}${rule.threshold}次`;
+          } else {
+            a.details = getAchievementDetails(a.category, rule);
+          }
+        });
+        
+        gameState.unlockedAchievements = unlockedAchievements.slice();
+        updateAchievementsUI();
+      };
+      
+      this.log("成就刷新函數已修補，未來解鎖的成就將不再有描述問題");
+      return true;
+    },
+    
+    // 恢復原始刷新函數
+    restoreRefreshFunction: function() {
+      if (window.originalRefreshUnlockedAchievements) {
+        window.refreshUnlockedAchievements = window.originalRefreshUnlockedAchievements;
+        window.originalRefreshUnlockedAchievements = null;
+        this.log("已恢復原始成就刷新函數");
+        return true;
+      }
+      this.log("未找到原始成就刷新函數");
+      return false;
+    },
+    
+    // 日誌功能
+    log: function(message, isError = false, isImportant = false) {
+      if (this.config.logEnabled) {
+        const prefix = '[成就修復器]';
+        if (isError) {
+          console.error(prefix, message);
+        } else if (isImportant) {
+          console.warn(prefix, message); // 使用警告級別來突出顯示重要信息
+        } else {
+          console.log(prefix, message);
+        }
+      }
+    }
+  };
+  
+  // 在頁面加載完成後初始化
+  function init() {
+    try {
+      // 初始化並修補刷新函數
+      AchievementFixer.init().patchRefreshFunction();
+    } catch (e) {
+      console.error('[成就修復器] 初始化失敗:', e);
+    }
+  }
+  
+  if (document.readyState === 'complete') {
+    init();
+  } else {
+    window.addEventListener('load', init);
+  }
+  
+  // 將模塊導出到全局空間
+  window.AchievementFixer = AchievementFixer;
+  
+})(window);
 	</script>
 </body>
 </html>
