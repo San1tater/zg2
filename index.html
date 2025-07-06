@@ -8364,7 +8364,105 @@ function triggerT80Cannon() {
 	}
 })();
 
-
+/**
+ * Boss 成就重置工具 v1.0.0
+ * 作者: San1tater
+ * 日期: 2025-07-06 12:32:17
+ * 
+ * 用途: 清空 Boss 成就但保留擊殺計數，允許重新獲得成就
+ */
+(function() {
+  // 確保必要的全局變量存在
+  if (typeof unlockedAchievements === 'undefined' || 
+      typeof gameState === 'undefined' || 
+      typeof achievementRules === 'undefined') {
+    console.error('[Boss成就重置] 錯誤：未找到必要的遊戲數據。請確保在遊戲完全加載後執行。');
+    return;
+  }
+  
+  // 開始重置流程
+  console.log('[Boss成就重置] 開始清空 Boss 成就記錄...');
+  
+  // 記錄重置前的成就數量
+  const beforeCount = unlockedAchievements.length;
+  const removed = [];
+  
+  // 從 unlockedAchievements 中過濾出非Boss成就
+  unlockedAchievements = unlockedAchievements.filter(a => {
+    if (a.category !== 'bossKills') return true;
+    
+    // 記錄將被移除的Boss成就
+    removed.push({
+      title: a.title,
+      boss: a.boss,
+      details: a.details || '未知'
+    });
+    
+    return false;
+  });
+  
+  // 同步到 gameState
+  if (gameState.unlockedAchievements) {
+    gameState.unlockedAchievements = gameState.unlockedAchievements.filter(a => 
+      a.category !== 'bossKills'
+    );
+  }
+  
+  // 顯示被移除的成就信息
+  const removedCount = removed.length;
+  if (removedCount > 0) {
+    console.log(`[Boss成就重置] 已清空 ${removedCount} 個 Boss 成就:`);
+    const bossNames = {
+      zombieController: "流浪研究員",
+      zombieKing: "BTR-80A「守護者」",
+      zombieCarrier: "T-80BV 「護送者」"
+    };
+    
+    removed.forEach(r => {
+      const bossName = bossNames[r.boss] || r.boss;
+      console.log(`- ${r.title} (${bossName}): ${r.details}`);
+    });
+    
+    // 保存遊戲狀態
+    if (typeof saveGameState === 'function') {
+      saveGameState();
+      console.log('[Boss成就重置] 遊戲狀態已保存');
+    }
+    
+    // 更新UI
+    if (typeof updateAchievementsUI === 'function') {
+      updateAchievementsUI();
+      console.log('[Boss成就重置] 成就界面已更新');
+    }
+    
+    // 顯示擊殺計數信息
+    if (gameState.bossKillCounts) {
+      console.log('[Boss成就重置] 當前 Boss 擊殺計數 (保留不變):');
+      for (const boss in bossNames) {
+        const count = gameState.bossKillCounts[boss] || 0;
+        console.log(`- ${bossNames[boss]}: ${count} 次`);
+      }
+    }
+    
+    // 立即檢查成就，重新獲得符合條件的成就
+    setTimeout(function() {
+      if (typeof checkAchievements === 'function') {
+        console.log('[Boss成就重置] 正在重新檢查成就...');
+        checkAchievements();
+        console.log('[Boss成就重置] 成就檢查完成，符合條件的成就已重新獲得');
+      }
+    }, 500);
+    
+    // 在遊戲中添加事件日誌
+    if (typeof addEventLog === 'function') {
+      addEventLog(`已重置 Boss 成就系統 (${removedCount}個成就)`, "epic", "achievement");
+    }
+    
+    console.log('[Boss成就重置] 操作完成。Boss成就已重置，擊殺計數保留不變。');
+  } else {
+    console.log('[Boss成就重置] 未找到需要清空的Boss成就');
+  }
+})();
 	</script>
 </body>
 </html>
