@@ -8400,6 +8400,207 @@ function triggerT80Cannon() {
 	}
 
 })();
+/**
+ * 建築成就重置模塊 v1.0
+ * 作者：San1tater
+ * 日期：2025-07-06
+ * 
+ * 提供一個可重置建築成就的按鈕，不影響遊戲進度
+ */
+(function(window) {
+  // 模塊命名空間
+  const BuildingAchievementResetter = {
+    // 模塊配置
+    config: {
+      buttonPosition: 'bottom-right', // 'bottom-right', 'bottom-left', 'top-right', 'top-left'
+      buttonColor: '#3366cc',
+      buttonText: '重置建築成就',
+      logEnabled: true
+    },
+    
+    // 初始化模塊
+    init: function(config) {
+      // 合併配置
+      if (config) {
+        this.config = {...this.config, ...config};
+      }
+      
+      // 記錄啟動信息
+      this.log('建築成就重置模塊已初始化');
+      
+      // 創建UI
+      this.createResetButton();
+      
+      return this; // 支持鏈式調用
+    },
+    
+    // 創建重置按鈕
+    createResetButton: function() {
+      // 檢查是否已經存在按鈕
+      if (document.getElementById('building-achievement-reset-btn')) {
+        return;
+      }
+      
+      // 創建按鈕
+      const resetBtn = document.createElement('button');
+      resetBtn.textContent = this.config.buttonText;
+      resetBtn.id = 'building-achievement-reset-btn';
+      
+      // 設置按鈕樣式
+      resetBtn.style.padding = '10px 15px';
+      resetBtn.style.backgroundColor = this.config.buttonColor;
+      resetBtn.style.color = 'white';
+      resetBtn.style.border = 'none';
+      resetBtn.style.borderRadius = '5px';
+      resetBtn.style.fontSize = '16px';
+      resetBtn.style.boxShadow = '0 2px 5px rgba(0,0,0,0.2)';
+      resetBtn.style.position = 'fixed';
+      resetBtn.style.zIndex = '9999';
+      
+      // 設置按鈕位置
+      switch (this.config.buttonPosition) {
+        case 'bottom-right':
+          resetBtn.style.bottom = '10px';
+          resetBtn.style.right = '10px';
+          break;
+        case 'bottom-left':
+          resetBtn.style.bottom = '10px';
+          resetBtn.style.left = '10px';
+          break;
+        case 'top-right':
+          resetBtn.style.top = '10px';
+          resetBtn.style.right = '10px';
+          break;
+        case 'top-left':
+          resetBtn.style.top = '10px';
+          resetBtn.style.left = '10px';
+          break;
+      }
+      
+      // 添加懸停效果
+      resetBtn.style.cursor = 'pointer';
+      resetBtn.style.transition = 'background-color 0.3s, transform 0.1s';
+      
+      resetBtn.addEventListener('mouseover', function() {
+        this.style.backgroundColor = '#2855aa';
+      });
+      
+      resetBtn.addEventListener('mouseout', function() {
+        this.style.backgroundColor = BuildingAchievementResetter.config.buttonColor;
+      });
+      
+      resetBtn.addEventListener('mousedown', function() {
+        this.style.transform = 'scale(0.95)';
+      });
+      
+      resetBtn.addEventListener('mouseup', function() {
+        this.style.transform = 'scale(1)';
+      });
+      
+      // 添加點擊事件
+      resetBtn.addEventListener('click', this.resetAchievements.bind(this));
+      
+      // 添加到頁面
+      document.body.appendChild(resetBtn);
+      this.log('建築成就重置按鈕已添加到頁面');
+    },
+    
+    // 重置建築成就
+    resetAchievements: function() {
+      if (!confirm("確定要重置建築相關的成就嗎？建築記錄將被保留，但您需要重新獲得成就。")) {
+        return;
+      }
+      
+      try {
+        // 檢查全局變量是否存在
+        if (typeof unlockedAchievements === 'undefined') {
+          throw new Error('找不到成就數據 (unlockedAchievements)');
+        }
+        
+        if (typeof gameState === 'undefined') {
+          throw new Error('找不到遊戲狀態數據 (gameState)');
+        }
+        
+        let oldCount = unlockedAchievements.length;
+        
+        // 建築成就標題列表
+        const buildingAchievementTitles = [
+          "報話機", "Алтын", "武裝通信兵", "全副武裝"
+        ];
+        
+        // 過濾掉建築成就
+        unlockedAchievements = unlockedAchievements.filter(function(a) {
+          return !buildingAchievementTitles.includes(a.title);
+        });
+        
+        // 同步到gameState
+        if (gameState.unlockedAchievements) {
+          gameState.unlockedAchievements = gameState.unlockedAchievements.filter(function(a) {
+            return !buildingAchievementTitles.includes(a.title);
+          });
+        }
+        
+        // 保存遊戲狀態
+        if (typeof saveGameState === 'function') {
+          saveGameState();
+          this.log('遊戲狀態已保存');
+        } else {
+          throw new Error('找不到保存遊戲狀態的函數 (saveGameState)');
+        }
+        
+        // 更新UI
+        if (typeof updateAchievementsUI === 'function') {
+          updateAchievementsUI();
+          this.log('成就UI已更新');
+        }
+        
+        // 添加事件日誌
+        if (typeof addEventLog === 'function') {
+          addEventLog("建築相關成就已重置", "epic", "achievement");
+        }
+        
+        let removed = oldCount - unlockedAchievements.length;
+        alert("建築成就已重置！共移除" + removed + "個成就。您現在可以重新獲得這些成就。");
+        this.log(`重置完成，移除了${removed}個建築成就`);
+        
+      } catch (error) {
+        alert("重置失敗：" + error.message);
+        this.log('重置過程出錯：' + error.message, true);
+      }
+    },
+    
+    // 日誌功能
+    log: function(message, isError = false) {
+      if (this.config.logEnabled) {
+        const prefix = '[建築成就重置]';
+        if (isError) {
+          console.error(prefix, message);
+        } else {
+          console.log(prefix, message);
+        }
+      }
+    }
+  };
+  
+  // 在頁面加載完成後初始化
+  function init() {
+    try {
+      BuildingAchievementResetter.init();
+    } catch (e) {
+      console.error('建築成就重置模塊初始化失敗:', e);
+    }
+  }
+  
+  if (document.readyState === 'complete') {
+    init();
+  } else {
+    window.addEventListener('load', init);
+  }
+  
+  // 將模塊導出到全局空間，使其可以被訪問
+  window.BuildingAchievementResetter = BuildingAchievementResetter;
+  
+})(window);
 
 	</script>
 </body>
