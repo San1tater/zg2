@@ -2,7 +2,7 @@
 <html lang="zh">
 <head>
   <meta charset="UTF-8" name="viewport" content="width=device-width, initial-scale=0.45"/>
-  <title>末日控制中心 - 正式版v.1.126 resource pickup update</title>
+  <title>末日控制中心 - 正式版v.1.127 resource pickup update</title>
   <style>
 
     .modal-overlay {
@@ -3025,8 +3025,6 @@
       updateEfficiencyDisplays();
       initBuildingGrid();
 	  updateZombieSearchSprite();
-	  checkBuildingAchievements();
-
     }
 
 	const achievementRules = {
@@ -3095,10 +3093,16 @@
 		{ boss: "zombieKing", threshold: 10, title: "挑戰者", level: 8 },
 		{ boss: "zombieKing", threshold: 100, title: "裝甲撕裂者", level: 10 },
 		{ boss: "zombieKing", threshold: 500, title: "壽司師傅", level: 12 },
-		{ boss: "zombieCarrier", threshold: 1, title: "坦克駕駛員", level: 6 },
-		{ boss: "zombieCarrier", threshold: 10, title: "缸中之物", level: 8 },
-		{ boss: "zombieCarrier", threshold: 100, title: "水缸撕裂者", level: 10 },
-		{ boss: "zombieCarrier", threshold: 500, title: "司馬光", level: 12 },
+		{ boss: "zombieCarrier", threshold: 1, title: "坦克駕駛員", level: 7 },
+		{ boss: "zombieCarrier", threshold: 10, title: "缸中之物", level: 9 },
+		{ boss: "zombieCarrier", threshold: 100, title: "水缸撕裂者", level: 11 },
+		{ boss: "zombieCarrier", threshold: 500, title: "司馬光", level: 13 },
+	  ],
+	  building: [
+		{ title: "報話機", level: 6, requirements: { buildings: ["armoredgarage"]}, details: "建造拖拉機廠"},
+		{ title: "Алтын", level: 6, requirements: {	buildings: ["armory", "zombiecommandcenter"], requireAny: true}, details: "建造軍械工廠或僵尸指揮中心" },
+		{ title: "武裝通信兵", level: 8, requirements: { buildings: ["armoredgarage"], andOneOf: ["armory", "zombiecommandcenter"]}, details: "同時擁有拖拉機廠以及軍械工廠或僵尸指揮中心"},
+		{ title: "全副武裝", level: 10, requirements: { buildings: ["armoredgarage", "armory", "zombiecommandcenter"]}, details: "同時擁有拖拉機廠、軍械工廠與僵尸指揮中心"	},
 	  ],
 	};
 
@@ -3124,7 +3128,6 @@
 		case "btrTriggers":
 		  return `呼叫BTR ${rule.threshold}次`;
 		case "bossKills":
-
 		  const bossNames = {
 			zombieController: "流浪研究員",
 			zombieKing: "BTR-80A「守護者」",
@@ -3132,93 +3135,48 @@
 		  };
 		  const bossName = bossNames[rule.boss] || rule.boss;
 		  return `擊殺${bossName}${rule.threshold}次`;
+		case "building":
+		  return rule.details || "建造特定建築";
+		
 		default:
 		  return "";
 	  }
 	}
 
-	function awardBuildingAchievement(title, details, level) {
-	  if (isBuildingAchievementUnlocked(title)) return;
-	  const rarity = getRarityForAchievement(level);
-	  const achievement = {
-		category: "building",
-		level,            
-		title,
-		details,
-		rarity,
-		unlockedTime: Date.now()
-	  };
-	  unlockedAchievements.push(achievement);
-	  if (!gameState.unlockedAchievements) {
-		gameState.unlockedAchievements = [];
-	  }
-	  gameState.unlockedAchievements.push(achievement);
-	  addEventLog(`成就解鎖：[${title}] (${details})`, rarity, "achievement");
-	  updateAchievementsUI();
-	}
-
-	function isBuildingAchievementUnlocked(title) {
-	  return unlockedAchievements.some(a => a.category === "building" && a.title === title);
-	}
-
-	function checkBuildingAchievements() {
-
-	  if (
-		isBuildingAchievementUnlocked("報話機") &&
-		isBuildingAchievementUnlocked("Алтын") &&
-		isBuildingAchievementUnlocked("武裝通信兵") &&
-		isBuildingAchievementUnlocked("全副武裝")
-	  ) {
-		return;
-	  }
-
-	  const hasTractor = gameState.buildings.some(
-		b => b && b.type.toLowerCase() === "armoredgarage"
-	  );
-
-	  const hasArmory = gameState.buildings.some(
-		b => b && b.type.toLowerCase() === "armory"
-	  );
-
-	  const hasZombieCommand = gameState.buildings.some(
-		b => b && b.type.toLowerCase() === "zombiecommandcenter"
-	  );
-
-	  if (hasTractor && !isBuildingAchievementUnlocked("報話機")) {
-		awardBuildingAchievement("報話機", "建造拖拉機廠", "6");
-	  }
-
-	  if ((hasArmory || hasZombieCommand) && !isBuildingAchievementUnlocked("Алтын")) {
-		awardBuildingAchievement("Алтын", "建造軍械工廠或僵尸指揮中心", "6");
-	  }
-	  if (hasTractor &&(hasArmory || hasZombieCommand) && !isBuildingAchievementUnlocked("武裝通信兵")) {
-		awardBuildingAchievement("武裝通信兵", "同時擁有拖拉機廠以及軍械工廠或僵尸指揮中心", "8");
-	  }
-
-	  if (hasTractor && hasArmory && hasZombieCommand && !isBuildingAchievementUnlocked("全副武裝")) {
-		awardBuildingAchievement("全副武裝", "同時擁有拖拉機廠、軍械工廠與僵尸指揮中心", "10");
-	  }
-	}
-
-	function isAchievementUnlocked(category, level, boss) {
-	  if (category === "bossKills" && boss) {
+	function isAchievementUnlocked(category, level, specialIdentifier = null) {
+	  if (category === "bossKills" && specialIdentifier) {
 		return unlockedAchievements.some(a => 
-		  a.category === category && a.level === level && a.boss === boss
+		  a.category === category && a.level === level && a.boss === specialIdentifier
+		);
+	  }
+	  if (category === "building" && specialIdentifier) {
+		return unlockedAchievements.some(a => 
+		  a.category === category && a.title === specialIdentifier
 		);
 	  }
 	  return unlockedAchievements.some(a => a.category === category && a.level === level);
 	}
 
 	function awardAchievement(category, rule) {
-	  if (isAchievementUnlocked(category, rule.level, rule.boss)) {
-		return;
+	  if (category === "building") {
+		if (isAchievementUnlocked(category, rule.level, rule.title)) {
+		  return;
+		}
+	  } else if (category === "bossKills") {
+		if (isAchievementUnlocked(category, rule.level, rule.boss)) {
+		  return;
+		}
+	  } else {
+		if (isAchievementUnlocked(category, rule.level)) {
+		  return;
+		}
 	  }
 	  const titleExists = unlockedAchievements.some(a => a.title === rule.title);
 	  if (titleExists) {
 		return;
 	  }
 	  let rarity = getRarityForAchievement(rule.level);
-	  let details = getAchievementDetails(category, rule);
+	  let details = (category === "building" && rule.details) ? rule.details : getAchievementDetails(category, rule);
 	  let achievement = {
 		category,
 		level: rule.level,
@@ -3235,7 +3193,7 @@
 	  }
 	  gameState.unlockedAchievements.push(achievement);
 	  unlockedAchievements.push(achievement);
-	  addEventLog(`成就解鎖：[${rule.title}] (${category})`, rarity, "achievement");
+	  addEventLog(`成就解鎖：[${rule.title}] (${details})`, rarity, "achievement");
 	  updateAchievementsUI();
 	}
 
@@ -3263,6 +3221,22 @@
 		}
 	  }
 	  gameState.divineItemsCount = count;
+	}
+	
+	function checkBuildingRequirements(rule) {
+	  function hasBuilding(type) {
+		return gameState.buildings.some(b => b && b.type.toLowerCase() === type.toLowerCase());
+	  }
+	  const reqs = rule.requirements;
+	  if (reqs.requireAny) {
+		return reqs.buildings.some(b => hasBuilding(b));
+	  }
+	  if (reqs.andOneOf) {
+		const hasBase = reqs.buildings.every(b => hasBuilding(b));
+		const hasAny = reqs.andOneOf.some(b => hasBuilding(b));
+		return hasBase && hasAny;
+	  }
+	  return reqs.buildings.every(b => hasBuilding(b));
 	}
 
 	function checkAchievements() {
@@ -3295,6 +3269,11 @@
 		const count = gameState.bossKillCounts[rule.boss] || 0;
 		if (count >= rule.threshold && !isAchievementUnlocked("bossKills", rule.level, rule.boss)) {
 		  awardAchievement("bossKills", rule);
+		}
+	  });
+	  achievementRules.building.forEach(rule => {
+		if (!isAchievementUnlocked("building", rule.level, rule.title) && checkBuildingRequirements(rule)) {
+		  awardAchievement("building", rule);
 		}
 	  });
 	  updateAchievementsUI();
