@@ -4879,7 +4879,7 @@ function triggerT80Cannon() {
 	  },
 	  heal: {
         interval: 30000,
-        amount: (maxHp) => Math.ceil(maxHp * 0.1),
+        amount: (maxHp) => Math.ceil(maxHp * 0.05),
         targets:  { self:0, one:0, all:1 }
       },
       btrBonus: {
@@ -5213,7 +5213,6 @@ function triggerT80Cannon() {
 			clearInterval(battleBTRInterval);
 			battleBTRInterval = null;
 		  }
-		  clearInterval(window.pvpHealTimer);
 
 		if (window.currentBattleRoom) {
 		  const roomRef = firebase.database().ref("battles").child(window.currentBattleRoom);		  
@@ -7837,7 +7836,13 @@ function triggerT80Cannon() {
 	  }
 
 	  updateHealthDisplay();
+	  }
 	}
+
+	function getPveDmgTaken(spriteUrl) {
+	  const opt = window.zombieSpriteOptions.find(o => o.src === spriteUrl)
+				|| { combat:{ pve:{ dmgTaken:0 } } };
+	  return (opt.combat.pve.dmgTaken) || 0;
 	}
 
 	function triggerBossAttack() {
@@ -7859,166 +7864,141 @@ function triggerT80Cannon() {
 	  executeBossAttack();
 	}
 
-	function executeBossAttack() {
-		const cfg = bossConfigs[selectedBoss];
-
-		const hit   = Math.random()*100 < (cfg.hitChance||75);
-	    const single = Math.random() < (cfg.singleAttackRate||0.7);
-
-		const singleRate = cfg.singleAttackRate ?? 0.7;
-		const isSingle  = Math.random() < singleRate;
-
-		const useSinglePool = isSingle || pveMode === 'solo';
-		const pool = useSinglePool
-		  ? cfg.attackPhrases.single
-		  : (cfg.attackPhrases.aoe || cfg.attackPhrases.single);
-		const phrase = pool[Math.floor(Math.random() * pool.length)];
-
-		let raw = 0;
-	    if (hit) {
-		  raw = Math.floor(
-		    cfg.damageRange.min +
-		    Math.random()*(cfg.damageRange.max-cfg.damageRange.min)
-		  );
-		  if (!single) raw = Math.floor(raw * 0.8);
-	    }
-
-		const defCombat = getCombatForSprite(
-			window.currentZombieSprite,
-			"pve"
-		  );
-		  const finalDmg = Math.round(raw * (1 + defCombat.dmgTaken));
-
-		  if (hit && finalDmg > 0) {
-		  if (useSinglePool) {
-
-			currentBattleRoomRef.once('value').then(snapshot => {
-			  const data = snapshot.val() || {};
-			  let targets = [];			  
-			  if (pveMode === 'solo') {
-				targets.push('userA');
-			  } else {
-				if (data.userA && !data.userA.isDown) targets.push('userA');
-				if (data.userB && !data.userB.isDown) targets.push('userB');
-			  }			  
-			  if (targets.length === 0) return;
-			  const role = targets[Math.floor(Math.random() * targets.length)];
-			  const uid  = data[role]?.uid || '玩家';
-			  appendBattleLogEntry({
-				sender: cfg.name,
-				senderRole: 'boss',
-				message: `${phrase}${uid}（命中），造成 ${finalDmg} 點傷害！`,
-				timestamp: Date.now(),
-				battleMode: 'pve',
-				aoe: false
-			  });
-
-			  const ref = currentBattleRoomRef.child(role);
-			  ref.once('value').then(snap => {
-				const data = snap.val() || {};
-				if (data.isDown) return;
-				const newHp = Math.max(0, (data.health || playerMaxHp) - finalDmg);
-				const isNowDown = newHp <= 0;
-
-				ref.update({ 
-				  health: newHp, 
-				  maxHp: data.maxHp || playerMaxHp, 
-				  isDown: isNowDown 
-				});				
-
-				if (role === window.myRole) {
-
-				  playerHp = newHp;
-
-				  if (isNowDown && !playerIsDown) {
-					handlePlayerDown();
-				  } else {
-
-					const healthBar = document.getElementById(`${role}-health-bar`);
-					if (healthBar) {
-					  const maxHp = data.maxHp || playerMaxHp;
-					  const pct = Math.max(0, Math.round((newHp / maxHp) * 100));
-					  healthBar.querySelector('.health-fill').style.width = pct + '%';
-					  healthBar.querySelector('.health-text').textContent = 
-						`${data.uid || '玩家'}: ${newHp}/${maxHp}`;
-					}
-				  }
-				}
-			  });
-			});
+	async function executeBossAttack() {
+	  const cfg = bossConfigs[selectedBoss];
+	  const hit = Math.random() * 100 < (cfg.hitChance || 75);
+	  const singleRate = cfg.singleAttackRate ?? 0.7;
+	  const isSingle = Math.random() < singleRate;
+	  const useSinglePool = isSingle || pveMode === "solo";
+	  const pool = useSinglePool
+		? cfg.attackPhrases.single
+		: (cfg.attackPhrases.aoe || cfg.attackPhrases.single);
+	  const phrase = pool[Math.floor(Math.random() * pool.length)];
+	  let raw = 0;
+	  if (hit) {
+		raw = Math.floor(
+		  cfg.damageRange.min +
+		  Math.random() * (cfg.damageRange.max - cfg.damageRange.min)
+		);
+		if (!isSingle) raw = Math.floor(raw * 0.8);
+	  }
+	  let finalDmg;
+	  if (useSinglePool) {
+		const defCombat = getCombatForSprite(window.currentZombieSprite, "pve");
+		finalDmg = Math.round(raw * (1 + defCombat.dmgTaken));
+	  } else {
+		if (pveMode === "coop") {
+		  const dtSelf = getPveDmgTaken(window.currentZombieSprite);
+		  const oppSprite = window.opponentZombieSprite || window.currentZombieSprite;
+		  const dtOpp = getPveDmgTaken(oppSprite);
+		  const avgDt = (dtSelf + dtOpp) / 2;
+		  finalDmg = Math.round(raw * (1 + avgDt));
+		} else {
+		  const defCombat = getCombatForSprite(window.currentZombieSprite, "pve");
+		  finalDmg = Math.round(raw * (1 + defCombat.dmgTaken));
+		}
+	  }
+	  if (hit && finalDmg > 0) {
+		if (useSinglePool) {
+		  const snapshot = await currentBattleRoomRef.once("value");
+		  const data = snapshot.val() || {};
+		  const targets = [];
+		  if (pveMode === "solo") {
+			targets.push("userA");
 		  } else {
-
-			appendBattleLogEntry({
-			  sender: cfg.name,
-			  senderRole: 'boss',
-			  message: `${phrase}（範圍攻擊）→ 我方各受 ${finalDmg} 點傷害！`,
-			  timestamp: Date.now(),
-			  battleMode: 'pve',
-			  aoe: true
-			});
-			['userA','userB'].forEach(role => {
-			  if (pveMode === 'solo' && role !== 'userA') return;
-			  const ref = currentBattleRoomRef.child(role);
-			  ref.once('value').then(snap => {
-				const data = snap.val() || {};
-				if (data.isDown) return; 
-				const newHp = Math.max(0, (data.health || playerMaxHp) - finalDmg);
-				const isNowDown = newHp <= 0;				
-
-				ref.update({ 
-				  health: newHp, 
-				  maxHp: data.maxHp || playerMaxHp, 
-				  isDown: isNowDown 
-				});				
-
-				if (role === window.myRole) {
-
-				  playerHp = newHp;
-
-				  if (isNowDown && !playerIsDown) {
-					handlePlayerDown();
-				  } else {
-					const healthBar = document.getElementById(`${role}-health-bar`);
-					if (healthBar) {
-					  const maxHp = data.maxHp || playerMaxHp;
-					  const pct = Math.max(0, Math.round((newHp / maxHp) * 100));
-					  healthBar.querySelector('.health-fill').style.width = pct + '%';
-					  healthBar.querySelector('.health-text').textContent = 
-						`${data.uid || '玩家'}: ${newHp}/${maxHp}`;
-					}
-				  }
-				}
-			  });
-			});
+			if (data.userA && !data.userA.isDown) targets.push("userA");
+			if (data.userB && !data.userB.isDown) targets.push("userB");
+		  }
+		  if (targets.length === 0) return;
+		  const role = targets[Math.floor(Math.random() * targets.length)];
+		  const uid = data[role]?.uid || "玩家";
+		  appendBattleLogEntry({
+			sender: cfg.name,
+			senderRole: "boss",
+			message: `${phrase}${uid}（命中），造成 ${finalDmg} 點傷害！`,
+			timestamp: Date.now(),
+			battleMode: "pve",
+			aoe: false
+		  });
+		  const ref = currentBattleRoomRef.child(role);
+		  const snap = await ref.once("value");
+		  const pData = snap.val() || {};
+		  if (pData.isDown) return;
+		  const newHp = Math.max(0, (pData.health || playerMaxHp) - finalDmg);
+		  const isNowDown = newHp <= 0;
+		  await ref.update({ health: newHp, maxHp: pData.maxHp || playerMaxHp, isDown: isNowDown });
+		  if (role === window.myRole) {
+			playerHp = newHp;
+			if (isNowDown && !playerIsDown) {
+			  handlePlayerDown();
+			} else {
+			  const healthBar = document.getElementById(`${role}-health-bar`);
+			  if (healthBar) {
+				const maxHp = pData.maxHp || playerMaxHp;
+				const pct = Math.max(0, Math.round((newHp / maxHp) * 100));
+				healthBar.querySelector(".health-fill").style.width = `${pct}%`;
+				healthBar.querySelector(".health-text").textContent = `${pData.uid || "玩家"}: ${newHp}/${maxHp}`;
+			  }
+			}
 		  }
 		} else {
-
-			if (useSinglePool) {
-
-			  appendBattleLogEntry({
-				sender: cfg.name,
-				senderRole: "boss",
-				message: `${phrase}${window.myUid}（未命中）！`,
-				timestamp: Date.now(),
-				battleMode: "pve",
-				aoe: false
-			  });
-			} else {
-
-			  appendBattleLogEntry({
-				sender: cfg.name,
-				senderRole: "boss",
-				message: `${phrase}（範圍攻擊）（未命中）！`,
-				timestamp: Date.now(),
-				battleMode: "pve",
-				aoe: true
-			  });
+		  appendBattleLogEntry({
+			sender: cfg.name,
+			senderRole: "boss",
+			message: `${phrase}（範圍攻擊）→ 我方各受 ${finalDmg} 點傷害！`,
+			timestamp: Date.now(),
+			battleMode: "pve",
+			aoe: true
+		  });
+		  for (const role of ["userA", "userB"]) {
+			if (pveMode === "solo" && role !== "userA") continue;
+			const ref = currentBattleRoomRef.child(role);
+			const snap = await ref.once("value");
+			const pData = snap.val() || {};
+			if (pData.isDown) continue;
+			const newHp = Math.max(0, (pData.health || playerMaxHp) - finalDmg);
+			const isNowDown = newHp <= 0;
+			await ref.update({ health: newHp, maxHp: pData.maxHp || playerMaxHp, isDown: isNowDown });
+			if (role === window.myRole) {
+			  playerHp = newHp;
+			  if (isNowDown && !playerIsDown) {
+				handlePlayerDown();
+			  } else {
+				const healthBar = document.getElementById(`${role}-health-bar`);
+				if (healthBar) {
+				  const maxHp = pData.maxHp || playerMaxHp;
+				  const pct = Math.max(0, Math.round((newHp / maxHp) * 100));
+				  healthBar.querySelector(".health-fill").style.width = `${pct}%`;
+				  healthBar.querySelector(".health-text").textContent = `${pData.uid || "玩家"}: ${newHp}/${maxHp}`;
+				}
+			  }
 			}
+		  }
 		}
-
-		updateHealthDisplay();
+	  } else {
+		if (useSinglePool) {
+		  appendBattleLogEntry({
+			sender: cfg.name,
+			senderRole: "boss",
+			message: `${phrase}${window.myUid}（未命中）！`,
+			timestamp: Date.now(),
+			battleMode: "pve",
+			aoe: false
+		  });
+		} else {
+		  appendBattleLogEntry({
+			sender: cfg.name,
+			senderRole: "boss",
+			message: `${phrase}（範圍攻擊）（未命中）！`,
+			timestamp: Date.now(),
+			battleMode: "pve",
+			aoe: true
+		  });
+		}
 	  }
+	  updateHealthDisplay();
 	}
+
 
 	function triggerBtrSupport() {
 
