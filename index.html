@@ -4579,7 +4579,6 @@ function triggerT80Cannon() {
 
 		let lastTs = performance.now(),
 			inCatchUp = false,
-			catchupBtrTriggers = 0,
 			tickCounter = 0,
 			btrExpireTick = 0;
 
@@ -4598,11 +4597,7 @@ function triggerT80Cannon() {
 			  const info = BUILDINGS.armoredGarage.getUpgradeInfo(garages[0].level);
 			  if (Math.random() < info.effect.btrChance) {
 				btrExpireTick = tickCounter + 2;
-				if (inCatchUp) {
-				  catchupBtrTriggers++;
-				} else {
-				  triggerBTRAnimation();
-				}
+				if (!inCatchUp) triggerBTRAnimation();
 			  }
 			}
 		  }
@@ -4668,7 +4663,6 @@ function triggerT80Cannon() {
 		  if (inCatchUp) return;
 		  
 		  inCatchUp = true;
-		  catchupBtrTriggers = 0; 
 		  
 		  let catchupTotal = Math.min(missedTicks, MAX_CATCHUP_TICKS);
 		  let catchupProgress = 0;
@@ -4685,24 +4679,18 @@ function triggerT80Cannon() {
 		  function finishCatchup() {
 			clearInterval(catchupInterval);
 			
-			if (catchupBtrTriggers > 0) {
-			  gameState.btrTriggerCount = (gameState.btrTriggerCount || 0) + catchupBtrTriggers;
-			  checkAchievements();
-			}
-			
 			updateProgressLog(explorationProgressLog, `補跑進行中，進度：100%（${catchupTotal}/${catchupTotal}）`);
 			updateProgressLog(productionProgressLog, `補跑進行中，進度：100%（${catchupTotal}/${catchupTotal}）`);
 			
 			setTimeout(() => {
 			  restoreSideEffects();
 			  
-			  window.addEventLog(`補跑完成，共回收 ${catchupTotal} 輪行動報告${btrMessage}`, 'common', 'exploration');
+			  window.addEventLog(`補跑完成，共回收 ${catchupTotal} 輪行動報告`, 'common', 'exploration');
 			  window.addEventLog(`補跑完成，共回收 ${catchupTotal} 輪生產報告`, 'common', 'production');
 			  
 			  _origUpdateAllDisplays();
 			  
 			  inCatchUp = false;
-			  catchupBtrTriggers = 0; // 重置計數器
 			  explorationProgressLog = null;
 			  productionProgressLog = null;
 			  
