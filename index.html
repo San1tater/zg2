@@ -4791,18 +4791,18 @@ function triggerT80Cannon() {
 	  }},
       { src: "images/zombie_search_sprite_svd.png", unlock: "拾荒高手",
 		combat: {
-		pvp: { hit:0.1, dmgMax:0.1, hp:0, dmgTaken:0.1 },
-		pve: { hit:0.2, dmgMax:0.2, hp:0, dmgTaken:0.2 }
+		pvp: { hit:0.2, dmgMax:0.1, hp:0, dmgTaken:0.1 },
+		pve: { hit:0.4, dmgMax:0.2, hp:0, dmgTaken:0.2 }
 	  }},
       { src: "images/zombie_search_sprite_svd_b.png", unlock: "清空貨架！",
 		combat: {
-		pvp: { hit:0.1, dmgMax:0.1, hp:0, dmgTaken:0 },
-		pve: { hit:0.2, dmgMax:0.2, hp:0, dmgTaken:0 }
+		pvp: { hit:0.2, dmgMax:0.1, hp:0, dmgTaken:0 },
+		pve: { hit:0.4, dmgMax:0.2, hp:0, dmgTaken:0 }
 	  }},
 	  { src: "images/zombie_search_sprite_svd_h.png", unlock: "物資收集者",
 		combat: {
-		pvp: { hit:0.1, dmgMax:0.1, hp:0, dmgTaken:-0.1 },
-		pve: { hit:0.2, dmgMax:0.2, hp:0, dmgTaken:-0.2 }
+		pvp: { hit:0.2, dmgMax:0.1, hp:0, dmgTaken:-0.1 },
+		pve: { hit:0.4, dmgMax:0.2, hp:0, dmgTaken:-0.2 }
 	  }},
       { src: "images/zombie_search_sprite_elite.png", unlock: "全副武裝",
 		combat: {
@@ -4841,8 +4841,8 @@ function triggerT80Cannon() {
       }},
 	  { src: "images/zombie_search_sprite_pkm_msu.png", unlock: "鋼鐵尸流",
 		combat: {
-		pvp: { hit:-0.1, dmgMax:0.1, hp:0.2, dmgTaken:-0.3 },
-		pve: { hit:-0.2, dmgMax:0.2, hp:0.4, dmgTaken:-0.6 }
+		pvp: { hit:-0.1, dmgMax:0.1, hp:0.15, dmgTaken:-0.3 },
+		pve: { hit:-0.2, dmgMax:0.2, hp:0.3, dmgTaken:-0.6 }
 	  },
       heal: {
         interval: 15000,
@@ -4857,7 +4857,7 @@ function triggerT80Cannon() {
       heal: {
         interval: 15000,
         amount:   () => Math.floor(Math.random()*176) - 75,
-        targets:  { self:0.1, one:0.7, all:0.2 }
+        targets:  { self:0, one:0.8, all:0.2 }
       }},
 	  { src: "images/zombie_search_sprite_tanker.png", unlock: "坦克駕駛員",
 		combat: {
@@ -4874,8 +4874,8 @@ function triggerT80Cannon() {
       }},
 	  { src: "images/zombie_search_sprite_tanker_m.png", unlock: "缸中之物",
 		combat: {
-		pvp: { hit:-0.1, dmgMax:0, hp:0.15, dmgTaken:-0.2 },
-		pve: { hit:-0.2, dmgMax:0, hp:0.3, dmgTaken:-0.4 }
+		pvp: { hit:-0.1, dmgMax:0, hp:0.1, dmgTaken:-0.15 },
+		pve: { hit:-0.2, dmgMax:0, hp:0.2, dmgTaken:-0.3 }
 	  },
 	  heal: {
         interval: 30000,
