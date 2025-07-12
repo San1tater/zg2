@@ -4711,7 +4711,7 @@ function triggerT80Cannon() {
 		  }
 		  
 		  catchupInterval = setInterval(() => {
-			const batchSize = 10;
+			const batchSize = 5;
 			for (let i = 0; i < batchSize && catchupProgress < catchupTotal; i++) {
 			  gameTick(true);
 			  catchupProgress++;
