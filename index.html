@@ -4690,8 +4690,8 @@ function triggerT80Cannon() {
 			  checkAchievements();
 			}
 			
-			updateProgressLog(explorationProgressLog, `補跑進行中，進度：100%（${catchupTotal}/${catchupTotal}）`);
-			updateProgressLog(productionProgressLog, `補跑進行中，進度：100%（${catchupTotal}/${catchupTotal}）`);
+			updateProgressLog(explorationProgressLog, `補跑進行中：100%（${catchupTotal}/${catchupTotal}）`);
+			updateProgressLog(productionProgressLog, `補跑進行中：100%（${catchupTotal}/${catchupTotal}）`);
 			
 			setTimeout(() => {
 			  restoreSideEffects();
@@ -4718,7 +4718,7 @@ function triggerT80Cannon() {
 			}
 			
 			const percent = Math.floor((catchupProgress / catchupTotal) * 100);
-			const progressMessage = `補跑進行中，進度：${percent}%（${catchupProgress}/${catchupTotal}）`;
+			const progressMessage = `補跑進行中：${percent}%（${catchupProgress}/${catchupTotal}）`;
 			updateProgressLog(explorationProgressLog, progressMessage);
 			updateProgressLog(productionProgressLog, progressMessage);
 			
@@ -8378,4 +8378,5 @@ function triggerT80Cannon() {
 
 	</script>
 </body>
+
 </html>
